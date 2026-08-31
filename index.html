@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a376c" />
+  <title>GEArPC Conecta</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section id="loginView" class="login-view">
+      <div class="login-brand">
+        <div class="brand-emblem">
+          <img src="logo-grupo.jpeg" alt="Logo do Grupo Escoteiro do Ar Paulo Carzino" />
+        </div>
+        <p class="brand-overline">GRUPO ESCOTEIRO DO AR</p>
+        <h1>GEArPC Conecta</h1>
+        <p class="subtitle">Paulo Carzino • Itajaí/SC</p>
+        <span class="dev-badge">Versão em desenvolvimento</span>
+      </div>
+
+      <form id="loginForm" class="login-card">
+        <div class="login-title">Acesso ao aplicativo</div>
+        <p class="login-helper">Entre com o usuário previamente autorizado pelo grupo.</p>
+        <label for="email">E-mail</label>
+        <input id="email" type="email" autocomplete="username" required placeholder="seuemail@exemplo.com" />
+        <label for="password">Senha</label>
+        <input id="password" type="password" autocomplete="current-password" required placeholder="Sua senha" />
+        <button type="submit" id="loginButton">Entrar</button>
+        <p id="loginMessage" class="message" role="status"></p>
+      </form>
+      <p class="access-note">🔒 Acesso restrito a usuários autorizados.</p>
+    </section>
+
+    <section id="dashboardView" class="dashboard-view hidden">
+      <header class="hero-header">
+        <div class="topbar-row">
+          <div class="brand-mini">
+            <div class="brand-mini-icon"><img src="logo-grupo.jpeg" alt="" aria-hidden="true" /></div>
+            <div>
+              <div class="brand-mini-title">GEArPC Conecta</div>
+              <div class="brand-mini-subtitle">Grupo Escoteiro do Ar Paulo Carzino</div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button type="button" class="icon-button" aria-label="Notificações" title="Notificações"><span aria-hidden="true">🔔</span><span class="notify-dot"></span></button>
+            <button id="logoutButton" class="secondary-button">Sair</button>
+          </div>
+        </div>
+        <div class="hero-user-row">
+          <div>
+            <div class="eyebrow">BEM-VINDO</div>
+            <h2 id="welcomeName">Olá</h2>
+            <div class="user-meta-row">
+              <div id="profileType" class="profile-pill">Usuário</div>
+              <div class="dev-pill">versão em desenvolvimento</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="highlight-band">
+        <div class="band-card compact">
+          <div class="band-kicker">PRÓXIMA ATIVIDADE</div>
+          <h3 id="nextActivityTitle">Nenhuma atividade cadastrada</h3>
+          <p id="nextActivityMeta">Quando houver uma atividade futura, ela aparecerá aqui.</p>
+          <p id="nextActivityHint" class="hint-line"></p>
+          <div class="activity-actions-row">
+            <button class="primary-action" type="button">✓ Confirmar presença</button>
+            <span id="activityVisualTag" class="activity-visual-tag hidden">Demonstração</span>
+          </div>
+        </div>
+        <div class="band-card info-card">
+          <div class="band-kicker">VISÃO GERAL</div>
+          <div class="info-list">
+            <div><strong>Seções:</strong> Ninhada, Rastro de Fogo, Falcão Peregrino, Loreto e Clã Caixa Preta</div>
+            <div><strong>Recursos:</strong> avisos, presença, ficha médica e autorizações</div>
+            <div><strong>Acesso:</strong> administrador, chefia e responsáveis</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="quick-section" aria-labelledby="quickTitle">
+        <div class="section-heading-row">
+          <div><div class="eyebrow dark">ACESSO RÁPIDO</div><h3 id="quickTitle">Serviços do grupo</h3></div>
+          <span class="small-caption">em desenvolvimento</span>
+        </div>
+        <div class="menu-grid" aria-label="Menu principal">
+          <button type="button"><span class="menu-icon">📅</span><span>Calendário</span></button>
+          <button type="button"><span class="menu-icon">📣</span><span>Avisos</span></button>
+          <button type="button"><span class="menu-icon">✅</span><span>Presença</span></button>
+          <button type="button"><span class="menu-icon">🩺</span><span>Ficha médica</span></button>
+          <button id="membersButton" type="button"><span class="menu-icon">👥</span><span>Membros</span></button>
+          <button type="button"><span class="menu-icon">🤝</span><span>Acolhida</span></button>
+          <button type="button"><span class="menu-icon">👋</span><span>Visitas</span></button>
+          <button type="button"><span class="menu-icon">📝</span><span>Autorizações</span></button>
+        </div>
+      </section>
+
+      <section class="ramos-card" aria-label="Seções do grupo">
+        <div class="ramos-title-row">
+          <div><div class="eyebrow dark">NOSSO GRUPO</div><h3>Seções do GEArPC</h3></div>
+          <span class="small-caption">5 seções ativas</span>
+        </div>
+        <div class="ramos-list">
+          <span class="ramo-chip filhotes">🐾 Ninhada <small>• Filhotes</small></span>
+          <span class="ramo-chip lobinho">🐺 Rastro de Fogo <small>• Lobinho</small></span>
+          <span class="ramo-chip escoteiro">⚜ Falcão Peregrino <small>• Escoteiro</small></span>
+          <span class="ramo-chip senior">⛰ Loreto <small>• Sênior</small></span>
+          <span class="ramo-chip pioneiro">🧭 Clã Caixa Preta <small>• Pioneiro</small></span>
+        </div>
+      </section>
+
+      <section class="notice-card">
+        <div class="notice-icon">🔔</div>
+        <div class="notice-copy"><strong>Autorizações e avisos centralizados</strong><span>Responsáveis confirmam presença e autorização; a chefia acompanha tudo por seção.</span></div>
+        <div class="notice-arrow">›</div>
+      </section>
+
+      <section id="adminCard" class="admin-card hidden">
+        <div class="admin-icon">⚙️</div>
+        <div><strong>Área administrativa</strong><span>Cadastros, usuários, atividades e configurações do grupo.</span></div>
+      </section>
+
+      <p class="status-line" id="statusLine"></p>
+      <footer class="app-footer">GEArPC Conecta • Projeto em desenvolvimento</footer>
+    </section>
+
+    <section id="membersView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="membersBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Membros</strong></div></div>
+        <button id="membersLogoutButton" class="secondary-button">Sair</button>
+      </header>
+
+      <section class="members-hero">
+        <div>
+          <div class="eyebrow dark">CADASTRO E CONSULTA</div>
+          <h2>Membros do grupo</h2>
+          <p>Consulte os membros por seção. O cadastro e as alterações são exclusivos do administrador.</p>
+        </div>
+        <button id="newMemberButton" class="new-member-button hidden" type="button">＋ Novo membro</button>
+      </section>
+
+      <section class="members-toolbar">
+        <label class="search-field"><span>🔎</span><input id="memberSearch" type="search" placeholder="Buscar por nome, registro ou responsável" /></label>
+        <label class="filter-field"><span>Seção</span><select id="memberSecaoFilter"><option value="">Todas</option></select></label>
+      </section>
+
+      <section class="members-summary">
+        <div><strong id="membersCount">0</strong><span>membros encontrados</span></div>
+        <div id="membersRoleNote" class="role-note"></div>
+      </section>
+
+      <section id="membersList" class="members-list" aria-live="polite"></section>
+      <p id="membersMessage" class="members-message" role="status"></p>
+    </section>
+  </main>
+
+  <dialog id="memberDialog" class="member-dialog">
+    <form id="memberForm" method="dialog" class="member-form">
+      <div class="dialog-title-row"><div><div class="eyebrow dark">MEMBRO</div><h2 id="memberDialogTitle">Novo membro</h2></div><button id="closeMemberDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <input id="memberId" type="hidden" />
+      <label>Nome completo<input id="memberName" type="text" required maxlength="160" /></label>
+      <div class="form-grid">
+        <label>Nº de registro do membro<input id="memberRegistration" type="text" maxlength="40" placeholder="Número de registro" /></label>
+        <label>Validade do registro<input id="memberRegistrationValidity" type="date" /></label>
+      </div>
+      <label>Data de nascimento<input id="memberBirth" type="date" required /></label>
+      <label>Seção<select id="memberSecao" required></select><small class="field-helper">O ramo é definido automaticamente pela seção escolhida.</small></label>
+      <label>Nome do responsável<input id="responsibleName" type="text" required maxlength="160" /></label>
+      <div class="form-grid">
+        <label>Nº de registro do responsável<input id="responsibleRegistration" type="text" maxlength="40" placeholder="Número de registro" /></label>
+        <label>Telefone do responsável<input id="responsiblePhone" type="tel" required maxlength="30" placeholder="(47) 99999-9999" /></label>
+      </div>
+      <label class="active-check"><input id="memberActive" type="checkbox" checked /> <span>Membro ativo</span></label>
+      <p id="memberFormMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions"><button id="cancelMemberButton" type="button" class="cancel-button">Cancelar</button><button id="saveMemberButton" type="submit" class="save-button">Salvar membro</button></div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
