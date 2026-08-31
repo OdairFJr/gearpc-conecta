@@ -320,17 +320,42 @@
   }
 
   async function insertResponsible(name, phone, registration) {
-    const phoneDigits = normalizePhone(phone);
+    const cleanName = (name || '').trim();
+    const cleanPhone = (phone || '').trim();
+    const phoneDigits = normalizePhone(cleanPhone);
     const reg = (registration || '').trim();
+
     const existing = state.responsaveis.find((r) =>
       (reg && normalizeText(r.registro_paxtu) === normalizeText(reg)) ||
-      (normalizePhone(r.telefone) === phoneDigits && normalizeText(r.nome_completo) === normalizeText(name))
+      (normalizePhone(r.telefone) === phoneDigits && normalizeText(r.nome_completo) === normalizeText(cleanName))
     );
-    if (existing) return { id: existing.id, created: false };
+
+    if (existing) {
+      const needsUpdate =
+        normalizeText(existing.nome_completo) !== normalizeText(cleanName) ||
+        normalizePhone(existing.telefone) !== phoneDigits ||
+        normalizeText(existing.registro_paxtu) !== normalizeText(reg);
+
+      if (needsUpdate) {
+        const { error } = await client.from('responsaveis').update({
+          nome_completo: cleanName,
+          registro_paxtu: reg || null,
+          telefone: cleanPhone
+        }).eq('id', existing.id);
+        if (error) throw error;
+
+        existing.nome_completo = cleanName;
+        existing.registro_paxtu = reg || null;
+        existing.telefone = cleanPhone;
+      }
+
+      return { id: existing.id, created: false };
+    }
+
     const { data, error } = await client.from('responsaveis').insert({
-      nome_completo: name.trim(),
+      nome_completo: cleanName,
       registro_paxtu: reg || null,
-      telefone: phone.trim()
+      telefone: cleanPhone
     }).select('id').single();
     if (error) throw error;
     return { id: data.id, created: true };

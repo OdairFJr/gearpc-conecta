@@ -1,9 +1,9 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v1';
+const CACHE_NAME = 'gearpc-conecta-offline-v2';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
+  './styles.css?v=12',
+  './app.js?v=12',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
