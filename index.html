@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=12" />
+  <link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
   <main class="app-shell">
@@ -99,6 +99,7 @@
           <button type="button"><span class="menu-icon">✅</span><span>Presença</span></button>
           <button type="button"><span class="menu-icon">🩺</span><span>Ficha médica</span></button>
           <button id="membersButton" type="button"><span class="menu-icon">👥</span><span>Membros</span></button>
+          <button id="chiefsButton" type="button"><span class="menu-icon">🧑‍🏫</span><span>Chefia</span></button>
           <button type="button"><span class="menu-icon">🤝</span><span>Acolhida</span></button>
           <button type="button"><span class="menu-icon">👋</span><span>Visitas</span></button>
           <button type="button"><span class="menu-icon">📝</span><span>Autorizações</span></button>
@@ -163,6 +164,36 @@
       <section id="membersList" class="members-list" aria-live="polite"></section>
       <p id="membersMessage" class="members-message" role="status"></p>
     </section>
+
+    <section id="chiefsView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="chiefsBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Chefia</strong></div></div>
+        <button id="chiefsLogoutButton" class="secondary-button">Sair</button>
+      </header>
+
+      <section class="members-hero">
+        <div>
+          <div class="eyebrow dark">CADASTRO E CONSULTA</div>
+          <h2>Chefia do grupo</h2>
+          <p id="chiefsIntroText">Consulte a equipe adulta vinculada às seções do grupo.</p>
+        </div>
+        <button id="newChiefButton" class="new-member-button hidden" type="button">＋ Novo chefe</button>
+      </section>
+
+      <section class="members-toolbar">
+        <label class="search-field"><span>🔎</span><input id="chiefSearch" type="search" placeholder="Buscar por nome, função ou seção" /></label>
+        <label class="filter-field"><span>Seção</span><select id="chiefSecaoFilter"><option value="">Todas</option></select></label>
+      </section>
+
+      <section class="members-summary">
+        <div><strong id="chiefsCount">0</strong><span>chefes encontrados</span></div>
+        <div id="chiefsRoleNote" class="role-note"></div>
+      </section>
+
+      <section id="chiefsList" class="members-list" aria-live="polite"></section>
+      <p id="chiefsMessage" class="members-message" role="status"></p>
+    </section>
   </main>
 
   <dialog id="memberDialog" class="member-dialog">
@@ -187,13 +218,50 @@
     </form>
   </dialog>
 
+  <dialog id="chiefDialog" class="member-dialog">
+    <form id="chiefForm" method="dialog" class="member-form">
+      <div class="dialog-title-row">
+        <div><div class="eyebrow dark">CHEFIA</div><h2 id="chiefDialogTitle">Novo chefe</h2></div>
+        <button id="closeChiefDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <input id="chiefId" type="hidden" />
+      <label>Nome completo<input id="chiefName" type="text" required maxlength="160" /></label>
+      <div class="form-grid">
+        <label>Nº de registro<input id="chiefRegistration" type="text" maxlength="40" placeholder="Número de registro" /></label>
+        <label>Validade do registro<input id="chiefRegistrationValidity" type="date" /></label>
+      </div>
+      <div class="form-grid">
+        <label>Data de nascimento<input id="chiefBirth" type="date" /></label>
+        <label>Telefone<input id="chiefPhone" type="tel" maxlength="30" placeholder="(47) 99999-9999" /></label>
+      </div>
+
+      <fieldset class="multi-fieldset">
+        <legend>Seção(ões)</legend>
+        <p class="field-helper">Marque todas as seções em que esta pessoa atua.</p>
+        <div id="chiefSectionsOptions" class="checkbox-grid"></div>
+      </fieldset>
+
+      <label>Função(ões)
+        <textarea id="chiefFunctions" rows="4" placeholder="Digite uma função por linha. Ex.:&#10;Chefe de Seção&#10;Assistente de Seção"></textarea>
+        <small class="field-helper">Pode registrar mais de uma função, uma por linha.</small>
+      </label>
+
+      <label class="active-check"><input id="chiefActive" type="checkbox" checked /> <span>Chefe ativo</span></label>
+      <p id="chiefFormMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions">
+        <button id="cancelChiefButton" type="button" class="cancel-button">Cancelar</button>
+        <button id="saveChiefButton" type="submit" class="save-button">Salvar chefe</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=12').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=13').catch(() => {});
       });
     }
   </script>

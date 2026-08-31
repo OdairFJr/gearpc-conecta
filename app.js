@@ -43,6 +43,34 @@
   const saveMemberButton = $('saveMemberButton');
   const closeMemberDialog = $('closeMemberDialog');
   const cancelMemberButton = $('cancelMemberButton');
+  const chiefsView = $('chiefsView');
+  const chiefsButton = $('chiefsButton');
+  const chiefsBackButton = $('chiefsBackButton');
+  const chiefsLogoutButton = $('chiefsLogoutButton');
+  const newChiefButton = $('newChiefButton');
+  const chiefSearch = $('chiefSearch');
+  const chiefSecaoFilter = $('chiefSecaoFilter');
+  const chiefsList = $('chiefsList');
+  const chiefsCount = $('chiefsCount');
+  const chiefsRoleNote = $('chiefsRoleNote');
+  const chiefsMessage = $('chiefsMessage');
+  const chiefsIntroText = $('chiefsIntroText');
+  const chiefDialog = $('chiefDialog');
+  const chiefForm = $('chiefForm');
+  const chiefDialogTitle = $('chiefDialogTitle');
+  const chiefId = $('chiefId');
+  const chiefName = $('chiefName');
+  const chiefRegistration = $('chiefRegistration');
+  const chiefRegistrationValidity = $('chiefRegistrationValidity');
+  const chiefBirth = $('chiefBirth');
+  const chiefPhone = $('chiefPhone');
+  const chiefFunctions = $('chiefFunctions');
+  const chiefSectionsOptions = $('chiefSectionsOptions');
+  const chiefActive = $('chiefActive');
+  const chiefFormMessage = $('chiefFormMessage');
+  const saveChiefButton = $('saveChiefButton');
+  const closeChiefDialog = $('closeChiefDialog');
+  const cancelChiefButton = $('cancelChiefButton');
 
   const state = {
     user: null,
@@ -51,7 +79,10 @@
     secoes: [],
     jovens: [],
     responsaveis: [],
-    vinculos: []
+    vinculos: [],
+    chefes: [],
+    chefeFuncoes: [],
+    chefeSecoes: []
   };
 
   function configOk() {
@@ -72,10 +103,12 @@
     loginView.classList.add('hidden');
     dashboardView.classList.add('hidden');
     membersView.classList.add('hidden');
+    chiefsView.classList.add('hidden');
   }
   function showLogin() { hideAllViews(); loginView.classList.remove('hidden'); }
   function showDashboard() { hideAllViews(); dashboardView.classList.remove('hidden'); }
   function showMembers() { hideAllViews(); membersView.classList.remove('hidden'); }
+  function showChiefs() { hideAllViews(); chiefsView.classList.remove('hidden'); }
 
   function prettyProfile(tipo) {
     return ({ administrador: 'Administrador', chefia: 'Chefia', responsavel: 'Responsável' })[tipo] || tipo || 'Usuário';
@@ -101,10 +134,20 @@
     profileType.textContent = prettyProfile(data.tipo);
     adminCard.classList.toggle('hidden', data.tipo !== 'administrador');
     membersButton.classList.toggle('hidden', data.tipo === 'responsavel');
+    chiefsButton.classList.remove('hidden');
+    newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
     membersRoleNote.textContent = data.tipo === 'administrador'
       ? 'Você pode cadastrar e alterar membros.'
       : 'Consulta dos membros autorizados para sua chefia.';
+    chiefsRoleNote.textContent = data.tipo === 'administrador'
+      ? 'Você pode cadastrar e alterar a chefia.'
+      : data.tipo === 'responsavel'
+        ? 'Você vê apenas a chefia das seções dos seus filhos.'
+        : 'Consulta da equipe adulta do grupo.';
+    chiefsIntroText.textContent = data.tipo === 'responsavel'
+      ? 'Aqui aparecem somente os chefes vinculados às seções dos seus filhos.'
+      : 'Consulte a equipe adulta, suas funções e as seções em que atua.';
     statusLine.textContent = 'Ambiente seguro • acesso restrito a usuários autorizados';
     return true;
   }
@@ -467,6 +510,258 @@
     }
   });
 
+  function chiefFunctionsFor(chefeId) {
+    return state.chefeFuncoes
+      .filter((row) => Number(row.chefe_id) === Number(chefeId))
+      .map((row) => row.funcao)
+      .filter(Boolean);
+  }
+
+  function chiefSectionsFor(chefeId) {
+    const ids = state.chefeSecoes
+      .filter((row) => Number(row.chefe_id) === Number(chefeId))
+      .map((row) => Number(row.secao_id));
+    return state.secoes.filter((s) => ids.includes(Number(s.id)));
+  }
+
+  function chiefRows() {
+    const ramoMap = new Map(state.ramos.map((r) => [Number(r.id), r]));
+    return state.chefes.map((c) => ({
+      ...c,
+      funcoes: chiefFunctionsFor(c.id),
+      secoes: chiefSectionsFor(c.id).map((secao) => ({ ...secao, ramo: ramoMap.get(Number(secao.ramo_id)) || null }))
+    }));
+  }
+
+  function renderChiefSectionSelectors() {
+    let available = state.secoes.filter((s) => s.ativo !== false);
+    if (state.profile?.tipo === 'responsavel') {
+      const allowedIds = new Set(state.chefeSecoes.map((row) => Number(row.secao_id)));
+      available = available.filter((s) => allowedIds.has(Number(s.id)));
+    }
+    available.sort((a, b) => {
+      const ra = state.ramos.find((r) => Number(r.id) === Number(a.ramo_id));
+      const rb = state.ramos.find((r) => Number(r.id) === Number(b.ramo_id));
+      return (ra?.ordem || 99) - (rb?.ordem || 99) || a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+    chiefSecaoFilter.innerHTML = `<option value="">Todas</option>${available.map((s) => `<option value="${s.id}">${escapeHtml(s.nome)}</option>`).join('')}`;
+    chiefSectionsOptions.innerHTML = state.secoes.filter((s) => s.ativo !== false).map((s) => {
+      const ramo = state.ramos.find((r) => Number(r.id) === Number(s.ramo_id));
+      return `<label class="section-check"><input type="checkbox" value="${s.id}" /> <span><strong>${escapeHtml(s.nome)}</strong><small>${escapeHtml(ramo?.nome || '')}</small></span></label>`;
+    }).join('');
+  }
+
+  function renderChiefs() {
+    const search = normalizeText(chiefSearch.value);
+    const secaoId = chiefSecaoFilter.value;
+    let rows = chiefRows();
+    if (secaoId) rows = rows.filter((c) => c.secoes.some((s) => String(s.id) === String(secaoId)));
+    if (search) {
+      rows = rows.filter((c) => {
+        const haystack = [c.nome_completo, c.registro_paxtu, c.telefone, ...c.funcoes, ...c.secoes.map((s) => s.nome), ...c.secoes.map((s) => s.ramo?.nome || '')].join(' ');
+        return normalizeText(haystack).includes(search);
+      });
+    }
+    rows.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo, 'pt-BR'));
+    chiefsCount.textContent = String(rows.length);
+
+    if (!rows.length) {
+      chiefsList.innerHTML = `<div class="empty-members"><div>🧑‍🏫</div><strong>Nenhum chefe encontrado</strong><span>${state.profile?.tipo === 'administrador' ? 'Cadastre o primeiro chefe ou altere os filtros.' : 'Não há chefia disponível para este filtro.'}</span></div>`;
+      return;
+    }
+
+    const adminOrChief = state.profile?.tipo !== 'responsavel';
+    chiefsList.innerHTML = rows.map((c) => {
+      const regStatus = registrationStatus(c.validade_registro);
+      const phoneHref = normalizePhone(c.telefone);
+      const functions = c.funcoes.length ? c.funcoes.map((f) => `<span class="function-chip">${escapeHtml(f)}</span>`).join('') : '<span class="function-chip muted">Função não informada</span>';
+      const sections = c.secoes.length ? c.secoes.map((secao) => `<span class="section-chip">${escapeHtml(secao.nome)}${secao.ramo?.nome ? `<small>${escapeHtml(secao.ramo.nome)}</small>` : ''}</span>`).join('') : '<span class="section-chip">Sem seção</span>';
+      const adminDetails = adminOrChief ? `<div class="member-details"><span>🪪 Reg.: ${escapeHtml(c.registro_paxtu || '—')}</span><span>📆 Validade: ${formatDateBR(c.validade_registro)}</span><span>🎂 Nascimento: ${formatBirth(c.data_nascimento)}</span></div>` : '';
+      const edit = state.profile?.tipo === 'administrador' ? `<button class="edit-member-button" type="button" data-edit-chief="${c.id}">Editar</button>` : '';
+      return `<article class="member-card chief-card ${c.ativo ? '' : 'member-inactive'}">
+        <div class="member-main">
+          <div class="member-avatar chief-avatar">${escapeHtml(c.nome_completo.charAt(0).toUpperCase())}</div>
+          <div class="member-copy">
+            <div class="member-name-row"><h3>${escapeHtml(c.nome_completo)}</h3></div>
+            <div class="chief-chip-row">${functions}</div>
+            <div class="chief-chip-row">${sections}</div>
+            ${adminDetails}
+            <div class="chief-contact">${c.telefone ? `<a href="tel:${phoneHref}">☎ ${escapeHtml(c.telefone)}</a>` : '<span>☎ Telefone não informado</span>'}</div>
+          </div>
+        </div>
+        <div class="member-side">${adminOrChief ? `<span class="registration-badge ${regStatus.cls}">${escapeHtml(regStatus.label)}</span>` : ''}<span class="status-badge ${c.ativo ? 'active' : 'inactive'}">${c.ativo ? 'Ativo' : 'Inativo'}</span>${edit}</div>
+      </article>`;
+    }).join('');
+
+    chiefsList.querySelectorAll('[data-edit-chief]').forEach((button) => {
+      button.addEventListener('click', () => openChiefDialog(Number(button.dataset.editChief)));
+    });
+  }
+
+  async function loadChiefsData() {
+    chiefsMessage.textContent = 'Carregando chefia...';
+    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes] = await Promise.all([
+      client.from('ramos').select('id,nome,ordem,ativo').order('ordem'),
+      client.from('secoes').select('id,nome,ramo_id,ativo').order('nome'),
+      client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo').order('nome_completo'),
+      client.from('chefe_funcoes').select('id,chefe_id,funcao'),
+      client.from('chefe_secoes').select('chefe_id,secao_id')
+    ]);
+    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes].find((r) => r.error)?.error;
+    if (firstError) {
+      chiefsMessage.textContent = `Não foi possível carregar a chefia: ${firstError.message}`;
+      return;
+    }
+    state.ramos = ramosRes.data || [];
+    state.secoes = secoesRes.data || [];
+    state.chefes = chefesRes.data || [];
+    state.chefeFuncoes = funcoesRes.data || [];
+    state.chefeSecoes = secoesChefesRes.data || [];
+    renderChiefSectionSelectors();
+    renderChiefs();
+    chiefsMessage.textContent = '';
+  }
+
+  async function openChiefsView() {
+    showChiefs();
+    await loadChiefsData();
+  }
+
+  function selectedChiefSectionIds() {
+    return [...chiefSectionsOptions.querySelectorAll('input[type="checkbox"]:checked')].map((el) => Number(el.value));
+  }
+
+  function parsedChiefFunctions() {
+    const seen = new Set();
+    return chiefFunctions.value.split(/\n|;/).map((v) => v.trim()).filter((v) => {
+      const key = normalizeText(v);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function openChiefDialog(chefeId = null) {
+    if (state.profile?.tipo !== 'administrador') return;
+    chiefForm.reset();
+    chiefFormMessage.textContent = '';
+    chiefActive.checked = true;
+    chiefId.value = '';
+    chiefDialogTitle.textContent = 'Novo chefe';
+    renderChiefSectionSelectors();
+
+    if (chefeId) {
+      const c = chiefRows().find((item) => Number(item.id) === Number(chefeId));
+      if (!c) return;
+      chiefDialogTitle.textContent = 'Editar chefe';
+      chiefId.value = String(c.id);
+      chiefName.value = c.nome_completo || '';
+      chiefRegistration.value = c.registro_paxtu || '';
+      chiefRegistrationValidity.value = c.validade_registro || '';
+      chiefBirth.value = c.data_nascimento || '';
+      chiefPhone.value = c.telefone || '';
+      chiefFunctions.value = c.funcoes.join('\n');
+      chiefActive.checked = Boolean(c.ativo);
+      const selected = new Set(c.secoes.map((s) => Number(s.id)));
+      chiefSectionsOptions.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+        el.checked = selected.has(Number(el.value));
+      });
+    }
+    chiefDialog.showModal();
+  }
+
+  function closeChiefForm() {
+    if (chiefDialog.open) chiefDialog.close();
+  }
+
+  async function createChief(payload) {
+    const { data, error } = await client.from('chefes').insert({
+      nome_completo: payload.name,
+      registro_paxtu: payload.registration || null,
+      data_nascimento: payload.birth,
+      validade_registro: payload.validity,
+      telefone: payload.phone,
+      ativo: payload.active
+    }).select('id').single();
+    if (error) throw error;
+    try {
+      if (payload.functions.length) {
+        const { error: fnError } = await client.from('chefe_funcoes').insert(payload.functions.map((funcao) => ({ chefe_id: data.id, funcao })));
+        if (fnError) throw fnError;
+      }
+      if (payload.sectionIds.length) {
+        const { error: secError } = await client.from('chefe_secoes').insert(payload.sectionIds.map((secao_id) => ({ chefe_id: data.id, secao_id })));
+        if (secError) throw secError;
+      }
+    } catch (err) {
+      await client.from('chefes').delete().eq('id', data.id);
+      throw err;
+    }
+  }
+
+  async function updateChief(id, payload) {
+    const { error } = await client.from('chefes').update({
+      nome_completo: payload.name,
+      registro_paxtu: payload.registration || null,
+      data_nascimento: payload.birth,
+      validade_registro: payload.validity,
+      telefone: payload.phone,
+      ativo: payload.active,
+      atualizado_em: new Date().toISOString()
+    }).eq('id', id);
+    if (error) throw error;
+
+    const { error: delFnError } = await client.from('chefe_funcoes').delete().eq('chefe_id', id);
+    if (delFnError) throw delFnError;
+    const { error: delSecError } = await client.from('chefe_secoes').delete().eq('chefe_id', id);
+    if (delSecError) throw delSecError;
+
+    if (payload.functions.length) {
+      const { error: fnError } = await client.from('chefe_funcoes').insert(payload.functions.map((funcao) => ({ chefe_id: id, funcao })));
+      if (fnError) throw fnError;
+    }
+    if (payload.sectionIds.length) {
+      const { error: secError } = await client.from('chefe_secoes').insert(payload.sectionIds.map((secao_id) => ({ chefe_id: id, secao_id })));
+      if (secError) throw secError;
+    }
+  }
+
+  chiefForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.profile?.tipo !== 'administrador') return;
+    chiefFormMessage.textContent = '';
+    const payload = {
+      name: chiefName.value.trim(),
+      registration: chiefRegistration.value.trim(),
+      validity: chiefRegistrationValidity.value,
+      birth: chiefBirth.value,
+      phone: chiefPhone.value.trim(),
+      functions: parsedChiefFunctions(),
+      sectionIds: selectedChiefSectionIds(),
+      active: chiefActive.checked
+    };
+    if (!payload.name || !payload.registration || !payload.validity || !payload.birth || !normalizePhone(payload.phone) || !payload.functions.length || !payload.sectionIds.length) {
+      chiefFormMessage.textContent = 'Preencha nome, registro, validade, nascimento, telefone, ao menos uma função e uma seção.';
+      return;
+    }
+    saveChiefButton.disabled = true;
+    saveChiefButton.textContent = 'Salvando...';
+    try {
+      if (chiefId.value) await updateChief(Number(chiefId.value), payload);
+      else await createChief(payload);
+      const wasEditing = Boolean(chiefId.value);
+      closeChiefForm();
+      await loadChiefsData();
+      chiefsMessage.textContent = wasEditing ? 'Cadastro da chefia atualizado com sucesso.' : 'Chefe cadastrado com sucesso.';
+      window.setTimeout(() => { if (chiefsMessage.textContent.includes('sucesso')) chiefsMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      chiefFormMessage.textContent = `Não foi possível salvar: ${error.message}`;
+    } finally {
+      saveChiefButton.disabled = false;
+      saveChiefButton.textContent = 'Salvar chefe';
+    }
+  });
+
   async function doLogout() {
     await client.auth.signOut();
     loginForm.reset();
@@ -498,11 +793,20 @@
 
   logoutButton.addEventListener('click', doLogout);
   membersLogoutButton.addEventListener('click', doLogout);
+  chiefsLogoutButton.addEventListener('click', doLogout);
   membersButton.addEventListener('click', openMembersView);
+  chiefsButton.addEventListener('click', openChiefsView);
   membersBackButton.addEventListener('click', showDashboard);
+  chiefsBackButton.addEventListener('click', showDashboard);
   newMemberButton.addEventListener('click', () => openMemberDialog());
   closeMemberDialog.addEventListener('click', closeMemberForm);
   cancelMemberButton.addEventListener('click', closeMemberForm);
+  newChiefButton.addEventListener('click', () => openChiefDialog());
+  closeChiefDialog.addEventListener('click', closeChiefForm);
+  cancelChiefButton.addEventListener('click', closeChiefForm);
+  chiefSearch.addEventListener('input', renderChiefs);
+  chiefSecaoFilter.addEventListener('change', renderChiefs);
+  chiefDialog.addEventListener('click', (event) => { if (event.target === chiefDialog) closeChiefForm(); });
   memberSearch.addEventListener('input', renderMembers);
   memberSecaoFilter.addEventListener('change', renderMembers);
   memberDialog.addEventListener('click', (event) => {
