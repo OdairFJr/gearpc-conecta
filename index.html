@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=16.1" />
+  <link rel="stylesheet" href="styles.css?v=17" />
 </head>
 <body>
   <main class="app-shell">
@@ -69,7 +69,7 @@
       <section class="release-card">
         <div class="release-kicker">ACESSO DA EQUIPE</div>
         <h3>Consultas disponíveis</h3>
-        <p>Nesta primeira versão, estão disponíveis as relações de jovens e da equipe adulta do grupo.</p>
+        <p>Estão disponíveis as relações de jovens, da equipe adulta e a lista de presença das seções.</p>
       </section>
 
       <section class="launch-modules" aria-label="Áreas disponíveis">
@@ -87,6 +87,15 @@
           <span class="launch-module-copy">
             <strong>Chefia</strong>
             <small>Consulte a equipe adulta, funções, seções e contatos.</small>
+          </span>
+          <span class="launch-module-arrow" aria-hidden="true">›</span>
+        </button>
+
+        <button id="attendanceButton" class="launch-module" type="button">
+          <span class="launch-module-icon attendance-icon" aria-hidden="true">✅</span>
+          <span class="launch-module-copy">
+            <strong>Presença</strong>
+            <small>Registre a chamada dos jovens da sua seção.</small>
           </span>
           <span class="launch-module-arrow" aria-hidden="true">›</span>
         </button>
@@ -161,6 +170,37 @@
 
       <section id="chiefsList" class="members-list" aria-live="polite"></section>
       <p id="chiefsMessage" class="members-message" role="status"></p>
+    </section>
+
+    <section id="attendanceView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="attendanceBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Presença</strong></div></div>
+        <button id="attendanceLogoutButton" class="secondary-button">Sair</button>
+      </header>
+
+      <section class="members-hero attendance-hero">
+        <div>
+          <div class="eyebrow dark">CHAMADA</div>
+          <h2>Lista de presença</h2>
+          <p id="attendanceIntroText">Selecione a seção e a data da reunião para registrar a presença.</p>
+        </div>
+      </section>
+
+      <section class="attendance-controls">
+        <label class="attendance-control"><span>Seção</span><select id="attendanceSection"><option value="">Selecione</option></select></label>
+        <label class="attendance-control"><span>Data da reunião</span><input id="attendanceDate" type="date" /></label>
+      </section>
+
+      <section class="attendance-summary" aria-live="polite">
+        <div class="attendance-stat present"><strong id="attendancePresentCount">0</strong><span>presentes</span></div>
+        <div class="attendance-stat absent"><strong id="attendanceAbsentCount">0</strong><span>ausentes</span></div>
+        <div class="attendance-stat pending"><strong id="attendancePendingCount">0</strong><span>não marcados</span></div>
+      </section>
+
+      <div id="attendanceRoleNote" class="role-note attendance-role-note"></div>
+      <section id="attendanceList" class="attendance-list" aria-live="polite"></section>
+      <p id="attendanceMessage" class="members-message" role="status"></p>
     </section>
   </main>
 
@@ -255,11 +295,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=16.1"></script>
+  <script src="app.js?v=17"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=16.1').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=17').catch(() => {});
       });
     }
   </script>

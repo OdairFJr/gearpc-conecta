@@ -89,6 +89,19 @@
   const removeChiefButton = $('removeChiefButton');
   const chiefInactiveToggleWrap = $('chiefInactiveToggleWrap');
   const chiefShowInactive = $('chiefShowInactive');
+  const attendanceView = $('attendanceView');
+  const attendanceButton = $('attendanceButton');
+  const attendanceBackButton = $('attendanceBackButton');
+  const attendanceLogoutButton = $('attendanceLogoutButton');
+  const attendanceSection = $('attendanceSection');
+  const attendanceDate = $('attendanceDate');
+  const attendanceIntroText = $('attendanceIntroText');
+  const attendancePresentCount = $('attendancePresentCount');
+  const attendanceAbsentCount = $('attendanceAbsentCount');
+  const attendancePendingCount = $('attendancePendingCount');
+  const attendanceRoleNote = $('attendanceRoleNote');
+  const attendanceList = $('attendanceList');
+  const attendanceMessage = $('attendanceMessage');
 
   const state = {
     user: null,
@@ -100,7 +113,10 @@
     vinculos: [],
     chefes: [],
     chefeFuncoes: [],
-    chefeSecoes: []
+    chefeSecoes: [],
+    attendanceOwnSectionIds: [],
+    attendanceCall: null,
+    attendanceRows: []
   };
 
   function authActionFromUrl() {
@@ -131,11 +147,13 @@
     dashboardView.classList.add('hidden');
     membersView.classList.add('hidden');
     chiefsView.classList.add('hidden');
+    attendanceView.classList.add('hidden');
   }
   function showLogin() { hideAllViews(); loginView.classList.remove('hidden'); }
   function showDashboard() { hideAllViews(); dashboardView.classList.remove('hidden'); }
   function showMembers() { hideAllViews(); membersView.classList.remove('hidden'); }
   function showChiefs() { hideAllViews(); chiefsView.classList.remove('hidden'); }
+  function showAttendance() { hideAllViews(); attendanceView.classList.remove('hidden'); }
 
   function prettyProfile(profile) {
     if (!profile) return 'Usuário';
@@ -165,6 +183,7 @@
     adminCard.classList.toggle('hidden', data.tipo !== 'administrador');
     membersButton.classList.toggle('hidden', data.tipo === 'responsavel');
     chiefsButton.classList.remove('hidden');
+    attendanceButton.classList.toggle('hidden', data.tipo === 'responsavel');
     newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
     memberInactiveToggleWrap.classList.toggle('hidden', data.tipo !== 'administrador');
@@ -190,6 +209,14 @@
     chiefsIntroText.textContent = data.tipo === 'responsavel'
       ? 'Aqui aparecem somente os chefes vinculados às seções dos seus filhos.'
       : 'Consulte a equipe adulta, suas funções, seções e contatos.';
+    attendanceRoleNote.textContent = data.tipo === 'administrador'
+      ? 'Administrador: pode registrar e corrigir a presença de qualquer seção.'
+      : data.acesso_geral_consulta
+        ? 'Dirigente: consulta as listas de todas as seções. A marcação é feita pela chefia da seção.'
+        : 'Chefia: registre a presença somente dos jovens da sua seção.';
+    attendanceIntroText.textContent = data.acesso_geral_consulta && data.tipo !== 'administrador'
+      ? 'Selecione a seção e a data para consultar a chamada.'
+      : 'Selecione a seção e a data da reunião para registrar a presença.';
     statusLine.textContent = 'Ambiente seguro • acesso restrito a usuários autorizados';
     return true;
   }
@@ -883,6 +910,235 @@
     }
   });
 
+  function localTodayValue() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function canManageAttendanceSection(secaoId) {
+    if (state.profile?.tipo === 'administrador') return true;
+    if (state.profile?.acesso_geral_consulta) return false;
+    return state.attendanceOwnSectionIds.includes(Number(secaoId));
+  }
+
+  function attendanceAvailableSections() {
+    let sections = sortedSections().filter((s) => s.ativo !== false);
+    if (state.profile?.tipo === 'administrador' || state.profile?.acesso_geral_consulta) return sections;
+    const allowed = new Set(state.attendanceOwnSectionIds.map(Number));
+    return sections.filter((s) => allowed.has(Number(s.id)));
+  }
+
+  function renderAttendanceSectionOptions() {
+    const ramoMap = new Map(state.ramos.map((r) => [Number(r.id), r]));
+    const sections = attendanceAvailableSections();
+    const current = attendanceSection.value;
+    const options = sections.map((s) => {
+      const ramo = ramoMap.get(Number(s.ramo_id));
+      return `<option value="${s.id}">${escapeHtml(s.nome)}${ramo ? ` — ${escapeHtml(ramo.nome)}` : ''}</option>`;
+    }).join('');
+    attendanceSection.innerHTML = `<option value="">Selecione</option>${options}`;
+    if (sections.some((s) => String(s.id) === String(current))) attendanceSection.value = current;
+    else if (sections.length === 1) attendanceSection.value = String(sections[0].id);
+  }
+
+  function attendanceYouthRows() {
+    const secaoId = Number(attendanceSection.value || 0);
+    return state.jovens
+      .filter((j) => j.ativo !== false && Number(j.secao_id) === secaoId)
+      .sort((a, b) => a.nome_completo.localeCompare(b.nome_completo, 'pt-BR'));
+  }
+
+  function renderAttendance() {
+    const secaoId = Number(attendanceSection.value || 0);
+    const date = attendanceDate.value;
+    if (!secaoId || !date) {
+      attendanceList.innerHTML = `<div class="empty-members"><div>✅</div><strong>Selecione seção e data</strong><span>A lista de jovens aparecerá aqui.</span></div>`;
+      attendancePresentCount.textContent = '0';
+      attendanceAbsentCount.textContent = '0';
+      attendancePendingCount.textContent = '0';
+      return;
+    }
+
+    const young = attendanceYouthRows();
+    const statusMap = new Map(state.attendanceRows.map((r) => [Number(r.jovem_id), r.status]));
+    let present = 0;
+    let absent = 0;
+    for (const j of young) {
+      const st = statusMap.get(Number(j.id));
+      if (st === 'presente') present += 1;
+      if (st === 'ausente') absent += 1;
+    }
+    const pending = Math.max(0, young.length - present - absent);
+    attendancePresentCount.textContent = String(present);
+    attendanceAbsentCount.textContent = String(absent);
+    attendancePendingCount.textContent = String(pending);
+
+    if (!young.length) {
+      attendanceList.innerHTML = `<div class="empty-members"><div>👥</div><strong>Nenhum jovem ativo nesta seção</strong><span>Não há nomes disponíveis para esta chamada.</span></div>`;
+      return;
+    }
+
+    const canManage = canManageAttendanceSection(secaoId);
+    attendanceList.innerHTML = young.map((j) => {
+      const st = statusMap.get(Number(j.id)) || 'pendente';
+      const controls = canManage
+        ? `<div class="attendance-actions">
+            <button type="button" class="attendance-mark present ${st === 'presente' ? 'selected' : ''}" data-attendance-young="${j.id}" data-attendance-status="presente">✓ Presente</button>
+            <button type="button" class="attendance-mark absent ${st === 'ausente' ? 'selected' : ''}" data-attendance-young="${j.id}" data-attendance-status="ausente">✕ Ausente</button>
+          </div>`
+        : `<span class="attendance-readonly-badge ${st}">${st === 'presente' ? '✓ Presente' : st === 'ausente' ? '✕ Ausente' : '• Não marcado'}</span>`;
+      return `<article class="attendance-card ${st}">
+        <div class="attendance-person">
+          <div class="member-avatar">${escapeHtml(j.nome_completo.charAt(0).toUpperCase())}</div>
+          <div><h3>${escapeHtml(j.nome_completo)}</h3><span>${escapeHtml(state.secoes.find((s) => Number(s.id) === Number(j.secao_id))?.nome || 'Seção')}</span></div>
+        </div>
+        ${controls}
+      </article>`;
+    }).join('');
+
+    attendanceList.querySelectorAll('[data-attendance-young]').forEach((button) => {
+      button.addEventListener('click', () => markAttendance(Number(button.dataset.attendanceYoung), button.dataset.attendanceStatus));
+    });
+  }
+
+  async function loadAttendanceBaseData() {
+    attendanceMessage.textContent = 'Carregando lista de presença...';
+    const promises = [
+      client.from('ramos').select('id,nome,ordem,ativo').eq('ativo', true).order('ordem'),
+      client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true),
+      client.from('jovens').select('id,nome_completo,ramo_id,secao_id,ativo').eq('ativo', true).order('nome_completo')
+    ];
+    if (state.profile?.chefe_id) {
+      promises.push(client.from('chefe_secoes').select('secao_id').eq('chefe_id', state.profile.chefe_id));
+    }
+    const results = await Promise.all(promises);
+    const firstError = results.find((r) => r.error)?.error;
+    if (firstError) {
+      attendanceMessage.textContent = `Não foi possível carregar a presença: ${firstError.message}`;
+      return false;
+    }
+    state.ramos = results[0].data || [];
+    state.secoes = results[1].data || [];
+    state.jovens = results[2].data || [];
+    state.attendanceOwnSectionIds = state.profile?.chefe_id ? (results[3]?.data || []).map((r) => Number(r.secao_id)) : [];
+    renderAttendanceSectionOptions();
+    attendanceMessage.textContent = '';
+    return true;
+  }
+
+  async function loadAttendanceForSelection() {
+    state.attendanceCall = null;
+    state.attendanceRows = [];
+    const secaoId = Number(attendanceSection.value || 0);
+    const date = attendanceDate.value;
+    if (!secaoId || !date) {
+      renderAttendance();
+      return;
+    }
+    attendanceMessage.textContent = 'Carregando chamada...';
+    const { data: calls, error: callError } = await client.from('chamadas')
+      .select('id,secao_id,data_reuniao,titulo,criado_por,criado_em,atualizado_em')
+      .eq('secao_id', secaoId)
+      .eq('data_reuniao', date)
+      .limit(1);
+    if (callError) {
+      attendanceMessage.textContent = `Não foi possível abrir a chamada: ${callError.message}`;
+      renderAttendance();
+      return;
+    }
+    state.attendanceCall = calls?.[0] || null;
+    if (state.attendanceCall) {
+      const { data: rows, error: presenceError } = await client.from('presencas_chamada')
+        .select('id,chamada_id,jovem_id,status,observacao,registrado_por,atualizado_em')
+        .eq('chamada_id', state.attendanceCall.id);
+      if (presenceError) {
+        attendanceMessage.textContent = `Não foi possível carregar as marcações: ${presenceError.message}`;
+        renderAttendance();
+        return;
+      }
+      state.attendanceRows = rows || [];
+      attendanceMessage.textContent = '';
+    } else {
+      attendanceMessage.textContent = canManageAttendanceSection(secaoId)
+        ? 'Chamada ainda não iniciada. Toque em Presente ou Ausente para começar.'
+        : 'Ainda não há chamada registrada para esta seção nesta data.';
+    }
+    renderAttendance();
+  }
+
+  async function ensureAttendanceCall() {
+    if (state.attendanceCall) return state.attendanceCall;
+    const secaoId = Number(attendanceSection.value || 0);
+    const date = attendanceDate.value;
+    if (!canManageAttendanceSection(secaoId)) throw new Error('Seu perfil possui somente consulta nesta seção.');
+    const { data, error } = await client.from('chamadas').insert({
+      secao_id: secaoId,
+      data_reuniao: date,
+      titulo: 'Reunião semanal',
+      criado_por: state.user.id
+    }).select('id,secao_id,data_reuniao,titulo,criado_por,criado_em,atualizado_em').single();
+    if (!error) {
+      state.attendanceCall = data;
+      return data;
+    }
+    // Se outro usuário iniciou a mesma chamada ao mesmo tempo, recupera a já criada.
+    if (error.code === '23505') {
+      const { data: existing, error: existingError } = await client.from('chamadas')
+        .select('id,secao_id,data_reuniao,titulo,criado_por,criado_em,atualizado_em')
+        .eq('secao_id', secaoId).eq('data_reuniao', date).single();
+      if (existingError) throw existingError;
+      state.attendanceCall = existing;
+      return existing;
+    }
+    throw error;
+  }
+
+  async function markAttendance(jovemId, status) {
+    const secaoId = Number(attendanceSection.value || 0);
+    if (!canManageAttendanceSection(secaoId)) return;
+    attendanceMessage.textContent = 'Salvando presença...';
+    attendanceList.querySelectorAll('[data-attendance-young]').forEach((el) => { el.disabled = true; });
+    try {
+      const call = await ensureAttendanceCall();
+      const payload = {
+        chamada_id: call.id,
+        jovem_id: jovemId,
+        status,
+        registrado_por: state.user.id,
+        atualizado_em: new Date().toISOString()
+      };
+      const { data, error } = await client.from('presencas_chamada')
+        .upsert(payload, { onConflict: 'chamada_id,jovem_id' })
+        .select('id,chamada_id,jovem_id,status,observacao,registrado_por,atualizado_em')
+        .single();
+      if (error) throw error;
+      const idx = state.attendanceRows.findIndex((r) => Number(r.jovem_id) === Number(jovemId));
+      if (idx >= 0) state.attendanceRows[idx] = data;
+      else state.attendanceRows.push(data);
+      attendanceMessage.textContent = 'Presença salva.';
+      renderAttendance();
+      window.setTimeout(() => { if (attendanceMessage.textContent === 'Presença salva.') attendanceMessage.textContent = ''; }, 1800);
+    } catch (error) {
+      attendanceMessage.textContent = `Não foi possível salvar a presença: ${error.message}`;
+      renderAttendance();
+    }
+  }
+
+  async function openAttendanceView() {
+    showAttendance();
+    if (!attendanceDate.value) attendanceDate.value = localTodayValue();
+    const ok = await loadAttendanceBaseData();
+    if (!ok) return;
+    if (!attendanceSection.value) {
+      const sections = attendanceAvailableSections();
+      if (sections.length) attendanceSection.value = String(sections[0].id);
+    }
+    await loadAttendanceForSelection();
+  }
+
   function appRedirectUrl() {
     return `${window.location.origin}${window.location.pathname}`;
   }
@@ -1018,10 +1274,15 @@
   logoutButton.addEventListener('click', doLogout);
   membersLogoutButton.addEventListener('click', doLogout);
   chiefsLogoutButton.addEventListener('click', doLogout);
+  attendanceLogoutButton.addEventListener('click', doLogout);
   membersButton.addEventListener('click', openMembersView);
   chiefsButton.addEventListener('click', openChiefsView);
+  attendanceButton.addEventListener('click', openAttendanceView);
   membersBackButton.addEventListener('click', showDashboard);
   chiefsBackButton.addEventListener('click', showDashboard);
+  attendanceBackButton.addEventListener('click', showDashboard);
+  attendanceSection.addEventListener('change', loadAttendanceForSelection);
+  attendanceDate.addEventListener('change', loadAttendanceForSelection);
   newMemberButton.addEventListener('click', () => openMemberDialog());
   closeMemberDialog.addEventListener('click', closeMemberForm);
   cancelMemberButton.addEventListener('click', closeMemberForm);
