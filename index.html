@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="stylesheet" href="styles.css?v=181" />
 </head>
 <body>
   <main class="app-shell">
@@ -211,6 +211,37 @@
       <section id="attendanceList" class="attendance-list" aria-live="polite"></section>
       <p id="attendanceMessage" class="members-message" role="status"></p>
     </section>
+
+    <section id="accessView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="accessBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Acessos</strong></div></div>
+        <button id="accessLogoutButton" class="secondary-button" type="button">Sair</button>
+      </header>
+
+      <section class="members-hero">
+        <div>
+          <div class="eyebrow dark">ADMINISTRAÇÃO</div>
+          <h2>Controle de acessos</h2>
+          <p>Acompanhe quem já entrou no aplicativo e a última atividade registrada.</p>
+        </div>
+        <button id="accessRefreshButton" class="new-member-button" type="button">↻ Atualizar</button>
+      </section>
+
+      <section class="members-toolbar">
+        <label class="search-field"><span>🔎</span><input id="accessSearch" type="search" placeholder="Buscar por nome ou e-mail" /></label>
+      </section>
+
+      <section class="access-summary" aria-live="polite">
+        <div><strong id="accessTotalCount">0</strong><span>usuários</span></div>
+        <div><strong id="accessEnteredCount">0</strong><span>já acessaram</span></div>
+        <div><strong id="accessPendingCount">0</strong><span>pendentes</span></div>
+        <div><strong id="accessInstalledCount">0</strong><span>app detectado</span></div>
+      </section>
+
+      <section id="accessList" class="access-list" aria-live="polite"></section>
+      <p id="accessMessage" class="members-message" role="status"></p>
+    </section>
   </main>
 
   <dialog id="memberDialog" class="member-dialog">
@@ -304,11 +335,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=181"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=18').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=181').catch(() => {});
       });
     }
   </script>
