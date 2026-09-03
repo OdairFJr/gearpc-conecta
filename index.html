@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <main class="app-shell">
@@ -24,7 +24,6 @@
         <p class="brand-overline">GRUPO ESCOTEIRO DO AR</p>
         <h1>GEArPC Conecta</h1>
         <p class="subtitle">Paulo Carzino • Itajaí/SC</p>
-        <span class="dev-badge">Versão em desenvolvimento</span>
       </div>
 
       <form id="loginForm" class="login-card">
@@ -41,7 +40,7 @@
     </section>
 
     <section id="dashboardView" class="dashboard-view hidden">
-      <header class="hero-header">
+      <header class="launch-header">
         <div class="topbar-row">
           <div class="brand-mini">
             <div class="brand-mini-icon"><img src="logo-grupo.jpeg" alt="" aria-hidden="true" /></div>
@@ -50,114 +49,76 @@
               <div class="brand-mini-subtitle">Grupo Escoteiro do Ar Paulo Carzino</div>
             </div>
           </div>
-          <div class="header-actions">
-            <button type="button" class="icon-button" aria-label="Notificações" title="Notificações"><span aria-hidden="true">🔔</span><span class="notify-dot"></span></button>
-            <button id="logoutButton" class="secondary-button">Sair</button>
-          </div>
+          <button id="logoutButton" class="secondary-button">Sair</button>
         </div>
-        <div class="hero-user-row">
+
+        <div class="launch-user-row">
           <div>
             <div class="eyebrow">BEM-VINDO</div>
             <h2 id="welcomeName">Olá</h2>
-            <div class="user-meta-row">
-              <div id="profileType" class="profile-pill">Usuário</div>
-              <div class="dev-pill">versão em desenvolvimento</div>
-            </div>
+            <div id="profileType" class="profile-pill">Usuário</div>
           </div>
         </div>
       </header>
 
-      <section class="highlight-band">
-        <div class="band-card compact">
-          <div class="band-kicker">PRÓXIMA ATIVIDADE</div>
-          <h3 id="nextActivityTitle">Nenhuma atividade cadastrada</h3>
-          <p id="nextActivityMeta">Quando houver uma atividade futura, ela aparecerá aqui.</p>
-          <p id="nextActivityHint" class="hint-line"></p>
-          <div class="activity-actions-row">
-            <button class="primary-action" type="button">✓ Confirmar presença</button>
-            <span id="activityVisualTag" class="activity-visual-tag hidden">Demonstração</span>
-          </div>
-        </div>
-        <div class="band-card info-card">
-          <div class="band-kicker">VISÃO GERAL</div>
-          <div class="info-list">
-            <div><strong>Seções:</strong> Ninhada, Rastro de Fogo, Falcão Peregrino, Loreto e Clã Caixa Preta</div>
-            <div><strong>Recursos:</strong> avisos, presença, ficha médica e autorizações</div>
-            <div><strong>Acesso:</strong> administrador, chefia e responsáveis</div>
-          </div>
-        </div>
+      <section class="release-card">
+        <div class="release-kicker">ACESSO DA EQUIPE</div>
+        <h3>Consultas disponíveis</h3>
+        <p>Nesta primeira versão, estão disponíveis as relações de jovens e da equipe adulta do grupo.</p>
       </section>
 
-      <section class="quick-section" aria-labelledby="quickTitle">
-        <div class="section-heading-row">
-          <div><div class="eyebrow dark">ACESSO RÁPIDO</div><h3 id="quickTitle">Serviços do grupo</h3></div>
-          <span class="small-caption">em desenvolvimento</span>
-        </div>
-        <div class="menu-grid" aria-label="Menu principal">
-          <button type="button"><span class="menu-icon">📅</span><span>Calendário</span></button>
-          <button type="button"><span class="menu-icon">📣</span><span>Avisos</span></button>
-          <button type="button"><span class="menu-icon">✅</span><span>Presença</span></button>
-          <button type="button"><span class="menu-icon">🩺</span><span>Ficha médica</span></button>
-          <button id="membersButton" type="button"><span class="menu-icon">👥</span><span>Membros</span></button>
-          <button id="chiefsButton" type="button"><span class="menu-icon">🧑‍🏫</span><span>Chefia</span></button>
-          <button type="button"><span class="menu-icon">🤝</span><span>Acolhida</span></button>
-          <button type="button"><span class="menu-icon">👋</span><span>Visitas</span></button>
-          <button type="button"><span class="menu-icon">📝</span><span>Autorizações</span></button>
-        </div>
+      <section class="launch-modules" aria-label="Áreas disponíveis">
+        <button id="membersButton" class="launch-module" type="button">
+          <span class="launch-module-icon youth-icon" aria-hidden="true">👥</span>
+          <span class="launch-module-copy">
+            <strong>Jovens</strong>
+            <small>Consulte os jovens liberados para o seu perfil.</small>
+          </span>
+          <span class="launch-module-arrow" aria-hidden="true">›</span>
+        </button>
+
+        <button id="chiefsButton" class="launch-module" type="button">
+          <span class="launch-module-icon chief-icon" aria-hidden="true">🧑‍🏫</span>
+          <span class="launch-module-copy">
+            <strong>Chefia</strong>
+            <small>Consulte a equipe adulta, funções, seções e contatos.</small>
+          </span>
+          <span class="launch-module-arrow" aria-hidden="true">›</span>
+        </button>
       </section>
 
-      <section class="ramos-card" aria-label="Seções do grupo">
-        <div class="ramos-title-row">
-          <div><div class="eyebrow dark">NOSSO GRUPO</div><h3>Seções do GEArPC</h3></div>
-          <span class="small-caption">5 seções ativas</span>
-        </div>
-        <div class="ramos-list">
-          <span class="ramo-chip filhotes">🐾 Ninhada <small>• Filhotes</small></span>
-          <span class="ramo-chip lobinho">🐺 Rastro de Fogo <small>• Lobinho</small></span>
-          <span class="ramo-chip escoteiro">⚜ Falcão Peregrino <small>• Escoteiro</small></span>
-          <span class="ramo-chip senior">⛰ Loreto <small>• Sênior</small></span>
-          <span class="ramo-chip pioneiro">🧭 Clã Caixa Preta <small>• Pioneiro</small></span>
-        </div>
-      </section>
-
-      <section class="notice-card">
-        <div class="notice-icon">🔔</div>
-        <div class="notice-copy"><strong>Autorizações e avisos centralizados</strong><span>Responsáveis confirmam presença e autorização; a chefia acompanha tudo por seção.</span></div>
-        <div class="notice-arrow">›</div>
-      </section>
-
-      <section id="adminCard" class="admin-card hidden">
+      <section id="adminCard" class="admin-card launch-admin hidden">
         <div class="admin-icon">⚙️</div>
-        <div><strong>Área administrativa</strong><span>Cadastros, usuários, atividades e configurações do grupo.</span></div>
+        <div><strong>Administrador</strong><span>Seu acesso permite cadastrar e alterar os registros disponíveis.</span></div>
       </section>
 
       <p class="status-line" id="statusLine"></p>
-      <footer class="app-footer">GEArPC Conecta • Projeto em desenvolvimento</footer>
+      <footer class="app-footer">GEArPC Conecta • Grupo Escoteiro do Ar Paulo Carzino</footer>
     </section>
 
     <section id="membersView" class="members-view hidden">
       <header class="subpage-header">
         <button id="membersBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
-        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Membros</strong></div></div>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Jovens</strong></div></div>
         <button id="membersLogoutButton" class="secondary-button">Sair</button>
       </header>
 
       <section class="members-hero">
         <div>
-          <div class="eyebrow dark">CADASTRO E CONSULTA</div>
-          <h2>Membros do grupo</h2>
-          <p>Consulte os membros por seção. O cadastro e as alterações são exclusivos do administrador.</p>
+          <div class="eyebrow dark">CONSULTA</div>
+          <h2>Jovens do grupo</h2>
+          <p>Consulte os jovens disponíveis para o seu perfil. Cadastro e alterações são exclusivos do administrador.</p>
         </div>
-        <button id="newMemberButton" class="new-member-button hidden" type="button">＋ Novo membro</button>
+        <button id="newMemberButton" class="new-member-button hidden" type="button">＋ Novo jovem</button>
       </section>
 
       <section class="members-toolbar">
-        <label class="search-field"><span>🔎</span><input id="memberSearch" type="search" placeholder="Buscar por nome, registro ou responsável" /></label>
+        <label class="search-field"><span>🔎</span><input id="memberSearch" type="search" placeholder="Buscar jovem por nome, registro ou responsável" /></label>
         <label class="filter-field"><span>Seção</span><select id="memberSecaoFilter"><option value="">Todas</option></select></label>
       </section>
 
       <section class="members-summary">
-        <div><strong id="membersCount">0</strong><span>membros encontrados</span></div>
+        <div><strong id="membersCount">0</strong><span>jovens encontrados</span></div>
         <div id="membersRoleNote" class="role-note"></div>
       </section>
 
@@ -174,7 +135,7 @@
 
       <section class="members-hero">
         <div>
-          <div class="eyebrow dark">CADASTRO E CONSULTA</div>
+          <div class="eyebrow dark">CONSULTA</div>
           <h2>Chefia do grupo</h2>
           <p id="chiefsIntroText">Consulte a equipe adulta vinculada às seções do grupo.</p>
         </div>
@@ -198,7 +159,7 @@
 
   <dialog id="memberDialog" class="member-dialog">
     <form id="memberForm" method="dialog" class="member-form">
-      <div class="dialog-title-row"><div><div class="eyebrow dark">MEMBRO</div><h2 id="memberDialogTitle">Novo membro</h2></div><button id="closeMemberDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <div class="dialog-title-row"><div><div class="eyebrow dark">JOVEM</div><h2 id="memberDialogTitle">Novo jovem</h2></div><button id="closeMemberDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
       <input id="memberId" type="hidden" />
       <label>Nome completo<input id="memberName" type="text" required maxlength="160" /></label>
       <div class="form-grid">
@@ -214,7 +175,7 @@
       </div>
       <label class="active-check"><input id="memberActive" type="checkbox" checked /> <span>Membro ativo</span></label>
       <p id="memberFormMessage" class="form-message" role="status"></p>
-      <div class="dialog-actions"><button id="cancelMemberButton" type="button" class="cancel-button">Cancelar</button><button id="saveMemberButton" type="submit" class="save-button">Salvar membro</button></div>
+      <div class="dialog-actions"><button id="cancelMemberButton" type="button" class="cancel-button">Cancelar</button><button id="saveMemberButton" type="submit" class="save-button">Salvar jovem</button></div>
     </form>
   </dialog>
 
@@ -257,11 +218,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=13').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=14').catch(() => {});
       });
     }
   </script>

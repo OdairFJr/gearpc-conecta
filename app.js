@@ -110,12 +110,15 @@
   function showMembers() { hideAllViews(); membersView.classList.remove('hidden'); }
   function showChiefs() { hideAllViews(); chiefsView.classList.remove('hidden'); }
 
-  function prettyProfile(tipo) {
-    return ({ administrador: 'Administrador', chefia: 'Chefia', responsavel: 'Responsável' })[tipo] || tipo || 'Usuário';
+  function prettyProfile(profile) {
+    if (!profile) return 'Usuário';
+    if (profile.tipo === 'administrador') return 'Administrador';
+    if (profile.acesso_geral_consulta) return 'Dirigente';
+    return ({ chefia: 'Chefia', responsavel: 'Responsável' })[profile.tipo] || profile.tipo || 'Usuário';
   }
 
   async function loadProfile(user) {
-    const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo').eq('user_id', user.id).single();
+    const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta').eq('user_id', user.id).single();
     if (error || !data) {
       await client.auth.signOut();
       loginMessage.textContent = 'Seu acesso existe, mas ainda não possui um perfil autorizado no GEArPC Conecta.';
@@ -131,23 +134,29 @@
     state.user = user;
     state.profile = data;
     welcomeName.textContent = `Olá, ${data.nome_completo}`;
-    profileType.textContent = prettyProfile(data.tipo);
+    profileType.textContent = prettyProfile(data);
     adminCard.classList.toggle('hidden', data.tipo !== 'administrador');
     membersButton.classList.toggle('hidden', data.tipo === 'responsavel');
     chiefsButton.classList.remove('hidden');
     newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
     membersRoleNote.textContent = data.tipo === 'administrador'
-      ? 'Você pode cadastrar e alterar membros.'
-      : 'Consulta dos membros autorizados para sua chefia.';
+      ? 'Administrador: consulta e edição dos jovens.'
+      : data.acesso_geral_consulta
+        ? 'Dirigente: consulta geral dos jovens do grupo.'
+        : data.tipo === 'responsavel'
+          ? 'Consulta dos jovens vinculados ao seu acesso.'
+          : 'Chefia: consulta dos jovens das suas seções.';
     chiefsRoleNote.textContent = data.tipo === 'administrador'
-      ? 'Você pode cadastrar e alterar a chefia.'
+      ? 'Administrador: consulta e edição da equipe adulta.'
       : data.tipo === 'responsavel'
         ? 'Você vê apenas a chefia das seções dos seus filhos.'
-        : 'Consulta da equipe adulta do grupo.';
+        : data.acesso_geral_consulta
+          ? 'Dirigente: consulta da equipe adulta do grupo.'
+          : 'Consulta da equipe adulta do grupo.';
     chiefsIntroText.textContent = data.tipo === 'responsavel'
       ? 'Aqui aparecem somente os chefes vinculados às seções dos seus filhos.'
-      : 'Consulte a equipe adulta, suas funções e as seções em que atua.';
+      : 'Consulte a equipe adulta, suas funções, seções e contatos.';
     statusLine.textContent = 'Ambiente seguro • acesso restrito a usuários autorizados';
     return true;
   }
@@ -276,7 +285,7 @@
     membersCount.textContent = String(rows.length);
 
     if (!rows.length) {
-      membersList.innerHTML = `<div class="empty-members"><div>👥</div><strong>Nenhum membro encontrado</strong><span>Cadastre o primeiro membro ou altere os filtros.</span></div>`;
+      membersList.innerHTML = `<div class="empty-members"><div>👥</div><strong>Nenhum jovem encontrado</strong><span>Cadastre o primeiro jovem ou altere os filtros.</span></div>`;
       return;
     }
 
@@ -304,7 +313,7 @@
   }
 
   async function loadMembersData() {
-    membersMessage.textContent = 'Carregando membros...';
+    membersMessage.textContent = 'Carregando jovens...';
     const [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').eq('ativo', true).order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true),
@@ -314,7 +323,7 @@
     ]);
     const firstError = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes].find((r) => r.error)?.error;
     if (firstError) {
-      membersMessage.textContent = `Não foi possível carregar os membros: ${firstError.message}`;
+      membersMessage.textContent = `Não foi possível carregar os jovens: ${firstError.message}`;
       return false;
     }
     state.ramos = ramosRes.data || [];
@@ -339,11 +348,11 @@
     memberFormMessage.textContent = '';
     memberActive.checked = true;
     memberId.value = '';
-    memberDialogTitle.textContent = 'Novo membro';
+    memberDialogTitle.textContent = 'Novo jovem';
     if (jovemId) {
       const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
       if (!m) return;
-      memberDialogTitle.textContent = 'Editar membro';
+      memberDialogTitle.textContent = 'Editar jovem';
       memberId.value = String(m.id);
       memberName.value = m.nome_completo || '';
       memberRegistration.value = m.registro_paxtu || '';
@@ -500,13 +509,13 @@
       else await createMember(payload);
       closeMemberForm();
       await loadMembersData();
-      membersMessage.textContent = memberId.value ? 'Cadastro atualizado com sucesso.' : 'Membro cadastrado com sucesso.';
+      membersMessage.textContent = memberId.value ? 'Cadastro atualizado com sucesso.' : 'Jovem cadastrado com sucesso.';
       window.setTimeout(() => { if (membersMessage.textContent.includes('sucesso')) membersMessage.textContent = ''; }, 3500);
     } catch (error) {
       memberFormMessage.textContent = `Não foi possível salvar: ${error.message}`;
     } finally {
       saveMemberButton.disabled = false;
-      saveMemberButton.textContent = 'Salvar membro';
+      saveMemberButton.textContent = 'Salvar jovem';
     }
   });
 
@@ -774,7 +783,6 @@
     const allowed = await loadProfile(session.user);
     if (!allowed) return;
     showDashboard();
-    await loadNextActivity();
   }
 
   loginForm.addEventListener('submit', async (event) => {

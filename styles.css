@@ -482,3 +482,109 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 @media (max-width: 560px) {
   .checkbox-grid { grid-template-columns: 1fr; }
 }
+
+
+/* V14 — lançamento para a equipe: somente Jovens e Chefia */
+.launch-header {
+  color: white;
+  padding: 2px 2px 18px;
+}
+.launch-user-row {
+  margin-top: 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.launch-user-row h2 {
+  margin: 4px 0 10px;
+  font-size: clamp(29px, 7vw, 38px);
+  letter-spacing: -.025em;
+}
+.release-card {
+  background: rgba(255,255,255,.99);
+  border: 1px solid rgba(210,222,233,.72);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 12px 28px rgba(17,37,63,.09);
+}
+.release-kicker {
+  color: var(--navy-2);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+}
+.release-card h3 {
+  margin: 4px 0 6px;
+  font-size: 23px;
+  letter-spacing: -.02em;
+}
+.release-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.launch-modules {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+}
+.launch-module {
+  width: 100%;
+  border: 1px solid #dce6ef;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 9px 20px rgba(17,37,63,.07);
+  color: var(--ink);
+  padding: 15px 14px;
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 13px;
+  align-items: center;
+  text-align: left;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.launch-module:hover {
+  border-color: #c8d8e8;
+  box-shadow: 0 12px 25px rgba(17,37,63,.10);
+}
+.launch-module:active { transform: scale(.985); }
+.launch-module-icon {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  font-size: 23px;
+}
+.youth-icon { background: #e8f1fa; }
+.chief-icon { background: #fff3cf; }
+.launch-module-copy { min-width: 0; }
+.launch-module-copy strong,
+.launch-module-copy small { display: block; }
+.launch-module-copy strong {
+  font-size: 18px;
+  color: var(--navy);
+}
+.launch-module-copy small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.launch-module-arrow {
+  color: #8b9bae;
+  font-size: 30px;
+  line-height: 1;
+  padding-left: 3px;
+}
+.launch-admin { margin-top: 12px; }
+.dashboard-view .status-line { margin-top: 14px; }
+.dashboard-view .app-footer { padding-top: 4px; }
+
+@media (max-width: 390px) {
+  .launch-module { grid-template-columns: 44px 1fr auto; padding: 13px 12px; gap: 10px; }
+  .launch-module-icon { width: 44px; height: 44px; border-radius: 14px; font-size: 21px; }
+  .launch-module-copy strong { font-size: 16px; }
+  .launch-module-copy small { font-size: 11px; }
+}
