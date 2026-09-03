@@ -7,6 +7,18 @@
   const loginForm = $('loginForm');
   const loginButton = $('loginButton');
   const loginMessage = $('loginMessage');
+  const forgotPasswordButton = $('forgotPasswordButton');
+  const passwordButton = $('passwordButton');
+  const passwordDialog = $('passwordDialog');
+  const passwordForm = $('passwordForm');
+  const passwordDialogTitle = $('passwordDialogTitle');
+  const passwordDialogHelper = $('passwordDialogHelper');
+  const newPassword = $('newPassword');
+  const confirmPassword = $('confirmPassword');
+  const passwordFormMessage = $('passwordFormMessage');
+  const savePasswordButton = $('savePasswordButton');
+  const closePasswordDialog = $('closePasswordDialog');
+  const cancelPasswordButton = $('cancelPasswordButton');
   const logoutButton = $('logoutButton');
   const membersLogoutButton = $('membersLogoutButton');
   const welcomeName = $('welcomeName');
@@ -90,6 +102,15 @@
     chefeFuncoes: [],
     chefeSecoes: []
   };
+
+  function authActionFromUrl() {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const search = new URLSearchParams(window.location.search);
+    return hash.get('type') || search.get('type') || '';
+  }
+
+  const initialAuthAction = authActionFromUrl();
+  let autoPasswordDialogOpened = false;
 
   function configOk() {
     return cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY &&
@@ -862,6 +883,109 @@
     }
   });
 
+  function appRedirectUrl() {
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+
+  function cleanAuthUrl() {
+    if (window.location.search || window.location.hash) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
+  function openPasswordDialog(mode = 'change') {
+    if (!state.user) return;
+    passwordForm.reset();
+    passwordFormMessage.textContent = '';
+    if (mode === 'recovery') {
+      passwordDialogTitle.textContent = 'Redefinir senha';
+      passwordDialogHelper.textContent = 'Crie uma nova senha para voltar a acessar o GEArPC Conecta normalmente.';
+    } else if (mode === 'invite') {
+      passwordDialogTitle.textContent = 'Crie sua senha';
+      passwordDialogHelper.textContent = 'Este é o seu primeiro acesso. Crie uma senha para conseguir entrar novamente depois que sair do aplicativo.';
+    } else {
+      passwordDialogTitle.textContent = 'Alterar senha';
+      passwordDialogHelper.textContent = 'Defina uma nova senha para sua conta do GEArPC Conecta.';
+    }
+    if (!passwordDialog.open) passwordDialog.showModal();
+    window.setTimeout(() => newPassword.focus(), 50);
+  }
+
+  function closePasswordForm() {
+    passwordFormMessage.textContent = '';
+    if (passwordDialog.open) passwordDialog.close();
+  }
+
+  async function requestPasswordRecovery() {
+    const email = $('email').value.trim();
+    loginMessage.textContent = '';
+    loginMessage.classList.remove('success-message');
+    if (!email) {
+      loginMessage.textContent = 'Digite seu e-mail acima para receber o link de criação ou recuperação de senha.';
+      $('email').focus();
+      return;
+    }
+    forgotPasswordButton.disabled = true;
+    forgotPasswordButton.textContent = 'Enviando link...';
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: appRedirectUrl() });
+    forgotPasswordButton.disabled = false;
+    forgotPasswordButton.textContent = 'Primeiro acesso ou esqueci minha senha';
+    if (error) {
+      loginMessage.textContent = 'Não foi possível enviar o link agora. Confira o e-mail e tente novamente.';
+      return;
+    }
+    loginMessage.textContent = 'Link enviado. Abra o e-mail e toque no link para criar ou redefinir sua senha.';
+    loginMessage.classList.add('success-message');
+  }
+
+  passwordForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    passwordFormMessage.textContent = '';
+    const password = newPassword.value;
+    const confirmation = confirmPassword.value;
+    if (password.length < 8) {
+      passwordFormMessage.textContent = 'A senha deve ter pelo menos 8 caracteres.';
+      return;
+    }
+    if (password !== confirmation) {
+      passwordFormMessage.textContent = 'As duas senhas não são iguais.';
+      return;
+    }
+    savePasswordButton.disabled = true;
+    savePasswordButton.textContent = 'Salvando...';
+    const { error } = await client.auth.updateUser({ password });
+    savePasswordButton.disabled = false;
+    savePasswordButton.textContent = 'Salvar senha';
+    if (error) {
+      passwordFormMessage.textContent = `Não foi possível salvar a senha: ${error.message}`;
+      return;
+    }
+    cleanAuthUrl();
+    closePasswordForm();
+    statusLine.textContent = 'Senha salva com sucesso. Você já pode sair e entrar novamente com e-mail e senha.';
+  });
+
+  forgotPasswordButton.addEventListener('click', requestPasswordRecovery);
+  passwordButton.addEventListener('click', () => openPasswordDialog('change'));
+  closePasswordDialog.addEventListener('click', closePasswordForm);
+  cancelPasswordButton.addEventListener('click', closePasswordForm);
+  passwordDialog.addEventListener('click', (event) => {
+    if (event.target === passwordDialog) closePasswordForm();
+  });
+
+  async function maybeOpenPasswordDialog(event, session) {
+    if (!session?.user || autoPasswordDialogOpened) return;
+    const mode = event === 'PASSWORD_RECOVERY' || initialAuthAction === 'recovery'
+      ? 'recovery'
+      : initialAuthAction === 'invite'
+        ? 'invite'
+        : '';
+    if (!mode) return;
+    autoPasswordDialogOpened = true;
+    await enterApp(session);
+    openPasswordDialog(mode);
+  }
+
   async function doLogout() {
     await client.auth.signOut();
     loginForm.reset();
@@ -879,6 +1003,7 @@
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     loginMessage.textContent = '';
+    loginMessage.classList.remove('success-message');
     loginButton.disabled = true;
     loginButton.textContent = 'Entrando...';
     const email = $('email').value.trim();
@@ -916,6 +1041,20 @@
     if (event.target === memberDialog) closeMemberForm();
   });
 
-  client.auth.onAuthStateChange((_event, session) => { if (!session) showLogin(); });
-  client.auth.getSession().then(({ data }) => enterApp(data.session));
+  client.auth.onAuthStateChange((event, session) => {
+    window.setTimeout(() => {
+      if (!session) {
+        showLogin();
+        return;
+      }
+      maybeOpenPasswordDialog(event, session);
+    }, 0);
+  });
+
+  client.auth.getSession().then(async ({ data }) => {
+    await enterApp(data.session);
+    if (data.session && (initialAuthAction === 'invite' || initialAuthAction === 'recovery')) {
+      await maybeOpenPasswordDialog(initialAuthAction === 'recovery' ? 'PASSWORD_RECOVERY' : 'SIGNED_IN', data.session);
+    }
+  });
 })();

@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <main class="app-shell">
@@ -34,6 +34,8 @@
         <label for="password">Senha</label>
         <input id="password" type="password" autocomplete="current-password" required placeholder="Sua senha" />
         <button type="submit" id="loginButton">Entrar</button>
+        <button type="button" id="forgotPasswordButton" class="login-link-button">Primeiro acesso ou esqueci minha senha</button>
+        <p class="login-recovery-hint">Informe seu e-mail acima. Enviaremos um link seguro para criar ou redefinir sua senha.</p>
         <p id="loginMessage" class="message" role="status"></p>
       </form>
       <p class="access-note">🔒 Acesso restrito a usuários autorizados.</p>
@@ -49,7 +51,10 @@
               <div class="brand-mini-subtitle">Grupo Escoteiro do Ar Paulo Carzino</div>
             </div>
           </div>
-          <button id="logoutButton" class="secondary-button">Sair</button>
+          <div class="account-actions">
+            <button id="passwordButton" class="secondary-button" type="button">Senha</button>
+            <button id="logoutButton" class="secondary-button">Sair</button>
+          </div>
         </div>
 
         <div class="launch-user-row">
@@ -224,13 +229,37 @@
     </form>
   </dialog>
 
+  <dialog id="passwordDialog" class="member-dialog password-dialog">
+    <form id="passwordForm" method="dialog" class="member-form">
+      <div class="dialog-title-row">
+        <div>
+          <div class="eyebrow dark">CONTA</div>
+          <h2 id="passwordDialogTitle">Criar nova senha</h2>
+        </div>
+        <button id="closePasswordDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <p id="passwordDialogHelper" class="password-helper">Crie uma senha para entrar normalmente no GEArPC Conecta nas próximas vezes.</p>
+      <label>Nova senha
+        <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Mínimo de 8 caracteres" />
+      </label>
+      <label>Confirmar nova senha
+        <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Digite novamente" />
+      </label>
+      <p id="passwordFormMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions">
+        <button id="cancelPasswordButton" type="button" class="cancel-button">Agora não</button>
+        <button id="savePasswordButton" type="submit" class="save-button">Salvar senha</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=15').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=16').catch(() => {});
       });
     }
   </script>

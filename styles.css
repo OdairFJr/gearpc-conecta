@@ -616,3 +616,35 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   .dialog-actions-right { width: 100%; margin-left: 0; }
   .dialog-actions-right > button, .danger-button, .restore-button { flex: 1; }
 }
+
+
+/* V16 — primeiro acesso e recuperação de senha */
+.login-link-button {
+  margin-top: 10px !important;
+  padding: 7px 8px !important;
+  background: transparent !important;
+  color: var(--navy-2) !important;
+  box-shadow: none !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 850 !important;
+}
+.login-link-button:disabled { opacity: .55; }
+.login-recovery-hint { margin: 2px 4px 0; text-align: center; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.success-message { color: #17634f !important; }
+.account-actions { display: flex; gap: 8px; align-items: center; }
+.password-helper { margin: 0 0 13px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.password-dialog .member-form input[type="password"] {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #c8d5e2;
+  border-radius: 13px;
+  padding: 12px 13px;
+  background: #fbfdff;
+  color: var(--ink);
+}
+.password-dialog .member-form input[type="password"]:focus { border-color: var(--navy-2); box-shadow: 0 0 0 4px rgba(11,91,184,.10); outline: none; }
+@media (max-width: 390px) {
+  .account-actions { gap: 5px; }
+  .account-actions .secondary-button { padding: 8px 9px; font-size: 12px; }
+}
