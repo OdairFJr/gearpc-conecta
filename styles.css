@@ -698,6 +698,12 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 .attendance-stat.absent { border-color: #efd0cd; background: #fff7f6; }
 .attendance-stat.pending { border-color: #e4dfc1; background: #fffdf4; }
 .attendance-role-note { margin: 0 2px 12px; }
+.attendance-admin-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px 0 12px;
+}
+.attendance-admin-actions .danger-button { min-height: 40px; }
 .attendance-list { display: grid; gap: 9px; }
 .attendance-card {
   display: flex;
@@ -729,6 +735,8 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 }
 .attendance-mark.present.selected { background: #e8f7ee; border-color: #8dc7a5; color: #17633d; }
 .attendance-mark.absent.selected { background: #fff0ef; border-color: #dea09b; color: #9f2d28; }
+.attendance-mark.clear { background: #f7f8fa; border-color: #d7dde5; color: #596575; }
+.attendance-mark.clear:hover { background: #eef1f5; }
 .attendance-mark:disabled { opacity: .6; cursor: wait; }
 .attendance-readonly-badge {
   flex: 0 0 auto;
@@ -746,8 +754,8 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 @media (max-width: 620px) {
   .attendance-controls { grid-template-columns: 1fr; }
   .attendance-card { align-items: stretch; flex-direction: column; }
-  .attendance-actions { width: 100%; }
-  .attendance-mark { flex: 1; min-height: 42px; }
+  .attendance-actions { width: 100%; flex-wrap: wrap; }
+  .attendance-mark { flex: 1 1 30%; min-height: 42px; }
   .attendance-readonly-badge { align-self: flex-start; }
 }
 

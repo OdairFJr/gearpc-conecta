@@ -102,6 +102,7 @@
   const attendanceRoleNote = $('attendanceRoleNote');
   const attendanceList = $('attendanceList');
   const attendanceMessage = $('attendanceMessage');
+  const attendanceDeleteCallButton = $('attendanceDeleteCallButton');
   const accessView = $('accessView');
   const accessButton = $('accessButton');
   const accessBackButton = $('accessBackButton');
@@ -967,7 +968,13 @@
       .sort((a, b) => a.nome_completo.localeCompare(b.nome_completo, 'pt-BR'));
   }
 
+  function updateAttendanceAdminActions() {
+    const canDeleteWholeCall = state.profile?.tipo === 'administrador' && Boolean(state.attendanceCall);
+    attendanceDeleteCallButton.classList.toggle('hidden', !canDeleteWholeCall);
+  }
+
   function renderAttendance() {
+    updateAttendanceAdminActions();
     const secaoId = Number(attendanceSection.value || 0);
     const date = attendanceDate.value;
     if (!secaoId || !date) {
@@ -1000,10 +1007,14 @@
     const canManage = canManageAttendanceSection(secaoId);
     attendanceList.innerHTML = young.map((j) => {
       const st = statusMap.get(Number(j.id)) || 'pendente';
+      const clearButton = st !== 'pendente'
+        ? `<button type="button" class="attendance-mark clear" data-attendance-clear="${j.id}" aria-label="Limpar marcação de ${escapeHtml(j.nome_completo)}">↺ Limpar</button>`
+        : '';
       const controls = canManage
         ? `<div class="attendance-actions">
             <button type="button" class="attendance-mark present ${st === 'presente' ? 'selected' : ''}" data-attendance-young="${j.id}" data-attendance-status="presente">✓ Presente</button>
             <button type="button" class="attendance-mark absent ${st === 'ausente' ? 'selected' : ''}" data-attendance-young="${j.id}" data-attendance-status="ausente">✕ Ausente</button>
+            ${clearButton}
           </div>`
         : `<span class="attendance-readonly-badge ${st}">${st === 'presente' ? '✓ Presente' : st === 'ausente' ? '✕ Ausente' : '• Não marcado'}</span>`;
       return `<article class="attendance-card ${st}">
@@ -1017,6 +1028,9 @@
 
     attendanceList.querySelectorAll('[data-attendance-young]').forEach((button) => {
       button.addEventListener('click', () => markAttendance(Number(button.dataset.attendanceYoung), button.dataset.attendanceStatus));
+    });
+    attendanceList.querySelectorAll('[data-attendance-clear]').forEach((button) => {
+      button.addEventListener('click', () => clearAttendance(Number(button.dataset.attendanceClear)));
     });
   }
 
@@ -1140,6 +1154,60 @@
     } catch (error) {
       attendanceMessage.textContent = `Não foi possível salvar a presença: ${error.message}`;
       renderAttendance();
+    }
+  }
+
+  async function clearAttendance(jovemId) {
+    const secaoId = Number(attendanceSection.value || 0);
+    if (!canManageAttendanceSection(secaoId) || !state.attendanceCall) return;
+    const row = state.attendanceRows.find((r) => Number(r.jovem_id) === Number(jovemId));
+    if (!row) return;
+
+    attendanceMessage.textContent = 'Limpando marcação...';
+    attendanceList.querySelectorAll('button').forEach((el) => { el.disabled = true; });
+    try {
+      const { error } = await client.from('presencas_chamada')
+        .delete()
+        .eq('chamada_id', state.attendanceCall.id)
+        .eq('jovem_id', jovemId);
+      if (error) throw error;
+      state.attendanceRows = state.attendanceRows.filter((r) => Number(r.jovem_id) !== Number(jovemId));
+      attendanceMessage.textContent = 'Marcação removida. O jovem voltou para não marcado.';
+      renderAttendance();
+      window.setTimeout(() => {
+        if (attendanceMessage.textContent.startsWith('Marcação removida')) attendanceMessage.textContent = '';
+      }, 2200);
+    } catch (error) {
+      attendanceMessage.textContent = `Não foi possível limpar a marcação: ${error.message}`;
+      renderAttendance();
+    }
+  }
+
+  async function deleteAttendanceCall() {
+    if (state.profile?.tipo !== 'administrador' || !state.attendanceCall) return;
+    const sectionName = state.secoes.find((s) => Number(s.id) === Number(state.attendanceCall.secao_id))?.nome || 'esta seção';
+    const dateText = attendanceDate.value ? new Date(`${attendanceDate.value}T12:00:00`).toLocaleDateString('pt-BR') : 'esta data';
+    const confirmed = window.confirm(`Apagar toda a chamada de ${sectionName} em ${dateText}? Todas as marcações desse dia serão removidas.`);
+    if (!confirmed) return;
+
+    attendanceDeleteCallButton.disabled = true;
+    attendanceMessage.textContent = 'Apagando chamada...';
+    try {
+      const callId = state.attendanceCall.id;
+      const { error } = await client.from('chamadas').delete().eq('id', callId);
+      if (error) throw error;
+      state.attendanceCall = null;
+      state.attendanceRows = [];
+      attendanceMessage.textContent = 'Chamada apagada. A lista desta data voltou ao estado inicial.';
+      renderAttendance();
+      window.setTimeout(() => {
+        if (attendanceMessage.textContent.startsWith('Chamada apagada')) attendanceMessage.textContent = '';
+      }, 2600);
+    } catch (error) {
+      attendanceMessage.textContent = `Não foi possível apagar a chamada: ${error.message}`;
+      renderAttendance();
+    } finally {
+      attendanceDeleteCallButton.disabled = false;
     }
   }
 
@@ -1394,6 +1462,7 @@
   accessBackButton.addEventListener('click', showDashboard);
   attendanceSection.addEventListener('change', loadAttendanceForSelection);
   attendanceDate.addEventListener('change', loadAttendanceForSelection);
+  attendanceDeleteCallButton.addEventListener('click', deleteAttendanceCall);
   accessRefreshButton.addEventListener('click', loadAccessReport);
   accessSearch.addEventListener('input', renderAccessRows);
   newMemberButton.addEventListener('click', () => openMemberDialog());
