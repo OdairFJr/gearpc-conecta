@@ -43,6 +43,9 @@
   const saveMemberButton = $('saveMemberButton');
   const closeMemberDialog = $('closeMemberDialog');
   const cancelMemberButton = $('cancelMemberButton');
+  const removeMemberButton = $('removeMemberButton');
+  const memberInactiveToggleWrap = $('memberInactiveToggleWrap');
+  const memberShowInactive = $('memberShowInactive');
   const chiefsView = $('chiefsView');
   const chiefsButton = $('chiefsButton');
   const chiefsBackButton = $('chiefsBackButton');
@@ -71,6 +74,9 @@
   const saveChiefButton = $('saveChiefButton');
   const closeChiefDialog = $('closeChiefDialog');
   const cancelChiefButton = $('cancelChiefButton');
+  const removeChiefButton = $('removeChiefButton');
+  const chiefInactiveToggleWrap = $('chiefInactiveToggleWrap');
+  const chiefShowInactive = $('chiefShowInactive');
 
   const state = {
     user: null,
@@ -118,7 +124,7 @@
   }
 
   async function loadProfile(user) {
-    const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta').eq('user_id', user.id).single();
+    const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta,chefe_id').eq('user_id', user.id).single();
     if (error || !data) {
       await client.auth.signOut();
       loginMessage.textContent = 'Seu acesso existe, mas ainda não possui um perfil autorizado no GEArPC Conecta.';
@@ -140,6 +146,12 @@
     chiefsButton.classList.remove('hidden');
     newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
+    memberInactiveToggleWrap.classList.toggle('hidden', data.tipo !== 'administrador');
+    chiefInactiveToggleWrap.classList.toggle('hidden', data.tipo !== 'administrador');
+    if (data.tipo !== 'administrador') {
+      memberShowInactive.checked = false;
+      chiefShowInactive.checked = false;
+    }
     membersRoleNote.textContent = data.tipo === 'administrador'
       ? 'Administrador: consulta e edição dos jovens.'
       : data.acesso_geral_consulta
@@ -277,6 +289,8 @@
     const search = normalizeText(memberSearch.value);
     const secaoId = memberSecaoFilter.value;
     let rows = memberRows();
+    const canShowInactive = state.profile?.tipo === 'administrador' && memberShowInactive.checked;
+    if (!canShowInactive) rows = rows.filter((m) => m.ativo !== false);
     if (secaoId) rows = rows.filter((m) => String(m.secao?.id || m.secao_id || '') === String(secaoId));
     if (search) {
       rows = rows.filter((m) => normalizeText(m.nome_completo).includes(search) || normalizeText(m.registro_paxtu).includes(search) || normalizeText(m.responsavel?.nome_completo).includes(search) || normalizeText(m.responsavel?.registro_paxtu).includes(search));
@@ -349,6 +363,7 @@
     memberActive.checked = true;
     memberId.value = '';
     memberDialogTitle.textContent = 'Novo jovem';
+    removeMemberButton.classList.add('hidden');
     if (jovemId) {
       const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
       if (!m) return;
@@ -363,6 +378,10 @@
       responsibleRegistration.value = m.responsavel?.registro_paxtu || '';
       responsiblePhone.value = m.responsavel?.telefone || '';
       memberActive.checked = Boolean(m.ativo);
+      removeMemberButton.classList.remove('hidden');
+      removeMemberButton.textContent = m.ativo ? 'Remover jovem' : 'Restaurar jovem';
+      removeMemberButton.classList.toggle('restore-button', !m.ativo);
+      removeMemberButton.classList.toggle('danger-button', Boolean(m.ativo));
     }
     memberDialog.showModal();
   }
@@ -482,6 +501,37 @@
     }
   }
 
+  async function setMemberActive(jovemId, active) {
+    const row = memberRows().find((m) => Number(m.id) === Number(jovemId));
+    if (!row) throw new Error('Jovem não encontrado.');
+    const { error } = await client.from('jovens').update({ ativo: active }).eq('id', jovemId);
+    if (error) throw error;
+  }
+
+  async function toggleMemberRemoved() {
+    if (state.profile?.tipo !== 'administrador' || !memberId.value) return;
+    const id = Number(memberId.value);
+    const row = memberRows().find((m) => Number(m.id) === id);
+    if (!row) return;
+    const nextActive = !row.ativo;
+    const ok = window.confirm(nextActive
+      ? `Restaurar ${row.nome_completo} na relação de jovens?`
+      : `Remover ${row.nome_completo} do app?\n\nO histórico não será apagado e você poderá restaurar depois.`);
+    if (!ok) return;
+    removeMemberButton.disabled = true;
+    try {
+      await setMemberActive(id, nextActive);
+      closeMemberForm();
+      await loadMembersData();
+      membersMessage.textContent = nextActive ? 'Jovem restaurado com sucesso.' : 'Jovem removido do app com sucesso.';
+      window.setTimeout(() => { if (membersMessage.textContent.includes('sucesso')) membersMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      memberFormMessage.textContent = `Não foi possível alterar o cadastro: ${error.message}`;
+    } finally {
+      removeMemberButton.disabled = false;
+    }
+  }
+
   memberForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (state.profile?.tipo !== 'administrador') return;
@@ -564,6 +614,8 @@
     const search = normalizeText(chiefSearch.value);
     const secaoId = chiefSecaoFilter.value;
     let rows = chiefRows();
+    const canShowInactive = state.profile?.tipo === 'administrador' && chiefShowInactive.checked;
+    if (!canShowInactive) rows = rows.filter((c) => c.ativo !== false);
     if (secaoId) rows = rows.filter((c) => c.secoes.some((s) => String(s.id) === String(secaoId)));
     if (search) {
       rows = rows.filter((c) => {
@@ -657,6 +709,9 @@
     chiefActive.checked = true;
     chiefId.value = '';
     chiefDialogTitle.textContent = 'Novo chefe';
+    removeChiefButton.classList.add('hidden');
+    removeChiefButton.classList.remove('restore-button');
+    removeChiefButton.classList.add('danger-button');
     renderChiefSectionSelectors();
 
     if (chefeId) {
@@ -675,6 +730,13 @@
       chiefSectionsOptions.querySelectorAll('input[type="checkbox"]').forEach((el) => {
         el.checked = selected.has(Number(el.value));
       });
+      const isSelfAdmin = state.profile?.tipo === 'administrador' && Number(state.profile?.chefe_id) === Number(c.id);
+      if (!isSelfAdmin) {
+        removeChiefButton.classList.remove('hidden');
+        removeChiefButton.textContent = c.ativo ? 'Remover chefe' : 'Restaurar chefe';
+        removeChiefButton.classList.toggle('restore-button', !c.ativo);
+        removeChiefButton.classList.toggle('danger-button', Boolean(c.ativo));
+      }
     }
     chiefDialog.showModal();
   }
@@ -732,6 +794,35 @@
     if (payload.sectionIds.length) {
       const { error: secError } = await client.from('chefe_secoes').insert(payload.sectionIds.map((secao_id) => ({ chefe_id: id, secao_id })));
       if (secError) throw secError;
+    }
+  }
+
+  async function toggleChiefRemoved() {
+    if (state.profile?.tipo !== 'administrador' || !chiefId.value) return;
+    const id = Number(chiefId.value);
+    const row = chiefRows().find((c) => Number(c.id) === id);
+    if (!row) return;
+    if (Number(state.profile?.chefe_id) === id) {
+      chiefFormMessage.textContent = 'Seu próprio cadastro de administrador não pode ser removido por esta tela.';
+      return;
+    }
+    const nextActive = !row.ativo;
+    const ok = window.confirm(nextActive
+      ? `Restaurar ${row.nome_completo} na relação da chefia?`
+      : `Remover ${row.nome_completo} do app?\n\nO cadastro e o histórico serão preservados. Se essa pessoa possuir login, o acesso também será bloqueado.`);
+    if (!ok) return;
+    removeChiefButton.disabled = true;
+    try {
+      const { error } = await client.rpc('admin_definir_chefe_ativo', { p_chefe_id: id, p_ativo: nextActive });
+      if (error) throw error;
+      closeChiefForm();
+      await loadChiefsData();
+      chiefsMessage.textContent = nextActive ? 'Chefe restaurado com sucesso.' : 'Chefe removido do app com sucesso.';
+      window.setTimeout(() => { if (chiefsMessage.textContent.includes('sucesso')) chiefsMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      chiefFormMessage.textContent = `Não foi possível alterar o cadastro: ${error.message}`;
+    } finally {
+      removeChiefButton.disabled = false;
     }
   }
 
@@ -809,9 +900,13 @@
   newMemberButton.addEventListener('click', () => openMemberDialog());
   closeMemberDialog.addEventListener('click', closeMemberForm);
   cancelMemberButton.addEventListener('click', closeMemberForm);
+  removeMemberButton.addEventListener('click', toggleMemberRemoved);
+  memberShowInactive.addEventListener('change', renderMembers);
   newChiefButton.addEventListener('click', () => openChiefDialog());
   closeChiefDialog.addEventListener('click', closeChiefForm);
   cancelChiefButton.addEventListener('click', closeChiefForm);
+  removeChiefButton.addEventListener('click', toggleChiefRemoved);
+  chiefShowInactive.addEventListener('change', renderChiefs);
   chiefSearch.addEventListener('input', renderChiefs);
   chiefSecaoFilter.addEventListener('change', renderChiefs);
   chiefDialog.addEventListener('click', (event) => { if (event.target === chiefDialog) closeChiefForm(); });

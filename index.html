@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
   <main class="app-shell">
@@ -121,6 +121,7 @@
         <div><strong id="membersCount">0</strong><span>jovens encontrados</span></div>
         <div id="membersRoleNote" class="role-note"></div>
       </section>
+      <label id="memberInactiveToggleWrap" class="inactive-toggle hidden"><input id="memberShowInactive" type="checkbox" /> <span>Mostrar jovens removidos</span></label>
 
       <section id="membersList" class="members-list" aria-live="polite"></section>
       <p id="membersMessage" class="members-message" role="status"></p>
@@ -151,6 +152,7 @@
         <div><strong id="chiefsCount">0</strong><span>chefes encontrados</span></div>
         <div id="chiefsRoleNote" class="role-note"></div>
       </section>
+      <label id="chiefInactiveToggleWrap" class="inactive-toggle hidden"><input id="chiefShowInactive" type="checkbox" /> <span>Mostrar chefes removidos</span></label>
 
       <section id="chiefsList" class="members-list" aria-live="polite"></section>
       <p id="chiefsMessage" class="members-message" role="status"></p>
@@ -175,7 +177,10 @@
       </div>
       <label class="active-check"><input id="memberActive" type="checkbox" checked /> <span>Membro ativo</span></label>
       <p id="memberFormMessage" class="form-message" role="status"></p>
-      <div class="dialog-actions"><button id="cancelMemberButton" type="button" class="cancel-button">Cancelar</button><button id="saveMemberButton" type="submit" class="save-button">Salvar jovem</button></div>
+      <div class="dialog-actions dialog-actions-split">
+        <button id="removeMemberButton" type="button" class="danger-button hidden">Remover jovem</button>
+        <div class="dialog-actions-right"><button id="cancelMemberButton" type="button" class="cancel-button">Cancelar</button><button id="saveMemberButton" type="submit" class="save-button">Salvar jovem</button></div>
+      </div>
     </form>
   </dialog>
 
@@ -209,20 +214,23 @@
 
       <label class="active-check"><input id="chiefActive" type="checkbox" checked /> <span>Chefe ativo</span></label>
       <p id="chiefFormMessage" class="form-message" role="status"></p>
-      <div class="dialog-actions">
-        <button id="cancelChiefButton" type="button" class="cancel-button">Cancelar</button>
-        <button id="saveChiefButton" type="submit" class="save-button">Salvar chefe</button>
+      <div class="dialog-actions dialog-actions-split">
+        <button id="removeChiefButton" type="button" class="danger-button hidden">Remover chefe</button>
+        <div class="dialog-actions-right">
+          <button id="cancelChiefButton" type="button" class="cancel-button">Cancelar</button>
+          <button id="saveChiefButton" type="submit" class="save-button">Salvar chefe</button>
+        </div>
       </div>
     </form>
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=14').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=15').catch(() => {});
       });
     }
   </script>
