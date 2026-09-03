@@ -1042,12 +1042,22 @@
   });
 
   client.auth.onAuthStateChange((event, session) => {
-    window.setTimeout(() => {
+    window.setTimeout(async () => {
       if (!session) {
         showLogin();
         return;
       }
-      maybeOpenPasswordDialog(event, session);
+
+      const isPasswordFlow = event === 'PASSWORD_RECOVERY' ||
+        initialAuthAction === 'recovery' ||
+        initialAuthAction === 'invite';
+
+      if (isPasswordFlow) {
+        await maybeOpenPasswordDialog(event, session);
+        return;
+      }
+
+      await enterApp(session);
     }, 0);
   });
 
