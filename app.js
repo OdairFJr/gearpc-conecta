@@ -102,6 +102,18 @@
   const attendanceRoleNote = $('attendanceRoleNote');
   const attendanceList = $('attendanceList');
   const attendanceMessage = $('attendanceMessage');
+  const accessView = $('accessView');
+  const accessButton = $('accessButton');
+  const accessBackButton = $('accessBackButton');
+  const accessLogoutButton = $('accessLogoutButton');
+  const accessRefreshButton = $('accessRefreshButton');
+  const accessSearch = $('accessSearch');
+  const accessList = $('accessList');
+  const accessMessage = $('accessMessage');
+  const accessTotalCount = $('accessTotalCount');
+  const accessEnteredCount = $('accessEnteredCount');
+  const accessPendingCount = $('accessPendingCount');
+  const accessInstalledCount = $('accessInstalledCount');
 
   const state = {
     user: null,
@@ -116,7 +128,8 @@
     chefeSecoes: [],
     attendanceOwnSectionIds: [],
     attendanceCall: null,
-    attendanceRows: []
+    attendanceRows: [],
+    accessRows: []
   };
 
   function authActionFromUrl() {
@@ -148,12 +161,14 @@
     membersView.classList.add('hidden');
     chiefsView.classList.add('hidden');
     attendanceView.classList.add('hidden');
+    accessView.classList.add('hidden');
   }
   function showLogin() { hideAllViews(); loginView.classList.remove('hidden'); }
   function showDashboard() { hideAllViews(); dashboardView.classList.remove('hidden'); }
   function showMembers() { hideAllViews(); membersView.classList.remove('hidden'); }
   function showChiefs() { hideAllViews(); chiefsView.classList.remove('hidden'); }
   function showAttendance() { hideAllViews(); attendanceView.classList.remove('hidden'); }
+  function showAccess() { hideAllViews(); accessView.classList.remove('hidden'); }
 
   function prettyProfile(profile) {
     if (!profile) return 'Usuário';
@@ -184,6 +199,7 @@
     membersButton.classList.toggle('hidden', data.tipo === 'responsavel');
     chiefsButton.classList.remove('hidden');
     attendanceButton.classList.toggle('hidden', data.tipo === 'responsavel');
+    accessButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
     memberInactiveToggleWrap.classList.toggle('hidden', data.tipo !== 'administrador');
@@ -1149,6 +1165,96 @@
     }
   }
 
+  function isStandaloneApp() {
+    return window.matchMedia?.('(display-mode: standalone)').matches === true ||
+      window.navigator.standalone === true;
+  }
+
+  let accessRegisteredThisLoad = false;
+  async function registerAppAccess() {
+    if (accessRegisteredThisLoad || !state.user) return;
+    accessRegisteredThisLoad = true;
+    try {
+      await client.rpc('registrar_acesso_app', { p_como_app: isStandaloneApp() });
+    } catch (_) {
+      // O registro de telemetria de acesso não deve impedir o uso do aplicativo.
+    }
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function renderAccessRows() {
+    const term = (accessSearch.value || '').trim().toLowerCase();
+    const rows = state.accessRows.filter(r => {
+      const hay = `${r.nome_completo || ''} ${r.email || ''}`.toLowerCase();
+      return !term || hay.includes(term);
+    });
+
+    accessList.innerHTML = '';
+    if (!rows.length) {
+      accessList.innerHTML = '<div class="empty-state">Nenhum usuário encontrado.</div>';
+      return;
+    }
+
+    for (const r of rows) {
+      const entered = !!r.ultimo_login_em;
+      const appSeen = !!r.abriu_como_app;
+      const card = document.createElement('article');
+      card.className = 'access-card';
+      card.innerHTML = `
+        <div class="access-card-head">
+          <div>
+            <strong>${escapeHtml(r.nome_completo || r.email || 'Usuário')}</strong>
+            <span>${escapeHtml(r.email || '')}</span>
+          </div>
+          <span class="access-status ${entered ? 'ok' : 'pending'}">${entered ? '✓ Já acessou' : '⏳ Ainda não acessou'}</span>
+        </div>
+        <div class="access-grid">
+          <div><span>Último login</span><strong>${formatDateTime(r.ultimo_login_em)}</strong></div>
+          <div><span>Primeiro acesso ao app</span><strong>${formatDateTime(r.primeiro_acesso_app)}</strong></div>
+          <div><span>Última abertura</span><strong>${formatDateTime(r.ultimo_acesso_app)}</strong></div>
+          <div><span>Como app instalado</span><strong>${appSeen ? '✓ Detectado' : '— Não detectado'}</strong></div>
+        </div>`;
+      accessList.appendChild(card);
+    }
+  }
+
+  async function loadAccessReport() {
+    if (state.profile?.tipo !== 'administrador') return;
+    accessMessage.textContent = 'Atualizando acessos...';
+    accessRefreshButton.disabled = true;
+    const { data, error } = await client.rpc('relatorio_acessos_usuarios');
+    accessRefreshButton.disabled = false;
+    if (error) {
+      accessMessage.textContent = `Não foi possível carregar os acessos: ${error.message}`;
+      return;
+    }
+    state.accessRows = data || [];
+    const total = state.accessRows.length;
+    const entered = state.accessRows.filter(r => !!r.ultimo_login_em).length;
+    const installed = state.accessRows.filter(r => !!r.abriu_como_app).length;
+    accessTotalCount.textContent = String(total);
+    accessEnteredCount.textContent = String(entered);
+    accessPendingCount.textContent = String(Math.max(0, total - entered));
+    accessInstalledCount.textContent = String(installed);
+    accessMessage.textContent = 'Atualizado agora.';
+    renderAccessRows();
+  }
+
+  async function openAccessView() {
+    if (state.profile?.tipo !== 'administrador') return;
+    showAccess();
+    await loadAccessReport();
+  }
+
   function openPasswordDialog(mode = 'change') {
     if (!state.user) return;
     passwordForm.reset();
@@ -1244,6 +1350,7 @@
 
   async function doLogout() {
     await client.auth.signOut();
+    accessRegisteredThisLoad = false;
     loginForm.reset();
     loginMessage.textContent = '';
     showLogin();
@@ -1253,6 +1360,7 @@
     if (!session?.user) { showLogin(); return; }
     const allowed = await loadProfile(session.user);
     if (!allowed) return;
+    await registerAppAccess();
     showDashboard();
   }
 
@@ -1275,14 +1383,19 @@
   membersLogoutButton.addEventListener('click', doLogout);
   chiefsLogoutButton.addEventListener('click', doLogout);
   attendanceLogoutButton.addEventListener('click', doLogout);
+  accessLogoutButton.addEventListener('click', doLogout);
   membersButton.addEventListener('click', openMembersView);
   chiefsButton.addEventListener('click', openChiefsView);
   attendanceButton.addEventListener('click', openAttendanceView);
+  accessButton.addEventListener('click', openAccessView);
   membersBackButton.addEventListener('click', showDashboard);
   chiefsBackButton.addEventListener('click', showDashboard);
   attendanceBackButton.addEventListener('click', showDashboard);
+  accessBackButton.addEventListener('click', showDashboard);
   attendanceSection.addEventListener('change', loadAttendanceForSelection);
   attendanceDate.addEventListener('change', loadAttendanceForSelection);
+  accessRefreshButton.addEventListener('click', loadAccessReport);
+  accessSearch.addEventListener('input', renderAccessRows);
   newMemberButton.addEventListener('click', () => openMemberDialog());
   closeMemberDialog.addEventListener('click', closeMemberForm);
   cancelMemberButton.addEventListener('click', closeMemberForm);

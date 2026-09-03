@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
   <main class="app-shell">
@@ -96,6 +96,15 @@
           <span class="launch-module-copy">
             <strong>Presença</strong>
             <small>Registre a chamada dos jovens da sua seção.</small>
+          </span>
+          <span class="launch-module-arrow" aria-hidden="true">›</span>
+        </button>
+
+        <button id="accessButton" class="launch-module hidden" type="button">
+          <span class="launch-module-icon access-icon" aria-hidden="true">🔐</span>
+          <span class="launch-module-copy">
+            <strong>Acessos</strong>
+            <small>Acompanhe quem já entrou no GEArPC Conecta.</small>
           </span>
           <span class="launch-module-arrow" aria-hidden="true">›</span>
         </button>
@@ -295,11 +304,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=17"></script>
+  <script src="app.js?v=18"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=17').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=18').catch(() => {});
       });
     }
   </script>

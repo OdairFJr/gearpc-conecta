@@ -750,3 +750,71 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   .attendance-mark { flex: 1; min-height: 42px; }
   .attendance-readonly-badge { align-self: flex-start; }
 }
+
+/* V18 — Controle de acessos */
+.access-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.access-summary > div {
+  background: #fff;
+  border: 1px solid #d9e3ee;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 5px 16px rgba(10,55,108,.06);
+}
+.access-summary strong { font-size: 1.5rem; color: #0a376c; }
+.access-summary span { font-size: .82rem; color: #607086; }
+.access-list { display: grid; gap: 12px; }
+.access-card {
+  background: #fff;
+  border: 1px solid #d9e3ee;
+  border-radius: 16px;
+  padding: 15px;
+  box-shadow: 0 5px 16px rgba(10,55,108,.05);
+}
+.access-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.access-card-head > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.access-card-head strong { color: #10233f; }
+.access-card-head span { color: #66788b; font-size: .88rem; overflow-wrap: anywhere; }
+.access-status {
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: .78rem !important;
+  font-weight: 700;
+}
+.access-status.ok { background: #e7f6eb; color: #176b2c; }
+.access-status.pending { background: #fff3d8; color: #875600; }
+.access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.access-grid > div {
+  background: #f7f9fc;
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.access-grid span { font-size: .74rem; color: #738196; }
+.access-grid strong { font-size: .88rem; color: #273b55; }
+
+@media (max-width: 720px) {
+  .access-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .access-card-head { flex-direction: column; }
+  .access-grid { grid-template-columns: 1fr; }
+}
