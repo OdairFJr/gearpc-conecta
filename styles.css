@@ -1051,3 +1051,16 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   .medical-add-medication { width: 100%; }
   .full-medical-dialog { width: 96vw; }
 }
+
+/* V22.1 - limpeza de informações médicas */
+.clear-medical-text-button {
+  align-self: flex-start;
+  margin-top: .4rem;
+  border: 1px solid #b8b8b8;
+  background: transparent;
+  border-radius: 8px;
+  padding: .35rem .65rem;
+  font-size: .84rem;
+  cursor: pointer;
+}
+.clear-medical-text-button:hover { filter: brightness(.96); }

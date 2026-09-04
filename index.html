@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=22" />
+  <link rel="stylesheet" href="styles.css?v=22.1" />
 </head>
 <body>
   <main class="app-shell">
@@ -353,7 +353,7 @@
       </div>
       <input id="medicalMemberId" type="hidden" />
       <p id="medicalMemberName" class="dialog-helper medical-person-name"></p>
-      <p class="medical-form-warning">⚕ Na consulta aparecem apenas os dados relevantes. Nesta tela ficam disponíveis todas as opções da ficha médica do Paxtu.</p>
+      <p class="medical-form-warning">⚕ Na consulta aparecem apenas os dados relevantes. Nesta tela ficam disponíveis todas as opções da ficha médica do Paxtu. Para remover uma informação, desmarque a opção ou use <strong>Limpar</strong> no campo e depois salve.</p>
 
       <details class="medical-section" open>
         <summary>Informações básicas</summary>
@@ -403,7 +403,7 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="restricao_alimentar_marcado" /> <span>Restrição alimentar</span></label><input class="medical-option-detail" type="text" data-full-key="restricao_alimentar" placeholder="Descreva a restrição" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sabe_nadar_marcado" /> <span>Sabe nadar</span></label></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sonambulo_marcado" /> <span>Sonâmbulo</span></label></div>
-          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalFoodRestrictions" rows="2" placeholder="Restrições alimentares já registradas ou informações adicionais"></textarea></label>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalFoodRestrictions" rows="2" placeholder="Restrições alimentares já registradas ou informações adicionais"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="medicalFoodRestrictions">Limpar</button></label>
         </div>
       </details>
 
@@ -418,7 +418,7 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_outro_marcado" /> <span>Outro</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_outro" placeholder="Detalhes" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_alimentos_marcado" /> <span>Alimentos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_alimentos" placeholder="Detalhes" /></div>
         </div>
-        <div class="medical-section-body"><label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalAllergies" rows="2"></textarea></label></div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalAllergies" rows="2"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="medicalAllergies">Limpar</button></label></div>
       </details>
 
       <details class="medical-section">
@@ -460,7 +460,7 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_intelectual_marcado" /> <span>Intelectual</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_intelectual" placeholder="Detalhes" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_autismo_marcado" /> <span>Autismo</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_autismo" placeholder="Detalhes" /></div>
         </div>
-        <div class="medical-section-body"><label class="medical-summary-field">Complemento / necessidades já registradas<textarea id="medicalSpecialNeeds" rows="2"></textarea></label></div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / necessidades já registradas<textarea id="medicalSpecialNeeds" rows="2"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="medicalSpecialNeeds">Limpar</button></label></div>
       </details>
 
       <details class="medical-section" open>
@@ -468,7 +468,7 @@
         <div class="medical-section-body">
           <div id="medicalMedicationsList" class="medical-medications-list"></div>
           <button id="medicalAddMedicationButton" type="button" class="mini-primary medical-add-medication">＋ Adicionar medicamento</button>
-          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalContinuousMedication" rows="2" placeholder="Informações importadas anteriormente ou complemento"></textarea></label>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalContinuousMedication" rows="2" placeholder="Informações importadas anteriormente ou complemento"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="medicalContinuousMedication">Limpar</button></label>
         </div>
       </details>
 
@@ -497,12 +497,12 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_alimentares_marcado" /> <span>Dificuldades alimentares</span></label><input class="medical-option-detail" type="text" data-full-key="comp_alimentares" placeholder="Detalhes" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_sono_marcado" /> <span>Dificuldades de sono</span></label><input class="medical-option-detail" type="text" data-full-key="comp_sono" placeholder="Detalhes" /></div>
         </div>
-        <div class="medical-section-body"><label class="medical-summary-field">Complemento / condições já registradas<textarea id="medicalRelevantConditions" rows="3"></textarea></label></div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / condições já registradas<textarea id="medicalRelevantConditions" rows="3"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="medicalRelevantConditions">Limpar</button></label></div>
       </details>
 
       <details class="medical-section" open>
         <summary>Observações</summary>
-        <div class="medical-section-body"><label>Observações<textarea id="medicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label></div>
+        <div class="medical-section-body"><label>Observações<textarea id="medicalObservations" rows="4" placeholder="Outras informações importantes"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="medicalObservations">Limpar</button></label></div>
       </details>
 
       <p id="medicalFormMessage" class="form-message" role="status"></p>
@@ -535,7 +535,7 @@
       </div>
       <input id="chiefMedicalChiefId" type="hidden" />
       <p id="chiefMedicalChiefName" class="dialog-helper medical-person-name"></p>
-      <p class="medical-form-warning">⚕ Na consulta aparecem apenas os dados relevantes. Nesta tela ficam disponíveis todas as opções da ficha médica do Paxtu.</p>
+      <p class="medical-form-warning">⚕ Na consulta aparecem apenas os dados relevantes. Nesta tela ficam disponíveis todas as opções da ficha médica do Paxtu. Para remover uma informação, desmarque a opção ou use <strong>Limpar</strong> no campo e depois salve.</p>
 
       <details class="medical-section" open>
         <summary>Informações básicas</summary>
@@ -585,7 +585,7 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="restricao_alimentar_marcado" /> <span>Restrição alimentar</span></label><input class="medical-option-detail" type="text" data-full-key="restricao_alimentar" placeholder="Descreva a restrição" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sabe_nadar_marcado" /> <span>Sabe nadar</span></label></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sonambulo_marcado" /> <span>Sonâmbulo</span></label></div>
-          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalFoodRestrictions" rows="2" placeholder="Restrições alimentares já registradas ou informações adicionais"></textarea></label>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalFoodRestrictions" rows="2" placeholder="Restrições alimentares já registradas ou informações adicionais"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="chiefMedicalFoodRestrictions">Limpar</button></label>
         </div>
       </details>
 
@@ -600,7 +600,7 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_outro_marcado" /> <span>Outro</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_outro" placeholder="Detalhes" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_alimentos_marcado" /> <span>Alimentos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_alimentos" placeholder="Detalhes" /></div>
         </div>
-        <div class="medical-section-body"><label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalAllergies" rows="2"></textarea></label></div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalAllergies" rows="2"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="chiefMedicalAllergies">Limpar</button></label></div>
       </details>
 
       <details class="medical-section">
@@ -642,7 +642,7 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_intelectual_marcado" /> <span>Intelectual</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_intelectual" placeholder="Detalhes" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_autismo_marcado" /> <span>Autismo</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_autismo" placeholder="Detalhes" /></div>
         </div>
-        <div class="medical-section-body"><label class="medical-summary-field">Complemento / necessidades já registradas<textarea id="chiefMedicalSpecialNeeds" rows="2"></textarea></label></div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / necessidades já registradas<textarea id="chiefMedicalSpecialNeeds" rows="2"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="chiefMedicalSpecialNeeds">Limpar</button></label></div>
       </details>
 
       <details class="medical-section" open>
@@ -650,7 +650,7 @@
         <div class="medical-section-body">
           <div id="chiefMedicalMedicationsList" class="medical-medications-list"></div>
           <button id="chiefMedicalAddMedicationButton" type="button" class="mini-primary medical-add-medication">＋ Adicionar medicamento</button>
-          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalContinuousMedication" rows="2" placeholder="Informações importadas anteriormente ou complemento"></textarea></label>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalContinuousMedication" rows="2" placeholder="Informações importadas anteriormente ou complemento"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="chiefMedicalContinuousMedication">Limpar</button></label>
         </div>
       </details>
 
@@ -679,12 +679,12 @@
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_alimentares_marcado" /> <span>Dificuldades alimentares</span></label><input class="medical-option-detail" type="text" data-full-key="comp_alimentares" placeholder="Detalhes" /></div>
           <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_sono_marcado" /> <span>Dificuldades de sono</span></label><input class="medical-option-detail" type="text" data-full-key="comp_sono" placeholder="Detalhes" /></div>
         </div>
-        <div class="medical-section-body"><label class="medical-summary-field">Complemento / condições já registradas<textarea id="chiefMedicalRelevantConditions" rows="3"></textarea></label></div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / condições já registradas<textarea id="chiefMedicalRelevantConditions" rows="3"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="chiefMedicalRelevantConditions">Limpar</button></label></div>
       </details>
 
       <details class="medical-section" open>
         <summary>Observações</summary>
-        <div class="medical-section-body"><label>Observações<textarea id="chiefMedicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label></div>
+        <div class="medical-section-body"><label>Observações<textarea id="chiefMedicalObservations" rows="4" placeholder="Outras informações importantes"></textarea><button type="button" class="clear-medical-text-button" data-clear-medical-input="chiefMedicalObservations">Limpar</button></label></div>
       </details>
 
       <p id="chiefMedicalFormMessage" class="form-message" role="status"></p>
@@ -789,11 +789,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=22.1"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=22').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=22.1').catch(() => {});
       });
     }
   </script>

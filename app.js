@@ -1136,7 +1136,7 @@
   function prefillMarkedOptions(out, summary, options) {
     const pieces = String(summary || '').split(';').map((part) => part.trim()).filter(Boolean);
     options.forEach(([key, aliases]) => {
-      if (out[`${key}_marcado`] === true) return;
+      if (Object.prototype.hasOwnProperty.call(out, `${key}_marcado`)) return;
       const aliasList = Array.isArray(aliases) ? aliases : [aliases];
       for (const piece of pieces) {
         const normalizedPiece = normalizeText(piece);
@@ -1150,13 +1150,54 @@
     });
   }
 
+  function medicalResidualSummary(summary, definitions = [], extraPrefixes = []) {
+    const prefixes = [...definitions.flatMap(([, label]) => Array.isArray(label) ? label : [label]), ...extraPrefixes]
+      .map((item) => normalizeText(item)).filter(Boolean);
+    return String(summary || '').split(';').map((part) => part.trim()).filter(Boolean).filter((piece) => {
+      const normalizedPiece = normalizeText(piece);
+      return !prefixes.some((prefix) => normalizedPiece.startsWith(prefix));
+    }).join('; ');
+  }
+
+  function manualMedicalComplements(med, rawFull = {}) {
+    const saved = rawFull?._manual_summary;
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+      return {
+        allergies: String(saved.allergies || ''),
+        medications: String(saved.medications || ''),
+        foodRestrictions: String(saved.foodRestrictions || ''),
+        conditions: String(saved.conditions || ''),
+        specialNeeds: String(saved.specialNeeds || ''),
+        observations: String(saved.observations || '')
+      };
+    }
+    const allergies = medicalResidualSummary(med?.alergias, medicalSummaryGroups.allergies);
+    const conditions = medicalResidualSummary(med?.condicoes_relevantes,
+      [...medicalSummaryGroups.physical, ...medicalSummaryGroups.mental, ...medicalSummaryGroups.behavior],
+      ['Impedimento físico', 'Sonâmbulo']);
+    const specialNeeds = medicalResidualSummary(med?.necessidades_especiais,
+      [...medicalSummaryGroups.equipment, ...medicalSummaryGroups.disabilities]);
+    const observations = medicalResidualSummary(med?.observacoes, [], [
+      'Sabe nadar', 'Emergência: aguardar pais/responsáveis', 'Emergência: aceita decisões médicas',
+      'Avisar pais/responsáveis em emergência', 'Avisar em emergência:'
+    ]);
+    return {
+      allergies,
+      medications: Array.isArray(rawFull?.medicamentos) && rawFull.medicamentos.length ? '' : String(med?.medicamentos_uso_continuo || ''),
+      foodRestrictions: '',
+      conditions,
+      specialNeeds,
+      observations
+    };
+  }
+
   function applyMedicalFallbacks(data, med) {
     const out = { ...data };
     const blood = parseBloodType(med?.tipo_sanguineo);
-    if (!out.fator_rh && blood.rh) out.fator_rh = blood.rh;
-    if (!out.telefone_emergencia && med?.contato_emergencia_telefone) out.telefone_emergencia = med.contato_emergencia_telefone;
-    if (!out.emergencia_outro && med?.contato_emergencia_nome && med.contato_emergencia_nome !== 'Pais/Responsáveis') out.emergencia_outro = med.contato_emergencia_nome;
-    if (!out.avisar_emergencia && med?.contato_emergencia_nome === 'Pais/Responsáveis') out.avisar_emergencia = 'pais';
+    if (!Object.prototype.hasOwnProperty.call(out, 'fator_rh') && blood.rh) out.fator_rh = blood.rh;
+    if (!Object.prototype.hasOwnProperty.call(out, 'telefone_emergencia') && med?.contato_emergencia_telefone) out.telefone_emergencia = med.contato_emergencia_telefone;
+    if (!Object.prototype.hasOwnProperty.call(out, 'emergencia_outro') && med?.contato_emergencia_nome && med.contato_emergencia_nome !== 'Pais/Responsáveis') out.emergencia_outro = med.contato_emergencia_nome;
+    if (!Object.prototype.hasOwnProperty.call(out, 'avisar_emergencia') && med?.contato_emergencia_nome === 'Pais/Responsáveis') out.avisar_emergencia = 'pais';
 
     if (med?.restricoes_alimentares && out.restricao_alimentar_marcado == null) {
       out.restricao_alimentar_marcado = true;
@@ -1193,9 +1234,9 @@
     const condNorm = normalizeText(med?.condicoes_relevantes || '');
     if (out.sonambulo_marcado == null && condNorm.includes('sonambulo')) out.sonambulo_marcado = true;
     const obs = normalizeText(med?.observacoes || '');
-    if (!out.emergencia_conduta && obs.includes('aguardar pais')) out.emergencia_conduta = 'aguardar_pais';
-    if (!out.emergencia_conduta && obs.includes('aceita decisoes medicas')) out.emergencia_conduta = 'aceita_decisoes_medicas';
-    if (!out.avisar_emergencia && obs.includes('avisar pais')) out.avisar_emergencia = 'pais';
+    if (!Object.prototype.hasOwnProperty.call(out, 'emergencia_conduta') && obs.includes('aguardar pais')) out.emergencia_conduta = 'aguardar_pais';
+    if (!Object.prototype.hasOwnProperty.call(out, 'emergencia_conduta') && obs.includes('aceita decisoes medicas')) out.emergencia_conduta = 'aceita_decisoes_medicas';
+    if (!Object.prototype.hasOwnProperty.call(out, 'avisar_emergencia') && obs.includes('avisar pais')) out.avisar_emergencia = 'pais';
     if (out.sabe_nadar_marcado == null && obs.includes('sabe nadar')) out.sabe_nadar_marcado = true;
     return out;
   }
@@ -1209,17 +1250,19 @@
     medicalMemberName.textContent = member.nome_completo;
     const parsedBlood = parseBloodType(med?.tipo_sanguineo);
     medicalBloodType.value = parsedBlood.abo;
-    medicalAllergies.value = med?.alergias || '';
-    medicalContinuousMedication.value = med?.medicamentos_uso_continuo || '';
-    medicalFoodRestrictions.value = med?.restricoes_alimentares || '';
-    medicalRelevantConditions.value = med?.condicoes_relevantes || '';
-    medicalSpecialNeeds.value = med?.necessidades_especiais || '';
+    const rawFull = fullMedicalData(med);
+    const manual = manualMedicalComplements(med, rawFull);
+    medicalAllergies.value = manual.allergies;
+    medicalContinuousMedication.value = manual.medications;
+    medicalFoodRestrictions.value = manual.foodRestrictions;
+    medicalRelevantConditions.value = manual.conditions;
+    medicalSpecialNeeds.value = manual.specialNeeds;
     medicalHealthPlan.value = med?.plano_saude || '';
     medicalCardNumber.value = med?.numero_carteirinha || '';
     medicalEmergencyName.value = med?.contato_emergencia_nome === 'Pais/Responsáveis' ? '' : (med?.contato_emergencia_nome || '');
     medicalEmergencyPhone.value = med?.contato_emergencia_telefone || '';
-    medicalObservations.value = med?.observacoes || '';
-    const full = applyMedicalFallbacks(fullMedicalData(med), med);
+    medicalObservations.value = manual.observations;
+    const full = applyMedicalFallbacks(rawFull, med);
     fillFullMedicalFields(medicalDialog, full);
     if (!full.fator_rh && parsedBlood.rh) {
       const rhField = medicalDialog.querySelector('[data-full-key="fator_rh"]');
@@ -1325,17 +1368,19 @@
     chiefMedicalChiefName.textContent = chief.nome_completo;
     const parsedBlood = parseBloodType(med?.tipo_sanguineo);
     chiefMedicalBloodType.value = parsedBlood.abo;
-    chiefMedicalAllergies.value = med?.alergias || '';
-    chiefMedicalContinuousMedication.value = med?.medicamentos_uso_continuo || '';
-    chiefMedicalFoodRestrictions.value = med?.restricoes_alimentares || '';
-    chiefMedicalRelevantConditions.value = med?.condicoes_relevantes || '';
-    chiefMedicalSpecialNeeds.value = med?.necessidades_especiais || '';
+    const rawFull = fullMedicalData(med);
+    const manual = manualMedicalComplements(med, rawFull);
+    chiefMedicalAllergies.value = manual.allergies;
+    chiefMedicalContinuousMedication.value = manual.medications;
+    chiefMedicalFoodRestrictions.value = manual.foodRestrictions;
+    chiefMedicalRelevantConditions.value = manual.conditions;
+    chiefMedicalSpecialNeeds.value = manual.specialNeeds;
     chiefMedicalHealthPlan.value = med?.plano_saude || '';
     chiefMedicalCardNumber.value = med?.numero_carteirinha || '';
     chiefMedicalEmergencyName.value = med?.contato_emergencia_nome === 'Pais/Responsáveis' ? '' : (med?.contato_emergencia_nome || '');
     chiefMedicalEmergencyPhone.value = med?.contato_emergencia_telefone || '';
-    chiefMedicalObservations.value = med?.observacoes || '';
-    const full = applyMedicalFallbacks(fullMedicalData(med), med);
+    chiefMedicalObservations.value = manual.observations;
+    const full = applyMedicalFallbacks(rawFull, med);
     fillFullMedicalFields(chiefMedicalDialog, full);
     if (!full.fator_rh && parsedBlood.rh) {
       const rhField = chiefMedicalDialog.querySelector('[data-full-key="fator_rh"]');
@@ -1842,11 +1887,13 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     try {
       const full = collectFullMedicalFields(medicalDialog);
       full.medicamentos = collectMedicationRows('medical');
-      const summary = buildMedicalSummary(full, {
+      const manual = {
         allergies: medicalAllergies.value.trim(), medications: medicalContinuousMedication.value.trim(),
         foodRestrictions: medicalFoodRestrictions.value.trim(), conditions: medicalRelevantConditions.value.trim(),
         specialNeeds: medicalSpecialNeeds.value.trim(), observations: medicalObservations.value.trim()
-      });
+      };
+      full._manual_summary = manual;
+      const summary = buildMedicalSummary(full, manual);
       const abo = medicalBloodType.value.trim();
       const rh = String(full.fator_rh || '').trim();
       const contactName = full.avisar_emergencia === 'pais' ? 'Pais/Responsáveis' : (full.emergencia_outro || medicalEmergencyName.value.trim() || null);
@@ -1891,11 +1938,13 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     try {
       const full = collectFullMedicalFields(chiefMedicalDialog);
       full.medicamentos = collectMedicationRows('chiefMedical');
-      const summary = buildMedicalSummary(full, {
+      const manual = {
         allergies: chiefMedicalAllergies.value.trim(), medications: chiefMedicalContinuousMedication.value.trim(),
         foodRestrictions: chiefMedicalFoodRestrictions.value.trim(), conditions: chiefMedicalRelevantConditions.value.trim(),
         specialNeeds: chiefMedicalSpecialNeeds.value.trim(), observations: chiefMedicalObservations.value.trim()
-      });
+      };
+      full._manual_summary = manual;
+      const summary = buildMedicalSummary(full, manual);
       const abo = chiefMedicalBloodType.value.trim();
       const rh = String(full.fator_rh || '').trim();
       const contactName = full.avisar_emergencia === 'pais' ? 'Pais/Responsáveis' : (full.emergencia_outro || chiefMedicalEmergencyName.value.trim() || null);
@@ -2626,6 +2675,17 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
 
   closeMedicalDialog.addEventListener('click', closeMedicalForm);
   cancelMedicalButton.addEventListener('click', closeMedicalForm);
+
+  document.querySelectorAll('[data-clear-medical-input]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = $(button.dataset.clearMedicalInput);
+      if (!target) return;
+      target.value = '';
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+      target.focus();
+    });
+  });
+
   deleteMedicalButton.addEventListener('click', deleteMedicalRecord);
   $('medicalAddMedicationButton')?.addEventListener('click', () => addMedicationRow('medical'));
   $('chiefMedicalAddMedicationButton')?.addEventListener('click', () => addMedicationRow('chiefMedical'));
