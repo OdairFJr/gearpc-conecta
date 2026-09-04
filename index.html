@@ -388,6 +388,37 @@
     </div>
   </dialog>
 
+
+  <dialog id="chiefMedicalDialog" class="member-dialog medical-dialog">
+    <form id="chiefMedicalForm" method="dialog" class="member-form">
+      <div class="dialog-title-row">
+        <div><div class="eyebrow dark">FICHA MÉDICA DO ADULTO</div><h2>Dados de saúde</h2></div>
+        <button id="closeChiefMedicalDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <input id="chiefMedicalChiefId" type="hidden" />
+      <p id="chiefMedicalChiefName" class="dialog-helper medical-person-name"></p>
+      <p class="medical-form-warning">⚕ Dados sensíveis. Confira as informações antes de salvar.</p>
+      <div class="form-grid">
+        <label>Tipo sanguíneo<input id="chiefMedicalBloodType" type="text" maxlength="20" placeholder="Ex.: O+" /></label>
+        <label>Plano de saúde<input id="chiefMedicalHealthPlan" type="text" maxlength="160" placeholder="Se houver" /></label>
+        <label>Nº da carteirinha<input id="chiefMedicalCardNumber" type="text" maxlength="80" /></label>
+        <label>Contato de emergência<input id="chiefMedicalEmergencyName" type="text" maxlength="160" placeholder="Nome" /></label>
+        <label>Telefone de emergência<input id="chiefMedicalEmergencyPhone" type="tel" maxlength="40" placeholder="(47) 99999-9999" /></label>
+      </div>
+      <label>Alergias<textarea id="chiefMedicalAllergies" rows="3" placeholder="Informe alergias ou deixe em branco"></textarea></label>
+      <label>Medicamentos<textarea id="chiefMedicalContinuousMedication" rows="3" placeholder="Medicamento, dose e informações relevantes"></textarea></label>
+      <label>Restrições alimentares<textarea id="chiefMedicalFoodRestrictions" rows="3"></textarea></label>
+      <label>Condições relevantes<textarea id="chiefMedicalRelevantConditions" rows="3" placeholder="Condições de saúde importantes para a atividade"></textarea></label>
+      <label>Necessidades especiais / equipamentos de auxílio<textarea id="chiefMedicalSpecialNeeds" rows="3"></textarea></label>
+      <label>Observações<textarea id="chiefMedicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label>
+      <p id="chiefMedicalFormMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions dialog-actions-split">
+        <button id="deleteChiefMedicalButton" type="button" class="danger-button hidden">Apagar ficha médica</button>
+        <div class="dialog-actions-right"><button id="cancelChiefMedicalButton" type="button" class="cancel-button">Cancelar</button><button id="saveChiefMedicalButton" type="submit" class="save-button">Salvar ficha médica</button></div>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="journeyDialog" class="member-dialog">
     <form id="journeyForm" method="dialog" class="member-form">
       <div class="dialog-title-row">
@@ -482,11 +513,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=20').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=21').catch(() => {});
       });
     }
   </script>

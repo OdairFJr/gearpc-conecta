@@ -170,6 +170,26 @@
   const chiefDetailAdminActions = $('chiefDetailAdminActions');
   const chiefDetailEditButton = $('chiefDetailEditButton');
   const closeChiefDetailDialog = $('closeChiefDetailDialog');
+  const chiefMedicalDialog = $('chiefMedicalDialog');
+  const chiefMedicalForm = $('chiefMedicalForm');
+  const chiefMedicalChiefId = $('chiefMedicalChiefId');
+  const chiefMedicalChiefName = $('chiefMedicalChiefName');
+  const chiefMedicalBloodType = $('chiefMedicalBloodType');
+  const chiefMedicalAllergies = $('chiefMedicalAllergies');
+  const chiefMedicalContinuousMedication = $('chiefMedicalContinuousMedication');
+  const chiefMedicalFoodRestrictions = $('chiefMedicalFoodRestrictions');
+  const chiefMedicalRelevantConditions = $('chiefMedicalRelevantConditions');
+  const chiefMedicalSpecialNeeds = $('chiefMedicalSpecialNeeds');
+  const chiefMedicalHealthPlan = $('chiefMedicalHealthPlan');
+  const chiefMedicalCardNumber = $('chiefMedicalCardNumber');
+  const chiefMedicalEmergencyName = $('chiefMedicalEmergencyName');
+  const chiefMedicalEmergencyPhone = $('chiefMedicalEmergencyPhone');
+  const chiefMedicalObservations = $('chiefMedicalObservations');
+  const chiefMedicalFormMessage = $('chiefMedicalFormMessage');
+  const saveChiefMedicalButton = $('saveChiefMedicalButton');
+  const deleteChiefMedicalButton = $('deleteChiefMedicalButton');
+  const closeChiefMedicalDialog = $('closeChiefMedicalDialog');
+  const cancelChiefMedicalButton = $('cancelChiefMedicalButton');
   const attendanceView = $('attendanceView');
   const attendanceButton = $('attendanceButton');
   const attendanceBackButton = $('attendanceBackButton');
@@ -211,6 +231,7 @@
     equipes: [],
     equipeChefes: [],
     fichasMedicas: [],
+    fichasMedicasChefes: [],
     visitasProximoRamo: [],
     ownChiefSectionIds: [],
     selectedMemberDetailId: null,
@@ -476,6 +497,10 @@
 
   function medicalForMember(jovemId) {
     return state.fichasMedicas.find((m) => Number(m.jovem_id) === Number(jovemId)) || null;
+  }
+
+  function medicalForChief(chefeId) {
+    return state.fichasMedicasChefes.find((m) => Number(m.chefe_id) === Number(chefeId)) || null;
   }
 
   function visitsForMember(jovemId) {
@@ -997,6 +1022,18 @@
       const secao = state.secoes.find((s) => Number(s.id) === Number(team.secao_id));
       return `<div class="detail-subline"><span>${escapeHtml(teamLabelForSection(team.secao_id))}</span><strong>${escapeHtml(team.nome)}${secao ? ` • ${escapeHtml(secao.nome)}` : ''}</strong></div>`;
     }).join('') : '<p class="detail-empty">Nenhuma matilha/patrulha vinculada.</p>';
+    const med = medicalForChief(c.id);
+    const medItems = [];
+    if (med?.tipo_sanguineo) medItems.push(detailValue('Tipo sanguíneo', med.tipo_sanguineo));
+    if (med?.alergias) medItems.push(detailValue('Alergias', med.alergias, 'wide'));
+    if (med?.medicamentos_uso_continuo) medItems.push(detailValue('Medicamentos', med.medicamentos_uso_continuo, 'wide'));
+    if (med?.restricoes_alimentares) medItems.push(detailValue('Restrições alimentares', med.restricoes_alimentares, 'wide'));
+    if (med?.condicoes_relevantes) medItems.push(detailValue('Condições relevantes', med.condicoes_relevantes, 'wide'));
+    if (med?.necessidades_especiais) medItems.push(detailValue('Necessidades especiais / equipamentos', med.necessidades_especiais, 'wide'));
+    if (med?.plano_saude) medItems.push(detailValue('Plano / médico de preferência', med.plano_saude, 'wide'));
+    if (med?.numero_carteirinha) medItems.push(detailValue('Carteirinha / documento', med.numero_carteirinha));
+    if (med?.contato_emergencia_nome || med?.contato_emergencia_telefone) medItems.push(detailValue('Contato de emergência', [med.contato_emergencia_nome, med.contato_emergencia_telefone].filter(Boolean).join(' • '), 'wide'));
+    if (med?.observacoes) medItems.push(detailValue('Observações', med.observacoes, 'wide'));
 
     chiefDetailBody.innerHTML = `
       ${limited ? '' : `<div class="detail-status-row"><span class="registration-badge ${regStatus.cls}">${escapeHtml(regStatus.label)}</span>${c.ativo === false ? '<span class="status-badge inactive">Inativo</span>' : ''}</div>`}
@@ -1014,9 +1051,66 @@
       </section>
       ${limited ? '' : `<section class="detail-card"><h3>Histórico de promessas</h3><div class="detail-grid">${detailValue('Promessa de Lobinho', formatDateBR(c.data_promessa_lobinho))}${detailValue('Promessa Escoteira', formatDateBR(c.data_promessa_escoteira))}${detailValue('Promessa Adulta', formatDateBR(c.data_promessa_adulta))}</div></section>`}
       ${limited ? '' : `<section class="detail-card"><h3>Matilhas / Patrulhas sob responsabilidade</h3>${teamRows}</section>`}
+      ${limited ? '' : `<section class="detail-card medical-card"><div class="detail-card-heading"><h3>Ficha médica</h3>${state.profile?.tipo === 'administrador' ? '<button type="button" class="mini-primary medical-edit-button" data-edit-chief-medical="1">Editar ficha médica</button>' : ''}</div><p class="medical-note">Dados sensíveis • disponíveis apenas para a equipe interna autorizada. Responsáveis não visualizam estes dados.</p>${medItems.length ? `<div class="detail-grid">${medItems.join('')}</div>${med?.atualizado_em ? `<p class="medical-updated">Última atualização: ${escapeHtml(formatDateTimeBR(med.atualizado_em))}</p>` : ''}` : '<p class="detail-empty">Ficha médica ainda não cadastrada.</p>'}</section>`}
     `;
     chiefDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
+    chiefDetailBody.querySelector('[data-edit-chief-medical]')?.addEventListener('click', () => openChiefMedicalDialog(c.id));
     if (!chiefDetailDialog.open) chiefDetailDialog.showModal();
+  }
+
+  function openChiefMedicalDialog(chefeId) {
+    if (state.profile?.tipo !== 'administrador') return;
+    const chief = chiefRows().find((item) => Number(item.id) === Number(chefeId));
+    if (!chief) return;
+    const med = medicalForChief(chefeId);
+    chiefMedicalChiefId.value = String(chefeId);
+    chiefMedicalChiefName.textContent = chief.nome_completo;
+    chiefMedicalBloodType.value = med?.tipo_sanguineo || '';
+    chiefMedicalAllergies.value = med?.alergias || '';
+    chiefMedicalContinuousMedication.value = med?.medicamentos_uso_continuo || '';
+    chiefMedicalFoodRestrictions.value = med?.restricoes_alimentares || '';
+    chiefMedicalRelevantConditions.value = med?.condicoes_relevantes || '';
+    chiefMedicalSpecialNeeds.value = med?.necessidades_especiais || '';
+    chiefMedicalHealthPlan.value = med?.plano_saude || '';
+    chiefMedicalCardNumber.value = med?.numero_carteirinha || '';
+    chiefMedicalEmergencyName.value = med?.contato_emergencia_nome || '';
+    chiefMedicalEmergencyPhone.value = med?.contato_emergencia_telefone || '';
+    chiefMedicalObservations.value = med?.observacoes || '';
+    chiefMedicalFormMessage.textContent = '';
+    deleteChiefMedicalButton.classList.toggle('hidden', !med);
+    if (!chiefMedicalDialog.open) chiefMedicalDialog.showModal();
+  }
+
+  function closeChiefMedicalForm() {
+    if (chiefMedicalDialog.open) chiefMedicalDialog.close();
+  }
+
+  async function refreshChiefMedical(chefeId) {
+    await loadChiefsData();
+    if (state.selectedChiefDetailId === Number(chefeId)) openChiefDetail(chefeId);
+  }
+
+  async function deleteChiefMedicalRecord() {
+    const chefeId = Number(chiefMedicalChiefId.value || 0);
+    if (!chefeId || state.profile?.tipo !== 'administrador') return;
+    const chief = chiefRows().find((item) => Number(item.id) === chefeId);
+    if (!window.confirm(`Apagar toda a ficha médica de ${chief?.nome_completo || 'este adulto'}?
+
+Esta ação removerá os dados médicos cadastrados.`)) return;
+    deleteChiefMedicalButton.disabled = true;
+    chiefMedicalFormMessage.textContent = 'Apagando...';
+    try {
+      const { error } = await client.from('fichas_medicas_chefes').delete().eq('chefe_id', chefeId);
+      if (error) throw error;
+      closeChiefMedicalForm();
+      await refreshChiefMedical(chefeId);
+      chiefsMessage.textContent = 'Ficha médica do adulto apagada com sucesso.';
+      window.setTimeout(() => { if (chiefsMessage.textContent.includes('apagada')) chiefsMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      chiefMedicalFormMessage.textContent = `Não foi possível apagar: ${error.message}`;
+    } finally {
+      deleteChiefMedicalButton.disabled = false;
+    }
   }
 
   function openJourneyDialog(jovemId) {
@@ -1252,16 +1346,17 @@
 
   async function loadChiefsData() {
     chiefsMessage.textContent = 'Carregando chefia...';
-    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes] = await Promise.all([
+    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').order('nome'),
       client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta').order('nome_completo'),
       client.from('chefe_funcoes').select('id,chefe_id,funcao'),
       client.from('chefe_secoes').select('chefe_id,secao_id'),
       client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
-      client.from('equipe_chefes').select('equipe_id,chefe_id,papel')
+      client.from('equipe_chefes').select('equipe_id,chefe_id,papel'),
+      client.from('fichas_medicas_chefes').select('id,chefe_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,atualizado_em')
     ]);
-    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes].find((r) => r.error)?.error;
+    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes].find((r) => r.error)?.error;
     if (firstError) {
       chiefsMessage.textContent = `Não foi possível carregar a chefia: ${firstError.message}`;
       return;
@@ -1273,6 +1368,7 @@
     state.chefeSecoes = secoesChefesRes.data || [];
     state.equipes = equipesRes.data || [];
     state.equipeChefes = equipeChefesRes.data || [];
+    state.fichasMedicasChefes = fichasChefesRes.data || [];
     renderChiefSectionSelectors();
     renderChiefs();
     chiefsMessage.textContent = '';
@@ -1504,6 +1600,44 @@
     } finally {
       saveMedicalButton.disabled = false;
       saveMedicalButton.textContent = 'Salvar ficha médica';
+    }
+  });
+
+  chiefMedicalForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.profile?.tipo !== 'administrador') return;
+    const chefeId = Number(chiefMedicalChiefId.value || 0);
+    if (!chefeId) return;
+    chiefMedicalFormMessage.textContent = '';
+    saveChiefMedicalButton.disabled = true;
+    saveChiefMedicalButton.textContent = 'Salvando...';
+    try {
+      const payload = {
+        chefe_id: chefeId,
+        tipo_sanguineo: chiefMedicalBloodType.value.trim() || null,
+        alergias: chiefMedicalAllergies.value.trim() || null,
+        medicamentos_uso_continuo: chiefMedicalContinuousMedication.value.trim() || null,
+        restricoes_alimentares: chiefMedicalFoodRestrictions.value.trim() || null,
+        condicoes_relevantes: chiefMedicalRelevantConditions.value.trim() || null,
+        necessidades_especiais: chiefMedicalSpecialNeeds.value.trim() || null,
+        plano_saude: chiefMedicalHealthPlan.value.trim() || null,
+        numero_carteirinha: chiefMedicalCardNumber.value.trim() || null,
+        contato_emergencia_nome: chiefMedicalEmergencyName.value.trim() || null,
+        contato_emergencia_telefone: chiefMedicalEmergencyPhone.value.trim() || null,
+        observacoes: chiefMedicalObservations.value.trim() || null,
+        atualizado_em: new Date().toISOString()
+      };
+      const { error } = await client.from('fichas_medicas_chefes').upsert(payload, { onConflict: 'chefe_id' });
+      if (error) throw error;
+      closeChiefMedicalForm();
+      await refreshChiefMedical(chefeId);
+      chiefsMessage.textContent = 'Ficha médica do adulto salva com sucesso.';
+      window.setTimeout(() => { if (chiefsMessage.textContent.includes('médica')) chiefsMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      chiefMedicalFormMessage.textContent = `Não foi possível salvar: ${error.message}`;
+    } finally {
+      saveChiefMedicalButton.disabled = false;
+      saveChiefMedicalButton.textContent = 'Salvar ficha médica';
     }
   });
 
@@ -2214,6 +2348,11 @@
     closeChiefDetail();
     if (id) openChiefDialog(id);
   });
+
+  closeChiefMedicalDialog.addEventListener('click', closeChiefMedicalForm);
+  cancelChiefMedicalButton.addEventListener('click', closeChiefMedicalForm);
+  deleteChiefMedicalButton.addEventListener('click', deleteChiefMedicalRecord);
+  chiefMedicalDialog.addEventListener('click', (event) => { if (event.target === chiefMedicalDialog) closeChiefMedicalForm(); });
 
   closeJourneyDialog.addEventListener('click', closeJourneyForm);
   cancelJourneyButton.addEventListener('click', closeJourneyForm);
