@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=182" />
+  <link rel="stylesheet" href="styles.css?v=19" />
 </head>
 <body>
   <main class="app-shell">
@@ -132,11 +132,14 @@
           <h2>Jovens do grupo</h2>
           <p>Consulte os jovens disponíveis para o seu perfil. Cadastro e alterações são exclusivos do administrador.</p>
         </div>
-        <button id="newMemberButton" class="new-member-button hidden" type="button">＋ Novo jovem</button>
+        <div class="hero-actions">
+          <button id="teamManagerButton" class="secondary-action-button hidden" type="button">⚜ Matilhas/Patrulhas</button>
+          <button id="newMemberButton" class="new-member-button hidden" type="button">＋ Novo jovem</button>
+        </div>
       </section>
 
       <section class="members-toolbar">
-        <label class="search-field"><span>🔎</span><input id="memberSearch" type="search" placeholder="Buscar jovem por nome, registro ou responsável" /></label>
+        <label class="search-field"><span>🔎</span><input id="memberSearch" type="search" placeholder="Buscar jovem por nome" /></label>
         <label class="filter-field"><span>Seção</span><select id="memberSecaoFilter"><option value="">Todas</option></select></label>
       </section>
 
@@ -167,7 +170,7 @@
       </section>
 
       <section class="members-toolbar">
-        <label class="search-field"><span>🔎</span><input id="chiefSearch" type="search" placeholder="Buscar por nome, função ou seção" /></label>
+        <label class="search-field"><span>🔎</span><input id="chiefSearch" type="search" placeholder="Buscar chefe por nome" /></label>
         <label class="filter-field"><span>Seção</span><select id="chiefSecaoFilter"><option value="">Todas</option></select></label>
       </section>
 
@@ -258,6 +261,16 @@
       </div>
       <label>Data de nascimento<input id="memberBirth" type="date" required /></label>
       <label>Seção<select id="memberSecao" required></select><small class="field-helper">O ramo é definido automaticamente pela seção escolhida.</small></label>
+      <label id="memberEquipeWrap" class="hidden"><span id="memberEquipeLabel">Matilha/Patrulha</span><select id="memberEquipe"><option value="">Sem equipe definida</option></select></label>
+
+      <fieldset class="multi-fieldset compact-fieldset">
+        <legend>Histórico escoteiro</legend>
+        <div class="date-field-row"><label>Data da acolhida<input id="memberAcolhida" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberAcolhida">Limpar</button></div>
+        <div class="date-field-row"><label>Promessa de Lobinho<input id="memberPromiseLobinho" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberPromiseLobinho">Limpar</button></div>
+        <div class="date-field-row"><label>Promessa Escoteira<input id="memberPromiseEscoteira" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberPromiseEscoteira">Limpar</button></div>
+        <div class="date-field-row"><label>Promessa Adulta<input id="memberPromiseAdulta" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberPromiseAdulta">Limpar</button></div>
+      </fieldset>
+
       <label>Nome do responsável<input id="responsibleName" type="text" required maxlength="160" /></label>
       <div class="form-grid">
         <label>Nº de registro do responsável<input id="responsibleRegistration" type="text" maxlength="40" placeholder="Número de registro" /></label>
@@ -289,6 +302,13 @@
         <label>Telefone<input id="chiefPhone" type="tel" maxlength="30" placeholder="(47) 99999-9999" /></label>
       </div>
 
+      <fieldset class="multi-fieldset compact-fieldset">
+        <legend>Histórico de promessas</legend>
+        <div class="date-field-row"><label>Promessa de Lobinho<input id="chiefPromiseLobinho" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="chiefPromiseLobinho">Limpar</button></div>
+        <div class="date-field-row"><label>Promessa Escoteira<input id="chiefPromiseEscoteira" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="chiefPromiseEscoteira">Limpar</button></div>
+        <div class="date-field-row"><label>Promessa Adulta<input id="chiefPromiseAdulta" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="chiefPromiseAdulta">Limpar</button></div>
+      </fieldset>
+
       <fieldset class="multi-fieldset">
         <legend>Seção(ões)</legend>
         <p class="field-helper">Marque todas as seções em que esta pessoa atua.</p>
@@ -310,6 +330,100 @@
         </div>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="memberDetailDialog" class="member-dialog detail-dialog">
+    <div class="detail-shell">
+      <div class="dialog-title-row sticky-dialog-header">
+        <div><div class="eyebrow dark">FICHA DO JOVEM</div><h2 id="memberDetailTitle">Jovem</h2></div>
+        <button id="closeMemberDetailDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <div id="memberDetailBody" class="detail-body"></div>
+      <div id="memberDetailAdminActions" class="dialog-actions detail-actions hidden">
+        <button id="memberDetailEditButton" type="button" class="save-button">Editar cadastro</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="chiefDetailDialog" class="member-dialog detail-dialog">
+    <div class="detail-shell">
+      <div class="dialog-title-row sticky-dialog-header">
+        <div><div class="eyebrow dark">FICHA DA CHEFIA</div><h2 id="chiefDetailTitle">Chefia</h2></div>
+        <button id="closeChiefDetailDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <div id="chiefDetailBody" class="detail-body"></div>
+      <div id="chiefDetailAdminActions" class="dialog-actions detail-actions hidden">
+        <button id="chiefDetailEditButton" type="button" class="save-button">Editar cadastro</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="journeyDialog" class="member-dialog">
+    <form id="journeyForm" method="dialog" class="member-form">
+      <div class="dialog-title-row">
+        <div><div class="eyebrow dark">CAMINHO / PASSAGEM</div><h2 id="journeyDialogTitle">Atualizar datas</h2></div>
+        <button id="closeJourneyDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <input id="journeyMemberId" type="hidden" />
+      <p id="journeyMemberName" class="dialog-helper"></p>
+      <div class="date-field-row"><label>Pode iniciar o processo de Caminho<input id="journeyCanStart" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyCanStart">Limpar</button></div>
+      <div class="date-field-row"><label>Início do Caminho<input id="journeyStart" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyStart">Limpar</button></div>
+      <div class="date-field-row"><label>Passagem de ramo<input id="journeyPassage" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyPassage">Limpar</button></div>
+      <div class="date-field-row"><label>Data limite para passagem<input id="journeyLimit" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyLimit">Limpar</button></div>
+      <p id="journeyMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions dialog-actions-split">
+        <button id="clearJourneyButton" type="button" class="danger-button">Apagar todas as datas</button>
+        <div class="dialog-actions-right"><button id="cancelJourneyButton" type="button" class="cancel-button">Cancelar</button><button id="saveJourneyButton" type="submit" class="save-button">Salvar</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="visitDialog" class="member-dialog">
+    <form id="visitForm" method="dialog" class="member-form">
+      <div class="dialog-title-row">
+        <div><div class="eyebrow dark">VISITA AO PRÓXIMO RAMO</div><h2 id="visitDialogTitle">Nova visita</h2></div>
+        <button id="closeVisitDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <input id="visitId" type="hidden" />
+      <input id="visitMemberId" type="hidden" />
+      <label>Data da visita<input id="visitDate" type="date" required /></label>
+      <label>Seção de destino<select id="visitDestination"><option value="">Selecione</option></select></label>
+      <label>Observação<textarea id="visitObservation" rows="3" placeholder="Opcional"></textarea></label>
+      <p id="visitMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions dialog-actions-split">
+        <button id="deleteVisitButton" type="button" class="danger-button hidden">Apagar visita</button>
+        <div class="dialog-actions-right"><button id="cancelVisitButton" type="button" class="cancel-button">Cancelar</button><button id="saveVisitButton" type="submit" class="save-button">Salvar visita</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="teamDialog" class="member-dialog team-dialog">
+    <div class="detail-shell">
+      <div class="dialog-title-row sticky-dialog-header">
+        <div><div class="eyebrow dark">ORGANIZAÇÃO</div><h2>Matilhas e Patrulhas</h2></div>
+        <button id="closeTeamDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <form id="teamForm" class="member-form team-form">
+        <input id="teamId" type="hidden" />
+        <div class="form-grid">
+          <label>Seção<select id="teamSection" required></select></label>
+          <label>Nome da Matilha/Patrulha<input id="teamName" type="text" required maxlength="100" /></label>
+        </div>
+        <fieldset class="multi-fieldset">
+          <legend>Chefe(s)/assistente(s) responsável(is)</legend>
+          <div id="teamChiefOptions" class="checkbox-grid"></div>
+        </fieldset>
+        <p id="teamFormMessage" class="form-message" role="status"></p>
+        <div class="dialog-actions dialog-actions-split">
+          <button id="deleteTeamButton" type="button" class="danger-button hidden">Apagar equipe</button>
+          <div class="dialog-actions-right"><button id="resetTeamButton" type="button" class="cancel-button">Limpar</button><button id="saveTeamButton" type="submit" class="save-button">Salvar equipe</button></div>
+        </div>
+      </form>
+      <div class="team-list-block">
+        <h3>Equipes cadastradas</h3>
+        <div id="teamList" class="team-list"></div>
+      </div>
+    </div>
   </dialog>
 
   <dialog id="passwordDialog" class="member-dialog password-dialog">
@@ -338,11 +452,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=182"></script>
+  <script src="app.js?v=19"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=182').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=19').catch(() => {});
       });
     }
   </script>

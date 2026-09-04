@@ -58,6 +58,58 @@
   const removeMemberButton = $('removeMemberButton');
   const memberInactiveToggleWrap = $('memberInactiveToggleWrap');
   const memberShowInactive = $('memberShowInactive');
+  const teamManagerButton = $('teamManagerButton');
+  const memberEquipeWrap = $('memberEquipeWrap');
+  const memberEquipeLabel = $('memberEquipeLabel');
+  const memberEquipe = $('memberEquipe');
+  const memberAcolhida = $('memberAcolhida');
+  const memberPromiseLobinho = $('memberPromiseLobinho');
+  const memberPromiseEscoteira = $('memberPromiseEscoteira');
+  const memberPromiseAdulta = $('memberPromiseAdulta');
+  const memberDetailDialog = $('memberDetailDialog');
+  const memberDetailTitle = $('memberDetailTitle');
+  const memberDetailBody = $('memberDetailBody');
+  const memberDetailAdminActions = $('memberDetailAdminActions');
+  const memberDetailEditButton = $('memberDetailEditButton');
+  const closeMemberDetailDialog = $('closeMemberDetailDialog');
+  const journeyDialog = $('journeyDialog');
+  const journeyForm = $('journeyForm');
+  const journeyMemberId = $('journeyMemberId');
+  const journeyMemberName = $('journeyMemberName');
+  const journeyCanStart = $('journeyCanStart');
+  const journeyStart = $('journeyStart');
+  const journeyPassage = $('journeyPassage');
+  const journeyLimit = $('journeyLimit');
+  const journeyMessage = $('journeyMessage');
+  const saveJourneyButton = $('saveJourneyButton');
+  const clearJourneyButton = $('clearJourneyButton');
+  const closeJourneyDialog = $('closeJourneyDialog');
+  const cancelJourneyButton = $('cancelJourneyButton');
+  const visitDialog = $('visitDialog');
+  const visitForm = $('visitForm');
+  const visitId = $('visitId');
+  const visitMemberId = $('visitMemberId');
+  const visitDialogTitle = $('visitDialogTitle');
+  const visitDate = $('visitDate');
+  const visitDestination = $('visitDestination');
+  const visitObservation = $('visitObservation');
+  const visitMessage = $('visitMessage');
+  const saveVisitButton = $('saveVisitButton');
+  const deleteVisitButton = $('deleteVisitButton');
+  const closeVisitDialog = $('closeVisitDialog');
+  const cancelVisitButton = $('cancelVisitButton');
+  const teamDialog = $('teamDialog');
+  const teamForm = $('teamForm');
+  const teamId = $('teamId');
+  const teamSection = $('teamSection');
+  const teamName = $('teamName');
+  const teamChiefOptions = $('teamChiefOptions');
+  const teamFormMessage = $('teamFormMessage');
+  const saveTeamButton = $('saveTeamButton');
+  const deleteTeamButton = $('deleteTeamButton');
+  const resetTeamButton = $('resetTeamButton');
+  const closeTeamDialog = $('closeTeamDialog');
+  const teamList = $('teamList');
   const chiefsView = $('chiefsView');
   const chiefsButton = $('chiefsButton');
   const chiefsBackButton = $('chiefsBackButton');
@@ -89,6 +141,15 @@
   const removeChiefButton = $('removeChiefButton');
   const chiefInactiveToggleWrap = $('chiefInactiveToggleWrap');
   const chiefShowInactive = $('chiefShowInactive');
+  const chiefPromiseLobinho = $('chiefPromiseLobinho');
+  const chiefPromiseEscoteira = $('chiefPromiseEscoteira');
+  const chiefPromiseAdulta = $('chiefPromiseAdulta');
+  const chiefDetailDialog = $('chiefDetailDialog');
+  const chiefDetailTitle = $('chiefDetailTitle');
+  const chiefDetailBody = $('chiefDetailBody');
+  const chiefDetailAdminActions = $('chiefDetailAdminActions');
+  const chiefDetailEditButton = $('chiefDetailEditButton');
+  const closeChiefDetailDialog = $('closeChiefDetailDialog');
   const attendanceView = $('attendanceView');
   const attendanceButton = $('attendanceButton');
   const attendanceBackButton = $('attendanceBackButton');
@@ -127,6 +188,13 @@
     chefes: [],
     chefeFuncoes: [],
     chefeSecoes: [],
+    equipes: [],
+    equipeChefes: [],
+    fichasMedicas: [],
+    visitasProximoRamo: [],
+    ownChiefSectionIds: [],
+    selectedMemberDetailId: null,
+    selectedChiefDetailId: null,
     attendanceOwnSectionIds: [],
     attendanceCall: null,
     attendanceRows: [],
@@ -203,6 +271,7 @@
     accessButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
+    teamManagerButton.classList.toggle('hidden', data.tipo !== 'administrador');
     memberInactiveToggleWrap.classList.toggle('hidden', data.tipo !== 'administrador');
     chiefInactiveToggleWrap.classList.toggle('hidden', data.tipo !== 'administrador');
     if (data.tipo !== 'administrador') {
@@ -350,6 +419,77 @@
     return String(text ?? '').replace(/[&<>'"]/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[ch]);
   }
 
+  function ramoForSectionId(secaoId) {
+    const secao = state.secoes.find((s) => Number(s.id) === Number(secaoId));
+    return state.ramos.find((r) => Number(r.id) === Number(secao?.ramo_id)) || null;
+  }
+
+  function teamLabelForSection(secaoId) {
+    const ramo = normalizeText(ramoForSectionId(secaoId)?.nome);
+    if (ramo === 'lobinho') return 'Matilha';
+    if (ramo === 'escoteiro' || ramo === 'sênior' || ramo === 'senior') return 'Patrulha';
+    return 'Equipe';
+  }
+
+  function sectionSupportsTeam(secaoId) {
+    const label = teamLabelForSection(secaoId);
+    return label === 'Matilha' || label === 'Patrulha';
+  }
+
+  function teamForMember(member) {
+    return state.equipes.find((e) => Number(e.id) === Number(member?.equipe_id)) || null;
+  }
+
+  function teamChiefsFor(equipeId) {
+    const chiefIds = state.equipeChefes
+      .filter((row) => Number(row.equipe_id) === Number(equipeId))
+      .map((row) => Number(row.chefe_id));
+    return state.chefes.filter((c) => chiefIds.includes(Number(c.id)));
+  }
+
+  function teamsForChief(chefeId) {
+    const ids = state.equipeChefes
+      .filter((row) => Number(row.chefe_id) === Number(chefeId))
+      .map((row) => Number(row.equipe_id));
+    return state.equipes.filter((e) => ids.includes(Number(e.id)));
+  }
+
+  function medicalForMember(jovemId) {
+    return state.fichasMedicas.find((m) => Number(m.jovem_id) === Number(jovemId)) || null;
+  }
+
+  function visitsForMember(jovemId) {
+    return state.visitasProximoRamo
+      .filter((v) => Number(v.jovem_id) === Number(jovemId))
+      .sort((a, b) => String(a.data_visita).localeCompare(String(b.data_visita)));
+  }
+
+  function canManageJourney(member) {
+    if (!member || !state.profile) return false;
+    if (state.profile.tipo === 'administrador') return true;
+    if (state.profile.acesso_geral_consulta || state.profile.tipo !== 'chefia') return false;
+    return state.ownChiefSectionIds.includes(Number(member.secao?.id || member.secao_id));
+  }
+
+  function renderMemberTeamOptions(selectedId = '') {
+    const secaoId = Number(memberSecao.value || 0);
+    if (!sectionSupportsTeam(secaoId)) {
+      memberEquipeWrap.classList.add('hidden');
+      memberEquipe.innerHTML = '<option value="">Sem equipe definida</option>';
+      return;
+    }
+    const label = teamLabelForSection(secaoId);
+    memberEquipeLabel.textContent = label;
+    memberEquipeWrap.classList.remove('hidden');
+    const teams = state.equipes.filter((e) => Number(e.secao_id) === secaoId && e.ativo !== false);
+    memberEquipe.innerHTML = `<option value="">Sem ${label.toLocaleLowerCase('pt-BR')} definida</option>${teams.map((e) => `<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('')}`;
+    if (selectedId) memberEquipe.value = String(selectedId);
+  }
+
+  function detailValue(label, value, extraClass = '') {
+    return `<div class="detail-value ${extraClass}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || '—')}</strong></div>`;
+  }
+
   function renderMembers() {
     const search = normalizeText(memberSearch.value);
     const secaoId = memberSecaoFilter.value;
@@ -357,50 +497,52 @@
     const canShowInactive = state.profile?.tipo === 'administrador' && memberShowInactive.checked;
     if (!canShowInactive) rows = rows.filter((m) => m.ativo !== false);
     if (secaoId) rows = rows.filter((m) => String(m.secao?.id || m.secao_id || '') === String(secaoId));
-    if (search) {
-      rows = rows.filter((m) => normalizeText(m.nome_completo).includes(search) || normalizeText(m.registro_paxtu).includes(search) || normalizeText(m.responsavel?.nome_completo).includes(search) || normalizeText(m.responsavel?.registro_paxtu).includes(search));
-    }
+    if (search) rows = rows.filter((m) => normalizeText(m.nome_completo).includes(search));
     rows.sort((a, b) => (a.ramo?.ordem || 99) - (b.ramo?.ordem || 99) || (a.secao?.nome || '').localeCompare(b.secao?.nome || '', 'pt-BR') || a.nome_completo.localeCompare(b.nome_completo, 'pt-BR'));
     membersCount.textContent = String(rows.length);
 
     if (!rows.length) {
-      membersList.innerHTML = `<div class="empty-members"><div>👥</div><strong>Nenhum jovem encontrado</strong><span>Cadastre o primeiro jovem ou altere os filtros.</span></div>`;
+      membersList.innerHTML = `<div class="empty-members"><div>👥</div><strong>Nenhum jovem encontrado</strong><span>Altere os filtros ou cadastre um novo jovem.</span></div>`;
       return;
     }
 
-    membersList.innerHTML = rows.map((m) => {
-      const phone = m.responsavel?.telefone || '';
-      const phoneHref = normalizePhone(phone);
-      const edit = state.profile?.tipo === 'administrador'
-        ? `<button class="edit-member-button" type="button" data-edit-member="${m.id}">Editar</button>` : '';
-      const regStatus = registrationStatus(m.validade_registro);
-      return `<article class="member-card ${m.ativo ? '' : 'member-inactive'}">
-        <div class="member-main">
-          <div class="member-avatar">${escapeHtml(m.nome_completo.charAt(0).toUpperCase())}</div>
-          <div class="member-copy">
-            <div class="member-name-row"><h3>${escapeHtml(m.nome_completo)}</h3><span class="member-ramo">${escapeHtml(m.secao?.nome || 'Sem seção')}</span></div>
-            <div class="member-details"><span>🪪 Reg. membro: ${escapeHtml(m.registro_paxtu || '—')}</span><span>📆 Validade: ${formatDateBR(m.validade_registro)}</span><span>🎂 ${formatBirth(m.data_nascimento)}</span><span>⚜ Ramo: ${escapeHtml(m.ramo?.nome || '—')}</span><span>👤 ${escapeHtml(m.responsavel?.nome_completo || 'Responsável não informado')}</span><span>🪪 Reg. responsável: ${escapeHtml(m.responsavel?.registro_paxtu || '—')}</span>${phone ? `<a href="tel:${phoneHref}">☎ ${escapeHtml(phone)}</a>` : '<span>☎ —</span>'}</div>
-          </div>
-        </div>
-        <div class="member-side"><span class="registration-badge ${regStatus.cls}">${escapeHtml(regStatus.label)}</span><span class="status-badge ${m.ativo ? 'active' : 'inactive'}">${m.ativo ? 'Ativo' : 'Inativo'}</span>${edit}</div>
-      </article>`;
-    }).join('');
+    const groups = new Map();
+    rows.forEach((m) => {
+      const key = m.secao?.nome || 'Sem seção';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(m);
+    });
 
-    membersList.querySelectorAll('[data-edit-member]').forEach((button) => {
-      button.addEventListener('click', () => openMemberDialog(Number(button.dataset.editMember)));
+    membersList.innerHTML = [...groups.entries()].map(([sectionName, members]) => `
+      <section class="directory-group">
+        <h3 class="directory-group-title">${escapeHtml(sectionName)}</h3>
+        <div class="directory-list">
+          ${members.map((m) => `<button class="directory-row ${m.ativo === false ? 'directory-row-inactive' : ''}" type="button" data-view-member="${m.id}"><span>${escapeHtml(m.nome_completo)}</span><span class="directory-arrow">›</span></button>`).join('')}
+        </div>
+      </section>`).join('');
+
+    membersList.querySelectorAll('[data-view-member]').forEach((button) => {
+      button.addEventListener('click', () => openMemberDetail(Number(button.dataset.viewMember)));
     });
   }
 
   async function loadMembersData() {
     membersMessage.textContent = 'Carregando jovens...';
-    const [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes] = await Promise.all([
+    const [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').eq('ativo', true).order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true),
-      client.from('jovens').select('id,nome_completo,registro_paxtu,validade_registro,data_nascimento,ramo_id,secao_id,ativo').order('nome_completo'),
+      client.from('jovens').select('id,nome_completo,registro_paxtu,validade_registro,data_nascimento,ramo_id,secao_id,ativo,data_acolhida,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta,equipe_id,data_pode_iniciar_caminho,data_inicio_caminho,data_passagem_ramo,data_limite_passagem_ramo').order('nome_completo'),
       client.from('jovem_responsaveis').select('jovem_id,responsavel_id,parentesco,responsavel_principal'),
-      client.from('responsaveis').select('id,nome_completo,registro_paxtu,telefone')
+      client.from('responsaveis').select('id,nome_completo,registro_paxtu,telefone'),
+      client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
+      client.from('equipe_chefes').select('equipe_id,chefe_id,papel'),
+      client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta').order('nome_completo'),
+      client.from('chefe_secoes').select('chefe_id,secao_id'),
+      client.from('fichas_medicas').select('id,jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,responsavel_confirmou,confirmado_em,atualizado_em'),
+      client.from('visitas_proximo_ramo').select('id,jovem_id,secao_destino_id,data_visita,observacao,criado_em').order('data_visita')
     ]);
-    const firstError = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes].find((r) => r.error)?.error;
+    const responses = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes];
+    const firstError = responses.find((r) => r.error)?.error;
     if (firstError) {
       membersMessage.textContent = `Não foi possível carregar os jovens: ${firstError.message}`;
       return false;
@@ -410,6 +552,15 @@
     state.jovens = jovensRes.data || [];
     state.vinculos = vinculosRes.data || [];
     state.responsaveis = responsaveisRes.data || [];
+    state.equipes = equipesRes.data || [];
+    state.equipeChefes = equipeChefesRes.data || [];
+    state.chefes = chefesRes.data || [];
+    state.chefeSecoes = chefeSecoesRes.data || [];
+    state.fichasMedicas = fichasRes.data || [];
+    state.visitasProximoRamo = visitasRes.data || [];
+    state.ownChiefSectionIds = state.profile?.chefe_id
+      ? state.chefeSecoes.filter((row) => Number(row.chefe_id) === Number(state.profile.chefe_id)).map((row) => Number(row.secao_id))
+      : [];
     renderSecaoOptions();
     renderMembers();
     membersMessage.textContent = '';
@@ -429,6 +580,7 @@
     memberId.value = '';
     memberDialogTitle.textContent = 'Novo jovem';
     removeMemberButton.classList.add('hidden');
+    renderMemberTeamOptions('');
     if (jovemId) {
       const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
       if (!m) return;
@@ -439,6 +591,11 @@
       memberBirth.value = m.data_nascimento || '';
       memberRegistrationValidity.value = m.validade_registro || '';
       memberSecao.value = String(m.secao?.id || m.secao_id || '');
+      renderMemberTeamOptions(m.equipe_id || '');
+      memberAcolhida.value = m.data_acolhida || '';
+      memberPromiseLobinho.value = m.data_promessa_lobinho || '';
+      memberPromiseEscoteira.value = m.data_promessa_escoteira || '';
+      memberPromiseAdulta.value = m.data_promessa_adulta || '';
       responsibleName.value = m.responsavel?.nome_completo || '';
       responsibleRegistration.value = m.responsavel?.registro_paxtu || '';
       responsiblePhone.value = m.responsavel?.telefone || '';
@@ -506,6 +663,11 @@
       data_nascimento: payload.birth,
       ramo_id: payload.ramoId,
       secao_id: payload.secaoId,
+      equipe_id: payload.equipeId || null,
+      data_acolhida: payload.acolhida || null,
+      data_promessa_lobinho: payload.promiseLobinho || null,
+      data_promessa_escoteira: payload.promiseEscoteira || null,
+      data_promessa_adulta: payload.promiseAdulta || null,
       ativo: payload.active
     }).select('id').single();
     if (youngError) {
@@ -535,6 +697,11 @@
       data_nascimento: payload.birth,
       ramo_id: payload.ramoId,
       secao_id: payload.secaoId,
+      equipe_id: payload.equipeId || null,
+      data_acolhida: payload.acolhida || null,
+      data_promessa_lobinho: payload.promiseLobinho || null,
+      data_promessa_escoteira: payload.promiseEscoteira || null,
+      data_promessa_adulta: payload.promiseAdulta || null,
       ativo: payload.active
     }).eq('id', jovemId);
     if (youngError) throw youngError;
@@ -608,6 +775,11 @@
       birth: memberBirth.value,
       secaoId: Number(memberSecao.value),
       ramoId: Number(state.secoes.find((s) => Number(s.id) === Number(memberSecao.value))?.ramo_id || 0),
+      equipeId: Number(memberEquipe.value || 0) || null,
+      acolhida: memberAcolhida.value,
+      promiseLobinho: memberPromiseLobinho.value,
+      promiseEscoteira: memberPromiseEscoteira.value,
+      promiseAdulta: memberPromiseAdulta.value,
       responsibleName: responsibleName.value.trim(),
       responsibleRegistration: responsibleRegistration.value.trim(),
       responsiblePhone: responsiblePhone.value.trim(),
@@ -633,6 +805,313 @@
       saveMemberButton.textContent = 'Salvar jovem';
     }
   });
+
+  function closeMemberDetail() {
+    if (memberDetailDialog.open) memberDetailDialog.close();
+  }
+
+  function openMemberDetail(jovemId) {
+    const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
+    if (!m) return;
+    state.selectedMemberDetailId = Number(jovemId);
+    memberDetailTitle.textContent = m.nome_completo;
+    const regStatus = registrationStatus(m.validade_registro);
+    const team = teamForMember(m);
+    const teamLabel = teamLabelForSection(m.secao?.id || m.secao_id);
+    const teamChiefs = team ? teamChiefsFor(team.id) : [];
+    const med = medicalForMember(m.id);
+    const visits = visitsForMember(m.id);
+    const canManage = canManageJourney(m);
+    const phone = m.responsavel?.telefone || '';
+    const phoneHref = normalizePhone(phone);
+
+    const medItems = [];
+    if (med?.tipo_sanguineo) medItems.push(detailValue('Tipo sanguíneo', med.tipo_sanguineo));
+    if (med?.alergias) medItems.push(detailValue('Alergias', med.alergias, 'wide'));
+    if (med?.medicamentos_uso_continuo) medItems.push(detailValue('Medicamentos de uso contínuo', med.medicamentos_uso_continuo, 'wide'));
+    if (med?.restricoes_alimentares) medItems.push(detailValue('Restrições alimentares', med.restricoes_alimentares, 'wide'));
+    if (med?.condicoes_relevantes) medItems.push(detailValue('Condições relevantes', med.condicoes_relevantes, 'wide'));
+    if (med?.necessidades_especiais) medItems.push(detailValue('Necessidades especiais', med.necessidades_especiais, 'wide'));
+    if (med?.plano_saude) medItems.push(detailValue('Plano de saúde', med.plano_saude));
+    if (med?.numero_carteirinha) medItems.push(detailValue('Carteirinha', med.numero_carteirinha));
+    if (med?.contato_emergencia_nome || med?.contato_emergencia_telefone) medItems.push(detailValue('Contato de emergência', [med.contato_emergencia_nome, med.contato_emergencia_telefone].filter(Boolean).join(' • '), 'wide'));
+    if (med?.observacoes) medItems.push(detailValue('Observações', med.observacoes, 'wide'));
+
+    const visitHtml = visits.length
+      ? visits.map((v) => {
+          const destino = state.secoes.find((secao) => Number(secao.id) === Number(v.secao_destino_id));
+          return `<div class="visit-row"><div><strong>${formatDateBR(v.data_visita)}</strong><span>${escapeHtml(destino?.nome || 'Próximo ramo')}</span>${v.observacao ? `<small>${escapeHtml(v.observacao)}</small>` : ''}</div>${canManage ? `<div class="mini-actions"><button type="button" data-edit-visit="${v.id}">Editar</button><button type="button" class="danger-text" data-delete-visit="${v.id}">Apagar</button></div>` : ''}</div>`;
+        }).join('')
+      : '<p class="detail-empty">Nenhuma visita registrada.</p>';
+
+    memberDetailBody.innerHTML = `
+      <div class="detail-status-row"><span class="registration-badge ${regStatus.cls}">${escapeHtml(regStatus.label)}</span>${m.ativo === false ? '<span class="status-badge inactive">Inativo</span>' : ''}</div>
+
+      <section class="detail-card">
+        <h3>Dados pessoais</h3>
+        <div class="detail-grid">
+          ${detailValue('Nascimento', formatDateBR(m.data_nascimento))}
+          ${detailValue('Nº de registro', m.registro_paxtu || '—')}
+          ${detailValue('Seção', m.secao?.nome || '—')}
+          ${detailValue(teamLabel, team?.nome || 'Não definida')}
+          ${detailValue('Data da acolhida', formatDateBR(m.data_acolhida))}
+        </div>
+        ${team ? `<div class="detail-subline"><span>Responsável(is) pela ${escapeHtml(teamLabel.toLocaleLowerCase('pt-BR'))}:</span><strong>${escapeHtml(teamChiefs.length ? teamChiefs.map((c) => c.nome_completo).join(', ') : 'Não definido')}</strong></div>` : ''}
+      </section>
+
+      <section class="detail-card">
+        <h3>Histórico de promessas</h3>
+        <div class="detail-grid">
+          ${detailValue('Promessa de Lobinho', formatDateBR(m.data_promessa_lobinho))}
+          ${detailValue('Promessa Escoteira', formatDateBR(m.data_promessa_escoteira))}
+          ${detailValue('Promessa Adulta', formatDateBR(m.data_promessa_adulta))}
+        </div>
+      </section>
+
+      <section class="detail-card">
+        <h3>Responsável</h3>
+        <div class="detail-grid">
+          ${detailValue('Nome', m.responsavel?.nome_completo || '—', 'wide')}
+          ${detailValue('Nº de registro', m.responsavel?.registro_paxtu || '—')}
+          <div class="detail-value"><span>Telefone</span><strong>${phone ? `<a href="tel:${phoneHref}">${escapeHtml(phone)}</a>` : '—'}</strong></div>
+        </div>
+      </section>
+
+      <section class="detail-card">
+        <div class="detail-card-heading"><h3>Caminho e passagem de ramo</h3>${canManage ? '<button type="button" class="mini-primary" data-edit-journey="1">Editar / limpar datas</button>' : ''}</div>
+        <div class="detail-grid">
+          ${detailValue('Pode iniciar o Caminho', formatDateBR(m.data_pode_iniciar_caminho))}
+          ${detailValue('Início do Caminho', formatDateBR(m.data_inicio_caminho))}
+          ${detailValue('Passagem de ramo', formatDateBR(m.data_passagem_ramo))}
+          ${detailValue('Data limite para passagem', formatDateBR(m.data_limite_passagem_ramo))}
+        </div>
+        <div class="detail-card-heading visits-heading"><h4>Visitas ao próximo ramo</h4>${canManage ? '<button type="button" class="mini-primary" data-add-visit="1">＋ Registrar visita</button>' : ''}</div>
+        <div class="visits-list">${visitHtml}</div>
+      </section>
+
+      <section class="detail-card medical-card">
+        <h3>Ficha médica</h3>
+        <p class="medical-note">Dados sensíveis • consulta conforme as permissões do seu perfil.</p>
+        ${medItems.length ? `<div class="detail-grid">${medItems.join('')}</div>` : '<p class="detail-empty">Ficha médica ainda não cadastrada.</p>'}
+      </section>
+    `;
+
+    memberDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
+    memberDetailBody.querySelector('[data-edit-journey]')?.addEventListener('click', () => openJourneyDialog(m.id));
+    memberDetailBody.querySelector('[data-add-visit]')?.addEventListener('click', () => openVisitDialog(m.id));
+    memberDetailBody.querySelectorAll('[data-edit-visit]').forEach((button) => button.addEventListener('click', () => openVisitDialog(m.id, Number(button.dataset.editVisit))));
+    memberDetailBody.querySelectorAll('[data-delete-visit]').forEach((button) => button.addEventListener('click', () => deleteVisit(Number(button.dataset.deleteVisit), m.id)));
+    if (!memberDetailDialog.open) memberDetailDialog.showModal();
+  }
+
+  function closeChiefDetail() {
+    if (chiefDetailDialog.open) chiefDetailDialog.close();
+  }
+
+  function openChiefDetail(chefeId) {
+    const c = chiefRows().find((item) => Number(item.id) === Number(chefeId));
+    if (!c) return;
+    state.selectedChiefDetailId = Number(chefeId);
+    chiefDetailTitle.textContent = c.nome_completo;
+    const limited = state.profile?.tipo === 'responsavel';
+    const regStatus = registrationStatus(c.validade_registro);
+    const teams = teamsForChief(c.id);
+    const phoneHref = normalizePhone(c.telefone);
+    const functions = c.funcoes.length ? c.funcoes.map((f) => `<span class="detail-chip">${escapeHtml(f)}</span>`).join('') : '<span class="detail-chip muted">Função não informada</span>';
+    const sections = c.secoes.length ? c.secoes.map((secao) => `<span class="detail-chip">${escapeHtml(secao.nome)}</span>`).join('') : '<span class="detail-chip muted">Sem seção</span>';
+    const teamRows = teams.length ? teams.map((team) => {
+      const secao = state.secoes.find((s) => Number(s.id) === Number(team.secao_id));
+      return `<div class="detail-subline"><span>${escapeHtml(teamLabelForSection(team.secao_id))}</span><strong>${escapeHtml(team.nome)}${secao ? ` • ${escapeHtml(secao.nome)}` : ''}</strong></div>`;
+    }).join('') : '<p class="detail-empty">Nenhuma matilha/patrulha vinculada.</p>';
+
+    chiefDetailBody.innerHTML = `
+      ${limited ? '' : `<div class="detail-status-row"><span class="registration-badge ${regStatus.cls}">${escapeHtml(regStatus.label)}</span>${c.ativo === false ? '<span class="status-badge inactive">Inativo</span>' : ''}</div>`}
+      <section class="detail-card">
+        <h3>Funções e seções</h3>
+        <div class="detail-chip-row">${functions}</div>
+        <div class="detail-chip-row">${sections}</div>
+      </section>
+      <section class="detail-card">
+        <h3>Contato</h3>
+        <div class="detail-grid">
+          <div class="detail-value wide"><span>Telefone</span><strong>${c.telefone ? `<a href="tel:${phoneHref}">${escapeHtml(c.telefone)}</a>` : '—'}</strong></div>
+          ${limited ? '' : `${detailValue('Nascimento', formatDateBR(c.data_nascimento))}${detailValue('Nº de registro', c.registro_paxtu || '—')}`}
+        </div>
+      </section>
+      ${limited ? '' : `<section class="detail-card"><h3>Histórico de promessas</h3><div class="detail-grid">${detailValue('Promessa de Lobinho', formatDateBR(c.data_promessa_lobinho))}${detailValue('Promessa Escoteira', formatDateBR(c.data_promessa_escoteira))}${detailValue('Promessa Adulta', formatDateBR(c.data_promessa_adulta))}</div></section>`}
+      ${limited ? '' : `<section class="detail-card"><h3>Matilhas / Patrulhas sob responsabilidade</h3>${teamRows}</section>`}
+    `;
+    chiefDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
+    if (!chiefDetailDialog.open) chiefDetailDialog.showModal();
+  }
+
+  function openJourneyDialog(jovemId) {
+    const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
+    if (!m || !canManageJourney(m)) return;
+    journeyForm.reset();
+    journeyMessage.textContent = '';
+    journeyMemberId.value = String(m.id);
+    journeyMemberName.textContent = m.nome_completo;
+    journeyCanStart.value = m.data_pode_iniciar_caminho || '';
+    journeyStart.value = m.data_inicio_caminho || '';
+    journeyPassage.value = m.data_passagem_ramo || '';
+    journeyLimit.value = m.data_limite_passagem_ramo || '';
+    journeyDialog.showModal();
+  }
+
+  function closeJourneyForm() {
+    if (journeyDialog.open) journeyDialog.close();
+  }
+
+  async function saveJourneyValues(jovemId, values) {
+    const { error } = await client.rpc('salvar_caminho_passagem', {
+      p_jovem_id: jovemId,
+      p_data_pode_iniciar_caminho: values.canStart || null,
+      p_data_inicio_caminho: values.start || null,
+      p_data_passagem_ramo: values.passage || null,
+      p_data_limite_passagem_ramo: values.limit || null
+    });
+    if (error) throw error;
+  }
+
+  async function refreshMemberDetail(jovemId) {
+    await loadMembersData();
+    if (memberDetailDialog.open) openMemberDetail(jovemId);
+  }
+
+  async function clearJourneyDates() {
+    const jovemId = Number(journeyMemberId.value || 0);
+    if (!jovemId) return;
+    if (!window.confirm('Apagar todas as datas de Caminho e passagem deste jovem?')) return;
+    clearJourneyButton.disabled = true;
+    try {
+      await saveJourneyValues(jovemId, { canStart: '', start: '', passage: '', limit: '' });
+      closeJourneyForm();
+      await refreshMemberDetail(jovemId);
+    } catch (error) {
+      journeyMessage.textContent = `Não foi possível apagar as datas: ${error.message}`;
+    } finally {
+      clearJourneyButton.disabled = false;
+    }
+  }
+
+  function renderVisitDestinations(selected = '') {
+    visitDestination.innerHTML = `<option value="">Selecione</option>${sortedSections().map((s) => `<option value="${s.id}">${escapeHtml(s.nome)}</option>`).join('')}`;
+    if (selected) visitDestination.value = String(selected);
+  }
+
+  function openVisitDialog(jovemId, visitaId = null) {
+    const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
+    if (!m || !canManageJourney(m)) return;
+    visitForm.reset();
+    visitMessage.textContent = '';
+    visitMemberId.value = String(jovemId);
+    visitId.value = '';
+    visitDialogTitle.textContent = 'Nova visita';
+    deleteVisitButton.classList.add('hidden');
+    renderVisitDestinations('');
+    if (visitaId) {
+      const visita = state.visitasProximoRamo.find((v) => Number(v.id) === Number(visitaId));
+      if (!visita) return;
+      visitId.value = String(visita.id);
+      visitDialogTitle.textContent = 'Editar visita';
+      visitDate.value = visita.data_visita || '';
+      renderVisitDestinations(visita.secao_destino_id || '');
+      visitObservation.value = visita.observacao || '';
+      deleteVisitButton.classList.remove('hidden');
+    }
+    visitDialog.showModal();
+  }
+
+  function closeVisitForm() {
+    if (visitDialog.open) visitDialog.close();
+  }
+
+  async function deleteVisit(visitaId, jovemId = null) {
+    const visita = state.visitasProximoRamo.find((v) => Number(v.id) === Number(visitaId));
+    const targetMemberId = Number(jovemId || visita?.jovem_id || visitMemberId.value || 0);
+    if (!visitaId || !targetMemberId) return;
+    if (!window.confirm('Apagar este registro de visita ao próximo ramo?')) return;
+    const { error } = await client.rpc('excluir_visita_proximo_ramo', { p_visita_id: Number(visitaId) });
+    if (error) {
+      visitMessage.textContent = `Não foi possível apagar a visita: ${error.message}`;
+      return;
+    }
+    closeVisitForm();
+    await refreshMemberDetail(targetMemberId);
+  }
+
+  function eligibleTeamSections() {
+    return sortedSections().filter((s) => sectionSupportsTeam(s.id));
+  }
+
+  function resetTeamForm() {
+    teamForm.reset();
+    teamId.value = '';
+    teamFormMessage.textContent = '';
+    deleteTeamButton.classList.add('hidden');
+    teamSection.innerHTML = `<option value="">Selecione</option>${eligibleTeamSections().map((s) => `<option value="${s.id}">${escapeHtml(s.nome)} — ${escapeHtml(teamLabelForSection(s.id))}</option>`).join('')}`;
+    renderTeamChiefOptions();
+  }
+
+  function renderTeamChiefOptions(selectedIds = []) {
+    const secaoId = Number(teamSection.value || 0);
+    const allowedChiefIds = state.chefeSecoes.filter((row) => Number(row.secao_id) === secaoId).map((row) => Number(row.chefe_id));
+    const chiefs = state.chefes.filter((c) => c.ativo !== false && allowedChiefIds.includes(Number(c.id)));
+    const selected = new Set(selectedIds.map(Number));
+    teamChiefOptions.innerHTML = chiefs.length
+      ? chiefs.map((c) => `<label class="section-check"><input type="checkbox" value="${c.id}" ${selected.has(Number(c.id)) ? 'checked' : ''}/><span><strong>${escapeHtml(c.nome_completo)}</strong><small>Chefia da seção</small></span></label>`).join('')
+      : '<p class="detail-empty">Nenhum chefe/assistente está vinculado a esta seção.</p>';
+  }
+
+  function renderTeamList() {
+    const teams = [...state.equipes].sort((a, b) => {
+      const sa = state.secoes.find((s) => Number(s.id) === Number(a.secao_id));
+      const sb = state.secoes.find((s) => Number(s.id) === Number(b.secao_id));
+      return (sa?.nome || '').localeCompare(sb?.nome || '', 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+    teamList.innerHTML = teams.length ? teams.map((team) => {
+      const secao = state.secoes.find((s) => Number(s.id) === Number(team.secao_id));
+      const chiefs = teamChiefsFor(team.id);
+      return `<button class="team-list-row" type="button" data-edit-team="${team.id}"><div><strong>${escapeHtml(team.nome)}</strong><span>${escapeHtml(teamLabelForSection(team.secao_id))} • ${escapeHtml(secao?.nome || '')}</span><small>${escapeHtml(chiefs.length ? chiefs.map((c) => c.nome_completo).join(', ') : 'Sem responsável definido')}</small></div><span>›</span></button>`;
+    }).join('') : '<p class="detail-empty">Nenhuma matilha ou patrulha cadastrada.</p>';
+    teamList.querySelectorAll('[data-edit-team]').forEach((button) => button.addEventListener('click', () => editTeam(Number(button.dataset.editTeam))));
+  }
+
+  function openTeamManager() {
+    if (state.profile?.tipo !== 'administrador') return;
+    resetTeamForm();
+    renderTeamList();
+    teamDialog.showModal();
+  }
+
+  function closeTeamManager() {
+    if (teamDialog.open) teamDialog.close();
+  }
+
+  function editTeam(id) {
+    const team = state.equipes.find((e) => Number(e.id) === Number(id));
+    if (!team) return;
+    teamId.value = String(team.id);
+    teamSection.value = String(team.secao_id);
+    teamName.value = team.nome || '';
+    const selectedChiefIds = state.equipeChefes.filter((row) => Number(row.equipe_id) === Number(team.id)).map((row) => Number(row.chefe_id));
+    renderTeamChiefOptions(selectedChiefIds);
+    deleteTeamButton.classList.remove('hidden');
+    teamFormMessage.textContent = '';
+  }
+
+  async function reloadTeamManagerData() {
+    const [equipesRes, equipeChefesRes] = await Promise.all([
+      client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
+      client.from('equipe_chefes').select('equipe_id,chefe_id,papel')
+    ]);
+    if (equipesRes.error) throw equipesRes.error;
+    if (equipeChefesRes.error) throw equipeChefesRes.error;
+    state.equipes = equipesRes.data || [];
+    state.equipeChefes = equipeChefesRes.data || [];
+    renderTeamList();
+  }
 
   function chiefFunctionsFor(chefeId) {
     return state.chefeFuncoes
@@ -682,58 +1161,33 @@
     const canShowInactive = state.profile?.tipo === 'administrador' && chiefShowInactive.checked;
     if (!canShowInactive) rows = rows.filter((c) => c.ativo !== false);
     if (secaoId) rows = rows.filter((c) => c.secoes.some((s) => String(s.id) === String(secaoId)));
-    if (search) {
-      rows = rows.filter((c) => {
-        const haystack = [c.nome_completo, c.registro_paxtu, c.telefone, ...c.funcoes, ...c.secoes.map((s) => s.nome), ...c.secoes.map((s) => s.ramo?.nome || '')].join(' ');
-        return normalizeText(haystack).includes(search);
-      });
-    }
+    if (search) rows = rows.filter((c) => normalizeText(c.nome_completo).includes(search));
     rows.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo, 'pt-BR'));
     chiefsCount.textContent = String(rows.length);
 
     if (!rows.length) {
-      chiefsList.innerHTML = `<div class="empty-members"><div>🧑‍🏫</div><strong>Nenhum chefe encontrado</strong><span>${state.profile?.tipo === 'administrador' ? 'Cadastre o primeiro chefe ou altere os filtros.' : 'Não há chefia disponível para este filtro.'}</span></div>`;
+      chiefsList.innerHTML = `<div class="empty-members"><div>🧑‍🏫</div><strong>Nenhum chefe encontrado</strong><span>Altere os filtros ou cadastre um novo chefe.</span></div>`;
       return;
     }
 
-    const adminOrChief = state.profile?.tipo !== 'responsavel';
-    chiefsList.innerHTML = rows.map((c) => {
-      const regStatus = registrationStatus(c.validade_registro);
-      const phoneHref = normalizePhone(c.telefone);
-      const functions = c.funcoes.length ? c.funcoes.map((f) => `<span class="function-chip">${escapeHtml(f)}</span>`).join('') : '<span class="function-chip muted">Função não informada</span>';
-      const sections = c.secoes.length ? c.secoes.map((secao) => `<span class="section-chip">${escapeHtml(secao.nome)}${secao.ramo?.nome ? `<small>${escapeHtml(secao.ramo.nome)}</small>` : ''}</span>`).join('') : '<span class="section-chip">Sem seção</span>';
-      const adminDetails = adminOrChief ? `<div class="member-details"><span>🪪 Reg.: ${escapeHtml(c.registro_paxtu || '—')}</span><span>📆 Validade: ${formatDateBR(c.validade_registro)}</span><span>🎂 Nascimento: ${formatBirth(c.data_nascimento)}</span></div>` : '';
-      const edit = state.profile?.tipo === 'administrador' ? `<button class="edit-member-button" type="button" data-edit-chief="${c.id}">Editar</button>` : '';
-      return `<article class="member-card chief-card ${c.ativo ? '' : 'member-inactive'}">
-        <div class="member-main">
-          <div class="member-avatar chief-avatar">${escapeHtml(c.nome_completo.charAt(0).toUpperCase())}</div>
-          <div class="member-copy">
-            <div class="member-name-row"><h3>${escapeHtml(c.nome_completo)}</h3></div>
-            <div class="chief-chip-row">${functions}</div>
-            <div class="chief-chip-row">${sections}</div>
-            ${adminDetails}
-            <div class="chief-contact">${c.telefone ? `<a href="tel:${phoneHref}">☎ ${escapeHtml(c.telefone)}</a>` : '<span>☎ Telefone não informado</span>'}</div>
-          </div>
-        </div>
-        <div class="member-side">${adminOrChief ? `<span class="registration-badge ${regStatus.cls}">${escapeHtml(regStatus.label)}</span>` : ''}<span class="status-badge ${c.ativo ? 'active' : 'inactive'}">${c.ativo ? 'Ativo' : 'Inativo'}</span>${edit}</div>
-      </article>`;
-    }).join('');
-
-    chiefsList.querySelectorAll('[data-edit-chief]').forEach((button) => {
-      button.addEventListener('click', () => openChiefDialog(Number(button.dataset.editChief)));
+    chiefsList.innerHTML = `<div class="directory-list">${rows.map((c) => `<button class="directory-row ${c.ativo === false ? 'directory-row-inactive' : ''}" type="button" data-view-chief="${c.id}"><span>${escapeHtml(c.nome_completo)}</span><span class="directory-arrow">›</span></button>`).join('')}</div>`;
+    chiefsList.querySelectorAll('[data-view-chief]').forEach((button) => {
+      button.addEventListener('click', () => openChiefDetail(Number(button.dataset.viewChief)));
     });
   }
 
   async function loadChiefsData() {
     chiefsMessage.textContent = 'Carregando chefia...';
-    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes] = await Promise.all([
+    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').order('nome'),
-      client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo').order('nome_completo'),
+      client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta').order('nome_completo'),
       client.from('chefe_funcoes').select('id,chefe_id,funcao'),
-      client.from('chefe_secoes').select('chefe_id,secao_id')
+      client.from('chefe_secoes').select('chefe_id,secao_id'),
+      client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
+      client.from('equipe_chefes').select('equipe_id,chefe_id,papel')
     ]);
-    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes].find((r) => r.error)?.error;
+    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes].find((r) => r.error)?.error;
     if (firstError) {
       chiefsMessage.textContent = `Não foi possível carregar a chefia: ${firstError.message}`;
       return;
@@ -743,6 +1197,8 @@
     state.chefes = chefesRes.data || [];
     state.chefeFuncoes = funcoesRes.data || [];
     state.chefeSecoes = secoesChefesRes.data || [];
+    state.equipes = equipesRes.data || [];
+    state.equipeChefes = equipeChefesRes.data || [];
     renderChiefSectionSelectors();
     renderChiefs();
     chiefsMessage.textContent = '';
@@ -789,6 +1245,9 @@
       chiefRegistrationValidity.value = c.validade_registro || '';
       chiefBirth.value = c.data_nascimento || '';
       chiefPhone.value = c.telefone || '';
+      chiefPromiseLobinho.value = c.data_promessa_lobinho || '';
+      chiefPromiseEscoteira.value = c.data_promessa_escoteira || '';
+      chiefPromiseAdulta.value = c.data_promessa_adulta || '';
       chiefFunctions.value = c.funcoes.join('\n');
       chiefActive.checked = Boolean(c.ativo);
       const selected = new Set(c.secoes.map((s) => Number(s.id)));
@@ -817,6 +1276,9 @@
       data_nascimento: payload.birth,
       validade_registro: payload.validity,
       telefone: payload.phone,
+      data_promessa_lobinho: payload.promiseLobinho || null,
+      data_promessa_escoteira: payload.promiseEscoteira || null,
+      data_promessa_adulta: payload.promiseAdulta || null,
       ativo: payload.active
     }).select('id').single();
     if (error) throw error;
@@ -842,6 +1304,9 @@
       data_nascimento: payload.birth,
       validade_registro: payload.validity,
       telefone: payload.phone,
+      data_promessa_lobinho: payload.promiseLobinho || null,
+      data_promessa_escoteira: payload.promiseEscoteira || null,
+      data_promessa_adulta: payload.promiseAdulta || null,
       ativo: payload.active,
       atualizado_em: new Date().toISOString()
     }).eq('id', id);
@@ -901,12 +1366,15 @@
       validity: chiefRegistrationValidity.value,
       birth: chiefBirth.value,
       phone: chiefPhone.value.trim(),
+      promiseLobinho: chiefPromiseLobinho.value,
+      promiseEscoteira: chiefPromiseEscoteira.value,
+      promiseAdulta: chiefPromiseAdulta.value,
       functions: parsedChiefFunctions(),
       sectionIds: selectedChiefSectionIds(),
       active: chiefActive.checked
     };
-    if (!payload.name || !payload.registration || !payload.validity || !payload.birth || !normalizePhone(payload.phone) || !payload.functions.length || !payload.sectionIds.length) {
-      chiefFormMessage.textContent = 'Preencha nome, registro, validade, nascimento, telefone, ao menos uma função e uma seção.';
+    if (!payload.name || !payload.registration || !payload.validity || !payload.birth || !normalizePhone(payload.phone) || !payload.functions.length) {
+      chiefFormMessage.textContent = 'Preencha nome, registro, validade, nascimento, telefone e ao menos uma função.';
       return;
     }
     saveChiefButton.disabled = true;
@@ -926,6 +1394,134 @@
       saveChiefButton.textContent = 'Salvar chefe';
     }
   });
+
+  journeyForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const jovemId = Number(journeyMemberId.value || 0);
+    if (!jovemId) return;
+    journeyMessage.textContent = '';
+    saveJourneyButton.disabled = true;
+    saveJourneyButton.textContent = 'Salvando...';
+    try {
+      await saveJourneyValues(jovemId, {
+        canStart: journeyCanStart.value,
+        start: journeyStart.value,
+        passage: journeyPassage.value,
+        limit: journeyLimit.value
+      });
+      closeJourneyForm();
+      await refreshMemberDetail(jovemId);
+    } catch (error) {
+      journeyMessage.textContent = `Não foi possível salvar: ${error.message}`;
+    } finally {
+      saveJourneyButton.disabled = false;
+      saveJourneyButton.textContent = 'Salvar';
+    }
+  });
+
+  visitForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const jovemId = Number(visitMemberId.value || 0);
+    const destinoId = Number(visitDestination.value || 0);
+    if (!jovemId || !visitDate.value || !destinoId) {
+      visitMessage.textContent = 'Informe a data e a seção de destino.';
+      return;
+    }
+    visitMessage.textContent = '';
+    saveVisitButton.disabled = true;
+    saveVisitButton.textContent = 'Salvando...';
+    try {
+      if (visitId.value) {
+        const { error } = await client.rpc('atualizar_visita_proximo_ramo', {
+          p_visita_id: Number(visitId.value),
+          p_secao_destino_id: destinoId,
+          p_data_visita: visitDate.value,
+          p_observacao: visitObservation.value.trim() || null
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await client.rpc('registrar_visita_proximo_ramo', {
+          p_jovem_id: jovemId,
+          p_secao_destino_id: destinoId,
+          p_data_visita: visitDate.value,
+          p_observacao: visitObservation.value.trim() || null
+        });
+        if (error) throw error;
+      }
+      closeVisitForm();
+      await refreshMemberDetail(jovemId);
+    } catch (error) {
+      visitMessage.textContent = `Não foi possível salvar: ${error.message}`;
+    } finally {
+      saveVisitButton.disabled = false;
+      saveVisitButton.textContent = 'Salvar visita';
+    }
+  });
+
+  teamForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.profile?.tipo !== 'administrador') return;
+    const secaoId = Number(teamSection.value || 0);
+    const nome = teamName.value.trim();
+    const chiefIds = [...teamChiefOptions.querySelectorAll('input[type="checkbox"]:checked')].map((el) => Number(el.value));
+    if (!secaoId || !nome) {
+      teamFormMessage.textContent = 'Informe a seção e o nome da matilha/patrulha.';
+      return;
+    }
+    if (!chiefIds.length) {
+      teamFormMessage.textContent = 'Selecione ao menos um chefe/assistente responsável.';
+      return;
+    }
+    const tipo = teamLabelForSection(secaoId) === 'Matilha' ? 'matilha' : 'patrulha';
+    teamFormMessage.textContent = '';
+    saveTeamButton.disabled = true;
+    saveTeamButton.textContent = 'Salvando...';
+    try {
+      let id = Number(teamId.value || 0);
+      if (id) {
+        const { error } = await client.from('equipes').update({ secao_id: secaoId, nome, tipo, atualizado_em: new Date().toISOString() }).eq('id', id);
+        if (error) throw error;
+        const { error: delError } = await client.from('equipe_chefes').delete().eq('equipe_id', id);
+        if (delError) throw delError;
+      } else {
+        const { data, error } = await client.from('equipes').insert({ secao_id: secaoId, nome, tipo, ativo: true }).select('id').single();
+        if (error) throw error;
+        id = Number(data.id);
+      }
+      const { error: chiefError } = await client.from('equipe_chefes').insert(chiefIds.map((chefe_id) => ({ equipe_id: id, chefe_id, papel: 'Responsável' })));
+      if (chiefError) throw chiefError;
+      await loadMembersData();
+      resetTeamForm();
+      renderTeamList();
+      teamFormMessage.textContent = 'Equipe salva com sucesso.';
+    } catch (error) {
+      teamFormMessage.textContent = `Não foi possível salvar: ${error.message}`;
+    } finally {
+      saveTeamButton.disabled = false;
+      saveTeamButton.textContent = 'Salvar equipe';
+    }
+  });
+
+  async function deleteSelectedTeam() {
+    if (state.profile?.tipo !== 'administrador' || !teamId.value) return;
+    const id = Number(teamId.value);
+    const team = state.equipes.find((e) => Number(e.id) === id);
+    if (!team) return;
+    if (!window.confirm(`Apagar ${teamLabelForSection(team.secao_id).toLocaleLowerCase('pt-BR')} ${team.nome}?\n\nOs jovens vinculados ficarão sem matilha/patrulha definida.`)) return;
+    deleteTeamButton.disabled = true;
+    try {
+      const { error } = await client.from('equipes').delete().eq('id', id);
+      if (error) throw error;
+      await loadMembersData();
+      resetTeamForm();
+      renderTeamList();
+      teamFormMessage.textContent = 'Equipe apagada com sucesso.';
+    } catch (error) {
+      teamFormMessage.textContent = `Não foi possível apagar: ${error.message}`;
+    } finally {
+      deleteTeamButton.disabled = false;
+    }
+  }
 
   function localTodayValue() {
     const now = new Date();
@@ -1466,6 +2062,8 @@
   accessRefreshButton.addEventListener('click', loadAccessReport);
   accessSearch.addEventListener('input', renderAccessRows);
   newMemberButton.addEventListener('click', () => openMemberDialog());
+  teamManagerButton.addEventListener('click', openTeamManager);
+  memberSecao.addEventListener('change', () => renderMemberTeamOptions(''));
   closeMemberDialog.addEventListener('click', closeMemberForm);
   cancelMemberButton.addEventListener('click', closeMemberForm);
   removeMemberButton.addEventListener('click', toggleMemberRemoved);
@@ -1482,6 +2080,45 @@
   memberSecaoFilter.addEventListener('change', renderMembers);
   memberDialog.addEventListener('click', (event) => {
     if (event.target === memberDialog) closeMemberForm();
+  });
+
+  closeMemberDetailDialog.addEventListener('click', closeMemberDetail);
+  memberDetailDialog.addEventListener('click', (event) => { if (event.target === memberDetailDialog) closeMemberDetail(); });
+  memberDetailEditButton.addEventListener('click', () => {
+    const id = state.selectedMemberDetailId;
+    closeMemberDetail();
+    if (id) openMemberDialog(id);
+  });
+
+  closeChiefDetailDialog.addEventListener('click', closeChiefDetail);
+  chiefDetailDialog.addEventListener('click', (event) => { if (event.target === chiefDetailDialog) closeChiefDetail(); });
+  chiefDetailEditButton.addEventListener('click', () => {
+    const id = state.selectedChiefDetailId;
+    closeChiefDetail();
+    if (id) openChiefDialog(id);
+  });
+
+  closeJourneyDialog.addEventListener('click', closeJourneyForm);
+  cancelJourneyButton.addEventListener('click', closeJourneyForm);
+  clearJourneyButton.addEventListener('click', clearJourneyDates);
+  journeyDialog.addEventListener('click', (event) => { if (event.target === journeyDialog) closeJourneyForm(); });
+
+  closeVisitDialog.addEventListener('click', closeVisitForm);
+  cancelVisitButton.addEventListener('click', closeVisitForm);
+  deleteVisitButton.addEventListener('click', () => deleteVisit(Number(visitId.value || 0), Number(visitMemberId.value || 0)));
+  visitDialog.addEventListener('click', (event) => { if (event.target === visitDialog) closeVisitForm(); });
+
+  closeTeamDialog.addEventListener('click', closeTeamManager);
+  resetTeamButton.addEventListener('click', resetTeamForm);
+  deleteTeamButton.addEventListener('click', deleteSelectedTeam);
+  teamSection.addEventListener('change', () => renderTeamChiefOptions());
+  teamDialog.addEventListener('click', (event) => { if (event.target === teamDialog) closeTeamManager(); });
+
+  document.querySelectorAll('[data-clear-target]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = $(button.dataset.clearTarget);
+      if (target) target.value = '';
+    });
   });
 
   client.auth.onAuthStateChange((event, session) => {
