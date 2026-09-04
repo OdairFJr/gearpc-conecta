@@ -596,7 +596,7 @@
       client.from('equipe_chefes').select('equipe_id,chefe_id,papel'),
       client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta').order('nome_completo'),
       client.from('chefe_secoes').select('chefe_id,secao_id'),
-      client.from('fichas_medicas').select('id,jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,responsavel_confirmou,confirmado_em,atualizado_em'),
+      client.from('fichas_medicas').select('id,jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,responsavel_confirmou,confirmado_em,atualizado_em,dados_completos'),
       client.from('visitas_proximo_ramo').select('id,jovem_id,secao_destino_id,data_visita,observacao,criado_em').order('data_visita')
     ]);
     const responses = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes];
@@ -963,6 +963,243 @@
     if (!memberDetailDialog.open) memberDetailDialog.showModal();
   }
 
+
+  const medicalSummaryGroups = {
+    allergies: [
+      ['alergia_picada_inseto', 'Picada de inseto'], ['alergia_plantas', 'Plantas'], ['alergia_acaros', 'Ácaros'],
+      ['alergia_fungos', 'Fungos'], ['alergia_medicamentos', 'Medicamentos'], ['alergia_outro', 'Outro'], ['alergia_alimentos', 'Alimentos']
+    ],
+    equipment: [
+      ['equipamento_oculos', 'Óculos'], ['equipamento_lentes_contato', 'Lentes de contato'], ['equipamento_aparelho_dentario', 'Aparelho dentário'],
+      ['equipamento_sonda', 'Sonda'], ['equipamento_marcapasso', 'Marca-passo'], ['equipamento_aparelho_audicao', 'Aparelho de audição'],
+      ['equipamento_bomba_insulina', 'Bomba de insulina'], ['equipamento_outros', 'Outros equipamentos']
+    ],
+    physical: [
+      ['saude_asma_bronquite', 'Asma ou bronquite'], ['saude_rinite_sinusite', 'Rinite ou sinusite'], ['saude_hipertensao', 'Hipertensão'],
+      ['saude_diabetes', 'Diabetes'], ['saude_convulsoes_epilepsia', 'Convulsões ou epilepsia'], ['saude_dermatologicos', 'Problemas dermatológicos'],
+      ['saude_cardiacos', 'Problemas cardíacos'], ['saude_reumatologicos', 'Problemas reumatológicos'], ['saude_hematologicos', 'Problemas hematológicos'],
+      ['saude_outros', 'Outros problemas']
+    ],
+    disabilities: [
+      ['deficiencia_fisica', 'Deficiência física'], ['deficiencia_mental', 'Deficiência mental'], ['deficiencia_auditiva', 'Deficiência auditiva'],
+      ['deficiencia_intelectual', 'Deficiência intelectual'], ['deficiencia_autismo', 'Autismo']
+    ],
+    mental: [
+      ['mental_transtorno', 'Transtorno'], ['mental_medicacao', 'Medicação para transtorno'], ['mental_psicologo', 'Acompanhamento com psicólogo'],
+      ['mental_medico', 'Acompanhamento com médico'], ['mental_outro_profissional', 'Acompanhamento com outro profissional']
+    ],
+    behavior: [
+      ['comp_autoagressao', 'Crises com autoagressão'], ['comp_agressao_outros', 'Crises com agressão a outras pessoas'],
+      ['comp_agitacao', 'Agitação psicomotora'], ['comp_instrucao_verbal', 'Dificuldade de obedecer instruções verbais'], ['comp_fugas', 'Tendência a fugas'],
+      ['comp_autodestrutivo', 'Comportamento auto-destrutivo'], ['comp_ansiedade_panico', 'Crises de ansiedade ou pânico'],
+      ['comp_comunicacao', 'Dificuldade de comunicação'], ['comp_alimentares', 'Dificuldades alimentares'], ['comp_sono', 'Dificuldades de sono']
+    ]
+  };
+
+  function fullMedicalData(med) {
+    const data = med?.dados_completos;
+    return data && typeof data === 'object' && !Array.isArray(data) ? { ...data } : {};
+  }
+
+  function parseBloodType(value) {
+    const raw = String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!raw) return { abo: '', rh: '' };
+    const rh = raw.endsWith('+') ? '+' : (raw.endsWith('-') ? '-' : '');
+    const abo = rh ? raw.slice(0, -1) : raw;
+    return { abo: ['A', 'B', 'AB', 'O'].includes(abo) ? abo : '', rh };
+  }
+
+  function fillFullMedicalFields(dialog, data) {
+    if (!dialog) return;
+    dialog.querySelectorAll('[data-full-key]').forEach((field) => {
+      const key = field.dataset.fullKey;
+      const value = data?.[key];
+      if (field.type === 'checkbox') field.checked = Boolean(value);
+      else if (field.type === 'radio') field.checked = String(value ?? '') === field.value;
+      else field.value = value ?? '';
+    });
+  }
+
+  function collectFullMedicalFields(dialog) {
+    const data = {};
+    if (!dialog) return data;
+    dialog.querySelectorAll('[data-full-key]').forEach((field) => {
+      const key = field.dataset.fullKey;
+      if (!key) return;
+      if (field.type === 'checkbox') data[key] = field.checked;
+      else if (field.type === 'radio') { if (field.checked) data[key] = field.value; }
+      else data[key] = field.value.trim();
+    });
+    return data;
+  }
+
+  function medicationRowHtml(item = {}, index = 0) {
+    return `<div class="medical-medication-row" data-medication-row>
+      <label>Nome do medicamento<input type="text" data-med-name maxlength="160" value="${escapeHtml(item.nome || '')}" /></label>
+      <label>Uso contínuo<select data-med-cont><option value="">Não informado</option><option value="sim" ${item.uso_continuo === true || item.uso_continuo === 'sim' ? 'selected' : ''}>Sim</option><option value="nao" ${item.uso_continuo === false || item.uso_continuo === 'nao' ? 'selected' : ''}>Não</option></select></label>
+      <label class="wide">Informações<input type="text" data-med-info maxlength="240" value="${escapeHtml(item.informacoes || '')}" placeholder="Dose, horário ou orientação" /></label>
+      <button type="button" class="danger-text medical-remove-medication" data-remove-medication aria-label="Apagar medicamento">Apagar</button>
+    </div>`;
+  }
+
+  function renderMedicationRows(prefix, medications = []) {
+    const container = $(`${prefix}MedicationsList`);
+    if (!container) return;
+    const rows = Array.isArray(medications) && medications.length ? medications : [{}];
+    container.innerHTML = rows.map((item, index) => medicationRowHtml(item, index)).join('');
+    container.querySelectorAll('[data-remove-medication]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const row = button.closest('[data-medication-row]');
+        if (!row) return;
+        if (container.querySelectorAll('[data-medication-row]').length === 1) {
+          row.querySelectorAll('input').forEach((input) => { input.value = ''; });
+          row.querySelectorAll('select').forEach((select) => { select.value = ''; });
+        } else row.remove();
+      });
+    });
+  }
+
+  function addMedicationRow(prefix) {
+    const container = $(`${prefix}MedicationsList`);
+    if (!container) return;
+    container.insertAdjacentHTML('beforeend', medicationRowHtml({}, container.querySelectorAll('[data-medication-row]').length));
+    const row = container.lastElementChild;
+    row.querySelector('[data-remove-medication]')?.addEventListener('click', () => row.remove());
+    row.querySelector('[data-med-name]')?.focus();
+  }
+
+  function collectMedicationRows(prefix) {
+    const container = $(`${prefix}MedicationsList`);
+    if (!container) return [];
+    return [...container.querySelectorAll('[data-medication-row]')].map((row) => {
+      const nome = row.querySelector('[data-med-name]')?.value.trim() || '';
+      const cont = row.querySelector('[data-med-cont]')?.value || '';
+      const informacoes = row.querySelector('[data-med-info]')?.value.trim() || '';
+      return { nome, uso_continuo: cont === 'sim' ? true : (cont === 'nao' ? false : null), informacoes };
+    }).filter((item) => item.nome || item.informacoes || item.uso_continuo !== null);
+  }
+
+  function compactUnique(parts) {
+    const out = [];
+    const seen = new Set();
+    parts.flatMap((part) => Array.isArray(part) ? part : [part]).forEach((part) => {
+      const value = String(part || '').trim();
+      if (!value) return;
+      const key = normalizeText(value);
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(value);
+    });
+    return out.join('; ') || null;
+  }
+
+  function checkedMedicalItems(data, definitions) {
+    return definitions.flatMap(([key, label]) => {
+      if (!data?.[`${key}_marcado`]) return [];
+      const detail = String(data?.[key] || '').trim();
+      return [detail ? `${label}: ${detail}` : label];
+    });
+  }
+
+  function buildMedicalSummary(data, manual) {
+    const allergies = compactUnique([checkedMedicalItems(data, medicalSummaryGroups.allergies), manual.allergies]);
+    const meds = Array.isArray(data.medicamentos) ? data.medicamentos.map((m) => {
+      const cont = m.uso_continuo === true ? 'uso contínuo' : (m.uso_continuo === false ? 'não contínuo' : 'uso não informado');
+      return compactUnique([m.nome, cont, m.informacoes]);
+    }).filter(Boolean) : [];
+    const restriction = data.restricao_alimentar_marcado ? (data.restricao_alimentar ? `Restrição alimentar: ${data.restricao_alimentar}` : 'Restrição alimentar') : null;
+    const conditions = [
+      data.impedimento_fisico_marcado ? (data.impedimento_fisico ? `Impedimento físico: ${data.impedimento_fisico}` : 'Impedimento físico') : null,
+      data.sonambulo_marcado ? 'Sonâmbulo' : null,
+      checkedMedicalItems(data, medicalSummaryGroups.physical),
+      checkedMedicalItems(data, medicalSummaryGroups.mental),
+      checkedMedicalItems(data, medicalSummaryGroups.behavior),
+      manual.conditions
+    ];
+    const needs = [checkedMedicalItems(data, medicalSummaryGroups.equipment), checkedMedicalItems(data, medicalSummaryGroups.disabilities), manual.specialNeeds];
+    const observationParts = [manual.observations];
+    if (data.sabe_nadar_marcado) observationParts.push('Sabe nadar');
+    if (data.emergencia_conduta === 'aguardar_pais') observationParts.push('Emergência: aguardar pais/responsáveis');
+    if (data.emergencia_conduta === 'aceita_decisoes_medicas') observationParts.push('Emergência: aceita decisões médicas');
+    if (data.avisar_emergencia === 'pais') observationParts.push('Avisar pais/responsáveis em emergência');
+    if (data.avisar_emergencia === 'outro' && data.emergencia_outro) observationParts.push(`Avisar em emergência: ${data.emergencia_outro}`);
+    return {
+      alergias: allergies,
+      medicamentos_uso_continuo: compactUnique([meds, manual.medications]),
+      restricoes_alimentares: compactUnique([restriction, manual.foodRestrictions]),
+      condicoes_relevantes: compactUnique(conditions),
+      necessidades_especiais: compactUnique(needs),
+      observacoes: compactUnique(observationParts)
+    };
+  }
+
+  function prefillMarkedOptions(out, summary, options) {
+    const pieces = String(summary || '').split(';').map((part) => part.trim()).filter(Boolean);
+    options.forEach(([key, aliases]) => {
+      if (out[`${key}_marcado`] === true) return;
+      const aliasList = Array.isArray(aliases) ? aliases : [aliases];
+      for (const piece of pieces) {
+        const normalizedPiece = normalizeText(piece);
+        const matched = aliasList.find((alias) => normalizedPiece.startsWith(normalizeText(alias)));
+        if (!matched) continue;
+        out[`${key}_marcado`] = true;
+        const colon = piece.indexOf(':');
+        if (!out[key] && colon >= 0) out[key] = piece.slice(colon + 1).trim();
+        break;
+      }
+    });
+  }
+
+  function applyMedicalFallbacks(data, med) {
+    const out = { ...data };
+    const blood = parseBloodType(med?.tipo_sanguineo);
+    if (!out.fator_rh && blood.rh) out.fator_rh = blood.rh;
+    if (!out.telefone_emergencia && med?.contato_emergencia_telefone) out.telefone_emergencia = med.contato_emergencia_telefone;
+    if (!out.emergencia_outro && med?.contato_emergencia_nome && med.contato_emergencia_nome !== 'Pais/Responsáveis') out.emergencia_outro = med.contato_emergencia_nome;
+    if (!out.avisar_emergencia && med?.contato_emergencia_nome === 'Pais/Responsáveis') out.avisar_emergencia = 'pais';
+
+    if (med?.restricoes_alimentares && out.restricao_alimentar_marcado == null) {
+      out.restricao_alimentar_marcado = true;
+      out.restricao_alimentar = med.restricoes_alimentares;
+    }
+    prefillMarkedOptions(out, med?.alergias, [
+      ['alergia_picada_inseto', 'Picada de inseto'], ['alergia_plantas', 'Plantas'], ['alergia_acaros', 'Ácaros'], ['alergia_fungos', 'Fungos'],
+      ['alergia_medicamentos', 'Medicamentos'], ['alergia_outro', 'Outro'], ['alergia_alimentos', 'Alimentos']
+    ]);
+    prefillMarkedOptions(out, med?.necessidades_especiais, [
+      ['equipamento_oculos', 'Óculos'], ['equipamento_lentes_contato', 'Lentes de contato'], ['equipamento_aparelho_dentario', 'Aparelho dentário'],
+      ['equipamento_sonda', 'Sonda'], ['equipamento_marcapasso', 'Marca-passo'], ['equipamento_aparelho_audicao', 'Aparelho de audição'],
+      ['equipamento_bomba_insulina', 'Bomba de insulina'], ['equipamento_outros', 'Outros'],
+      ['deficiencia_fisica', ['Deficiência física', 'Fisica', 'Física']], ['deficiencia_mental', ['Deficiência mental', 'Mental']],
+      ['deficiencia_auditiva', ['Deficiência auditiva', 'Auditiva']], ['deficiencia_intelectual', ['Deficiência intelectual', 'Intelectual']],
+      ['deficiencia_autismo', 'Autismo']
+    ]);
+    prefillMarkedOptions(out, med?.condicoes_relevantes, [
+      ['impedimento_fisico', 'Impedimento físico'], ['saude_asma_bronquite', 'Asma ou bronquite'], ['saude_rinite_sinusite', 'Rinite ou sinusite'],
+      ['saude_hipertensao', 'Hipertensão'], ['saude_diabetes', 'Diabetes'], ['saude_convulsoes_epilepsia', ['Convulsões ou epilepsia', 'Convulsões ou Epilepsia']],
+      ['saude_dermatologicos', 'Problemas dermatológicos'], ['saude_cardiacos', 'Problemas cardíacos'], ['saude_reumatologicos', 'Problemas reumatológicos'],
+      ['saude_hematologicos', 'Problemas hematológicos'], ['saude_outros', 'Outros problemas'],
+      ['mental_transtorno', ['Transtorno', 'Apresenta algum transtorno']], ['mental_medicacao', ['Medicação para transtorno', 'Faz uso de medicação para este transtorno']],
+      ['mental_psicologo', 'Acompanhamento com psicólogo'], ['mental_medico', 'Acompanhamento com médico'], ['mental_outro_profissional', 'Acompanhamento com outro profissional'],
+      ['comp_autoagressao', ['Crises com autoagressão', 'Crises de explosão em que agrida a si mesmo']],
+      ['comp_agressao_outros', ['Crises com agressão a outras pessoas', 'Crises de explosão em que agrida os outros']],
+      ['comp_agitacao', ['Agitação psicomotora', 'Agitação psicomotora que atrapalhe a concentração']],
+      ['comp_instrucao_verbal', 'Dificuldade de obedecer instruções verbais'], ['comp_fugas', 'Tendência a fugas'],
+      ['comp_autodestrutivo', 'Comportamento auto-destrutivo'], ['comp_ansiedade_panico', 'Crises de ansiedade ou pânico'],
+      ['comp_comunicacao', ['Dificuldade de comunicação', 'Dificuldade de comunicação com outras pessoas']], ['comp_alimentares', 'Dificuldades alimentares'],
+      ['comp_sono', 'Dificuldades de sono']
+    ]);
+
+    const condNorm = normalizeText(med?.condicoes_relevantes || '');
+    if (out.sonambulo_marcado == null && condNorm.includes('sonambulo')) out.sonambulo_marcado = true;
+    const obs = normalizeText(med?.observacoes || '');
+    if (!out.emergencia_conduta && obs.includes('aguardar pais')) out.emergencia_conduta = 'aguardar_pais';
+    if (!out.emergencia_conduta && obs.includes('aceita decisoes medicas')) out.emergencia_conduta = 'aceita_decisoes_medicas';
+    if (!out.avisar_emergencia && obs.includes('avisar pais')) out.avisar_emergencia = 'pais';
+    if (out.sabe_nadar_marcado == null && obs.includes('sabe nadar')) out.sabe_nadar_marcado = true;
+    return out;
+  }
+
   function openMedicalDialog(jovemId) {
     if (state.profile?.tipo !== 'administrador') return;
     const member = memberRows().find((item) => Number(item.id) === Number(jovemId));
@@ -970,7 +1207,8 @@
     const med = medicalForMember(jovemId);
     medicalMemberId.value = String(jovemId);
     medicalMemberName.textContent = member.nome_completo;
-    medicalBloodType.value = med?.tipo_sanguineo || '';
+    const parsedBlood = parseBloodType(med?.tipo_sanguineo);
+    medicalBloodType.value = parsedBlood.abo;
     medicalAllergies.value = med?.alergias || '';
     medicalContinuousMedication.value = med?.medicamentos_uso_continuo || '';
     medicalFoodRestrictions.value = med?.restricoes_alimentares || '';
@@ -978,9 +1216,16 @@
     medicalSpecialNeeds.value = med?.necessidades_especiais || '';
     medicalHealthPlan.value = med?.plano_saude || '';
     medicalCardNumber.value = med?.numero_carteirinha || '';
-    medicalEmergencyName.value = med?.contato_emergencia_nome || '';
+    medicalEmergencyName.value = med?.contato_emergencia_nome === 'Pais/Responsáveis' ? '' : (med?.contato_emergencia_nome || '');
     medicalEmergencyPhone.value = med?.contato_emergencia_telefone || '';
     medicalObservations.value = med?.observacoes || '';
+    const full = applyMedicalFallbacks(fullMedicalData(med), med);
+    fillFullMedicalFields(medicalDialog, full);
+    if (!full.fator_rh && parsedBlood.rh) {
+      const rhField = medicalDialog.querySelector('[data-full-key="fator_rh"]');
+      if (rhField) rhField.value = parsedBlood.rh;
+    }
+    renderMedicationRows('medical', full.medicamentos || []);
     medicalFormMessage.textContent = '';
     deleteMedicalButton.classList.toggle('hidden', !med);
     if (!medicalDialog.open) medicalDialog.showModal();
@@ -1078,7 +1323,8 @@
     const med = medicalForChief(chefeId);
     chiefMedicalChiefId.value = String(chefeId);
     chiefMedicalChiefName.textContent = chief.nome_completo;
-    chiefMedicalBloodType.value = med?.tipo_sanguineo || '';
+    const parsedBlood = parseBloodType(med?.tipo_sanguineo);
+    chiefMedicalBloodType.value = parsedBlood.abo;
     chiefMedicalAllergies.value = med?.alergias || '';
     chiefMedicalContinuousMedication.value = med?.medicamentos_uso_continuo || '';
     chiefMedicalFoodRestrictions.value = med?.restricoes_alimentares || '';
@@ -1086,9 +1332,16 @@
     chiefMedicalSpecialNeeds.value = med?.necessidades_especiais || '';
     chiefMedicalHealthPlan.value = med?.plano_saude || '';
     chiefMedicalCardNumber.value = med?.numero_carteirinha || '';
-    chiefMedicalEmergencyName.value = med?.contato_emergencia_nome || '';
+    chiefMedicalEmergencyName.value = med?.contato_emergencia_nome === 'Pais/Responsáveis' ? '' : (med?.contato_emergencia_nome || '');
     chiefMedicalEmergencyPhone.value = med?.contato_emergencia_telefone || '';
     chiefMedicalObservations.value = med?.observacoes || '';
+    const full = applyMedicalFallbacks(fullMedicalData(med), med);
+    fillFullMedicalFields(chiefMedicalDialog, full);
+    if (!full.fator_rh && parsedBlood.rh) {
+      const rhField = chiefMedicalDialog.querySelector('[data-full-key="fator_rh"]');
+      if (rhField) rhField.value = parsedBlood.rh;
+    }
+    renderMedicationRows('chiefMedical', full.medicamentos || []);
     chiefMedicalFormMessage.textContent = '';
     deleteChiefMedicalButton.classList.toggle('hidden', !med);
     if (!chiefMedicalDialog.open) chiefMedicalDialog.showModal();
@@ -1367,7 +1620,7 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       client.from('chefe_secoes').select('chefe_id,secao_id'),
       client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
       client.from('equipe_chefes').select('equipe_id,chefe_id,papel'),
-      client.from('fichas_medicas_chefes').select('id,chefe_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,atualizado_em')
+      client.from('fichas_medicas_chefes').select('id,chefe_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,atualizado_em,dados_completos')
     ]);
     const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes].find((r) => r.error)?.error;
     if (firstError) {
@@ -1587,19 +1840,30 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     saveMedicalButton.disabled = true;
     saveMedicalButton.textContent = 'Salvando...';
     try {
+      const full = collectFullMedicalFields(medicalDialog);
+      full.medicamentos = collectMedicationRows('medical');
+      const summary = buildMedicalSummary(full, {
+        allergies: medicalAllergies.value.trim(), medications: medicalContinuousMedication.value.trim(),
+        foodRestrictions: medicalFoodRestrictions.value.trim(), conditions: medicalRelevantConditions.value.trim(),
+        specialNeeds: medicalSpecialNeeds.value.trim(), observations: medicalObservations.value.trim()
+      });
+      const abo = medicalBloodType.value.trim();
+      const rh = String(full.fator_rh || '').trim();
+      const contactName = full.avisar_emergencia === 'pais' ? 'Pais/Responsáveis' : (full.emergencia_outro || medicalEmergencyName.value.trim() || null);
       const payload = {
         jovem_id: jovemId,
-        tipo_sanguineo: medicalBloodType.value.trim() || null,
-        alergias: medicalAllergies.value.trim() || null,
-        medicamentos_uso_continuo: medicalContinuousMedication.value.trim() || null,
-        restricoes_alimentares: medicalFoodRestrictions.value.trim() || null,
-        condicoes_relevantes: medicalRelevantConditions.value.trim() || null,
-        necessidades_especiais: medicalSpecialNeeds.value.trim() || null,
+        tipo_sanguineo: abo ? `${abo}${rh}` : null,
+        alergias: summary.alergias,
+        medicamentos_uso_continuo: summary.medicamentos_uso_continuo,
+        restricoes_alimentares: summary.restricoes_alimentares,
+        condicoes_relevantes: summary.condicoes_relevantes,
+        necessidades_especiais: summary.necessidades_especiais,
         plano_saude: medicalHealthPlan.value.trim() || null,
         numero_carteirinha: medicalCardNumber.value.trim() || null,
-        contato_emergencia_nome: medicalEmergencyName.value.trim() || null,
-        contato_emergencia_telefone: medicalEmergencyPhone.value.trim() || null,
-        observacoes: medicalObservations.value.trim() || null,
+        contato_emergencia_nome: contactName,
+        contato_emergencia_telefone: full.telefone_emergencia || medicalEmergencyPhone.value.trim() || null,
+        observacoes: summary.observacoes,
+        dados_completos: full,
         atualizado_em: new Date().toISOString()
       };
       const { error } = await client.from('fichas_medicas').upsert(payload, { onConflict: 'jovem_id' });
@@ -1625,19 +1889,30 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     saveChiefMedicalButton.disabled = true;
     saveChiefMedicalButton.textContent = 'Salvando...';
     try {
+      const full = collectFullMedicalFields(chiefMedicalDialog);
+      full.medicamentos = collectMedicationRows('chiefMedical');
+      const summary = buildMedicalSummary(full, {
+        allergies: chiefMedicalAllergies.value.trim(), medications: chiefMedicalContinuousMedication.value.trim(),
+        foodRestrictions: chiefMedicalFoodRestrictions.value.trim(), conditions: chiefMedicalRelevantConditions.value.trim(),
+        specialNeeds: chiefMedicalSpecialNeeds.value.trim(), observations: chiefMedicalObservations.value.trim()
+      });
+      const abo = chiefMedicalBloodType.value.trim();
+      const rh = String(full.fator_rh || '').trim();
+      const contactName = full.avisar_emergencia === 'pais' ? 'Pais/Responsáveis' : (full.emergencia_outro || chiefMedicalEmergencyName.value.trim() || null);
       const payload = {
         chefe_id: chefeId,
-        tipo_sanguineo: chiefMedicalBloodType.value.trim() || null,
-        alergias: chiefMedicalAllergies.value.trim() || null,
-        medicamentos_uso_continuo: chiefMedicalContinuousMedication.value.trim() || null,
-        restricoes_alimentares: chiefMedicalFoodRestrictions.value.trim() || null,
-        condicoes_relevantes: chiefMedicalRelevantConditions.value.trim() || null,
-        necessidades_especiais: chiefMedicalSpecialNeeds.value.trim() || null,
+        tipo_sanguineo: abo ? `${abo}${rh}` : null,
+        alergias: summary.alergias,
+        medicamentos_uso_continuo: summary.medicamentos_uso_continuo,
+        restricoes_alimentares: summary.restricoes_alimentares,
+        condicoes_relevantes: summary.condicoes_relevantes,
+        necessidades_especiais: summary.necessidades_especiais,
         plano_saude: chiefMedicalHealthPlan.value.trim() || null,
         numero_carteirinha: chiefMedicalCardNumber.value.trim() || null,
-        contato_emergencia_nome: chiefMedicalEmergencyName.value.trim() || null,
-        contato_emergencia_telefone: chiefMedicalEmergencyPhone.value.trim() || null,
-        observacoes: chiefMedicalObservations.value.trim() || null,
+        contato_emergencia_nome: contactName,
+        contato_emergencia_telefone: full.telefone_emergencia || chiefMedicalEmergencyPhone.value.trim() || null,
+        observacoes: summary.observacoes,
+        dados_completos: full,
         atualizado_em: new Date().toISOString()
       };
       const { error } = await client.from('fichas_medicas_chefes').upsert(payload, { onConflict: 'chefe_id' });
@@ -2352,6 +2627,8 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   closeMedicalDialog.addEventListener('click', closeMedicalForm);
   cancelMedicalButton.addEventListener('click', closeMedicalForm);
   deleteMedicalButton.addEventListener('click', deleteMedicalRecord);
+  $('medicalAddMedicationButton')?.addEventListener('click', () => addMedicationRow('medical'));
+  $('chiefMedicalAddMedicationButton')?.addEventListener('click', () => addMedicationRow('chiefMedical'));
   medicalDialog.addEventListener('click', (event) => { if (event.target === medicalDialog) closeMedicalForm(); });
 
   closeChiefDetailDialog.addEventListener('click', closeChiefDetail);

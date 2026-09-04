@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=22" />
 </head>
 <body>
   <main class="app-shell">
@@ -345,30 +345,168 @@
     </div>
   </dialog>
 
-  <dialog id="medicalDialog" class="member-dialog medical-dialog">
-    <form id="medicalForm" method="dialog" class="member-form">
-      <div class="dialog-title-row">
-        <div><div class="eyebrow dark">FICHA MÉDICA</div><h2>Dados de saúde</h2></div>
+  <dialog id="medicalDialog" class="member-dialog medical-dialog full-medical-dialog">
+    <form id="medicalForm" method="dialog" class="member-form full-medical-form">
+      <div class="dialog-title-row sticky-dialog-header">
+        <div><div class="eyebrow dark">FICHA MÉDICA</div><h2>Ficha médica completa</h2></div>
         <button id="closeMedicalDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
       </div>
       <input id="medicalMemberId" type="hidden" />
       <p id="medicalMemberName" class="dialog-helper medical-person-name"></p>
-      <p class="medical-form-warning">⚕ Dados sensíveis. Confira as informações antes de salvar.</p>
-      <div class="form-grid">
-        <label>Tipo sanguíneo<input id="medicalBloodType" type="text" maxlength="20" placeholder="Ex.: O+" /></label>
-        <label>Plano de saúde<input id="medicalHealthPlan" type="text" maxlength="120" placeholder="Se houver" /></label>
-        <label>Nº da carteirinha<input id="medicalCardNumber" type="text" maxlength="80" /></label>
-        <label>Contato de emergência<input id="medicalEmergencyName" type="text" maxlength="160" placeholder="Nome" /></label>
-        <label>Telefone de emergência<input id="medicalEmergencyPhone" type="tel" maxlength="40" placeholder="(47) 99999-9999" /></label>
-      </div>
-      <label>Alergias<textarea id="medicalAllergies" rows="3" placeholder="Informe alergias ou deixe em branco"></textarea></label>
-      <label>Medicamentos de uso contínuo<textarea id="medicalContinuousMedication" rows="3" placeholder="Medicamento, dose e observações relevantes"></textarea></label>
-      <label>Restrições alimentares<textarea id="medicalFoodRestrictions" rows="3"></textarea></label>
-      <label>Condições relevantes<textarea id="medicalRelevantConditions" rows="3" placeholder="Condições de saúde importantes para a atividade"></textarea></label>
-      <label>Necessidades especiais<textarea id="medicalSpecialNeeds" rows="3"></textarea></label>
-      <label>Observações<textarea id="medicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label>
+      <p class="medical-form-warning">⚕ Na consulta aparecem apenas os dados relevantes. Nesta tela ficam disponíveis todas as opções da ficha médica do Paxtu.</p>
+
+      <details class="medical-section" open>
+        <summary>Informações básicas</summary>
+        <div class="medical-section-body form-grid">
+          <label>Sexo<select data-full-key="sexo"><option value="">Não informado</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option><option value="Outro">Outro</option></select></label>
+          <label>Altura<input type="text" data-full-key="altura" maxlength="20" placeholder="Ex.: 1,72 m" /></label>
+          <label>Peso<input type="text" data-full-key="peso" maxlength="20" placeholder="Ex.: 70 kg" /></label>
+          <label>Tipo sanguíneo<select id="medicalBloodType"><option value="">Não informado</option><option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option></select></label>
+          <label>Fator RH<select data-full-key="fator_rh"><option value="">Não informado</option><option value="+">Positivo (+)</option><option value="-">Negativo (-)</option></select></label>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Emergências médicas</summary>
+        <div class="medical-section-body">
+          <fieldset class="multi-fieldset"><legend>Em caso de emergência</legend><div class="medical-radio-row">
+            <label><input type="radio" name="medicalEmergencyDecision" value="" data-full-key="emergencia_conduta" /> Não informado</label>
+            <label><input type="radio" name="medicalEmergencyDecision" value="aguardar_pais" data-full-key="emergencia_conduta" /> Aguardar pais/responsáveis</label>
+            <label><input type="radio" name="medicalEmergencyDecision" value="aceita_decisoes_medicas" data-full-key="emergencia_conduta" /> Aceita decisões médicas</label>
+          </div></fieldset>
+          <fieldset class="multi-fieldset"><legend>Avisar em emergências</legend><div class="medical-radio-row">
+            <label><input type="radio" name="medicalEmergencyNotify" value="" data-full-key="avisar_emergencia" /> Não informado</label>
+            <label><input type="radio" name="medicalEmergencyNotify" value="pais" data-full-key="avisar_emergencia" /> Pais/responsáveis</label>
+            <label><input type="radio" name="medicalEmergencyNotify" value="outro" data-full-key="avisar_emergencia" /> Outro</label>
+          </div></fieldset>
+          <div class="form-grid">
+            <label>Outro / contato<input id="medicalEmergencyName" type="text" data-full-key="emergencia_outro" maxlength="160" placeholder="Nome ou identificação" /></label>
+            <label>Telefone de emergência<input id="medicalEmergencyPhone" type="tel" data-full-key="telefone_emergencia" maxlength="40" placeholder="(47) 99999-9999" /></label>
+          </div>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Plano de saúde</summary>
+        <div class="medical-section-body form-grid">
+          <label>Plano de saúde<input id="medicalHealthPlan" type="text" maxlength="160" placeholder="Se houver" /></label>
+          <label>Número do documento<input id="medicalCardNumber" type="text" maxlength="100" /></label>
+          <label>Médico de preferência<input type="text" data-full-key="medico_preferencia" maxlength="160" /></label>
+          <label>Telefone<input type="tel" data-full-key="telefone_plano" maxlength="40" /></label>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Informações gerais</summary>
+        <div class="medical-section-body">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="impedimento_fisico_marcado" /> <span>Impedimento físico</span></label><input class="medical-option-detail" type="text" data-full-key="impedimento_fisico" placeholder="Descreva o impedimento" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="restricao_alimentar_marcado" /> <span>Restrição alimentar</span></label><input class="medical-option-detail" type="text" data-full-key="restricao_alimentar" placeholder="Descreva a restrição" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sabe_nadar_marcado" /> <span>Sabe nadar</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sonambulo_marcado" /> <span>Sonâmbulo</span></label></div>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalFoodRestrictions" rows="2" placeholder="Restrições alimentares já registradas ou informações adicionais"></textarea></label>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Alergias</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_picada_inseto_marcado" /> <span>Picada de inseto</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_picada_inseto" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_plantas_marcado" /> <span>Plantas</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_plantas" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_acaros_marcado" /> <span>Ácaros</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_acaros" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_fungos_marcado" /> <span>Fungos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_fungos" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_medicamentos_marcado" /> <span>Medicamentos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_medicamentos" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_outro_marcado" /> <span>Outro</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_outro" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_alimentos_marcado" /> <span>Alimentos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_alimentos" placeholder="Detalhes" /></div>
+        </div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalAllergies" rows="2"></textarea></label></div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Equipamentos de auxílio</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_oculos_marcado" /> <span>Óculos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_lentes_contato_marcado" /> <span>Lentes de contato</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_aparelho_dentario_marcado" /> <span>Aparelho dentário</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_sonda_marcado" /> <span>Sonda</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_marcapasso_marcado" /> <span>Marca-passo</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_aparelho_audicao_marcado" /> <span>Aparelho de audição</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_bomba_insulina_marcado" /> <span>Bomba de insulina</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_outros_marcado" /> <span>Outros</span></label><input class="medical-option-detail" type="text" data-full-key="equipamento_outros" placeholder="Detalhes" /></div>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Saúde física</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_asma_bronquite_marcado" /> <span>Asma ou bronquite</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_rinite_sinusite_marcado" /> <span>Rinite ou sinusite</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_hipertensao_marcado" /> <span>Hipertensão</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_diabetes_marcado" /> <span>Diabetes</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_convulsoes_epilepsia_marcado" /> <span>Convulsões ou epilepsia</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_dermatologicos_marcado" /> <span>Problemas dermatológicos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_cardiacos_marcado" /> <span>Problemas cardíacos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_reumatologicos_marcado" /> <span>Problemas reumatológicos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_hematologicos_marcado" /> <span>Problemas hematológicos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_outros_marcado" /> <span>Outros problemas</span></label><input class="medical-option-detail" type="text" data-full-key="saude_outros" placeholder="Detalhes" /></div>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Deficiências</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_fisica_marcado" /> <span>Física</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_fisica" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_mental_marcado" /> <span>Mental</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_mental" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_auditiva_marcado" /> <span>Auditiva</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_auditiva" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_intelectual_marcado" /> <span>Intelectual</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_intelectual" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_autismo_marcado" /> <span>Autismo</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_autismo" placeholder="Detalhes" /></div>
+        </div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / necessidades já registradas<textarea id="medicalSpecialNeeds" rows="2"></textarea></label></div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Medicamentos</summary>
+        <div class="medical-section-body">
+          <div id="medicalMedicationsList" class="medical-medications-list"></div>
+          <button id="medicalAddMedicationButton" type="button" class="mini-primary medical-add-medication">＋ Adicionar medicamento</button>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="medicalContinuousMedication" rows="2" placeholder="Informações importadas anteriormente ou complemento"></textarea></label>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Saúde mental</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_transtorno_marcado" /> <span>Apresenta algum transtorno</span></label><input class="medical-option-detail" type="text" data-full-key="mental_transtorno" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_medicacao_marcado" /> <span>Faz uso de medicação para este transtorno</span></label><input class="medical-option-detail" type="text" data-full-key="mental_medicacao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_psicologo_marcado" /> <span>Acompanhamento com psicólogo</span></label><input class="medical-option-detail" type="text" data-full-key="mental_psicologo" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_medico_marcado" /> <span>Acompanhamento com médico</span></label><input class="medical-option-detail" type="text" data-full-key="mental_medico" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_outro_profissional_marcado" /> <span>Acompanhamento com outro profissional</span></label><input class="medical-option-detail" type="text" data-full-key="mental_outro_profissional" placeholder="Detalhes" /></div>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Dados comportamentais</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_autoagressao_marcado" /> <span>Crises de explosão em que agrida a si mesmo</span></label><input class="medical-option-detail" type="text" data-full-key="comp_autoagressao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_agressao_outros_marcado" /> <span>Crises de explosão em que agrida os outros</span></label><input class="medical-option-detail" type="text" data-full-key="comp_agressao_outros" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_agitacao_marcado" /> <span>Agitação psicomotora que atrapalhe a concentração</span></label><input class="medical-option-detail" type="text" data-full-key="comp_agitacao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_instrucao_verbal_marcado" /> <span>Dificuldade de obedecer instruções verbais</span></label><input class="medical-option-detail" type="text" data-full-key="comp_instrucao_verbal" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_fugas_marcado" /> <span>Tendência a fugas</span></label><input class="medical-option-detail" type="text" data-full-key="comp_fugas" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_autodestrutivo_marcado" /> <span>Comportamento auto-destrutivo</span></label><input class="medical-option-detail" type="text" data-full-key="comp_autodestrutivo" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_ansiedade_panico_marcado" /> <span>Crises de ansiedade ou pânico</span></label><input class="medical-option-detail" type="text" data-full-key="comp_ansiedade_panico" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_comunicacao_marcado" /> <span>Dificuldade de comunicação com outras pessoas</span></label><input class="medical-option-detail" type="text" data-full-key="comp_comunicacao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_alimentares_marcado" /> <span>Dificuldades alimentares</span></label><input class="medical-option-detail" type="text" data-full-key="comp_alimentares" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_sono_marcado" /> <span>Dificuldades de sono</span></label><input class="medical-option-detail" type="text" data-full-key="comp_sono" placeholder="Detalhes" /></div>
+        </div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / condições já registradas<textarea id="medicalRelevantConditions" rows="3"></textarea></label></div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Observações</summary>
+        <div class="medical-section-body"><label>Observações<textarea id="medicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label></div>
+      </details>
+
       <p id="medicalFormMessage" class="form-message" role="status"></p>
-      <div class="dialog-actions dialog-actions-split">
+      <div class="dialog-actions dialog-actions-split sticky-dialog-actions">
         <button id="deleteMedicalButton" type="button" class="danger-button hidden">Apagar ficha médica</button>
         <div class="dialog-actions-right"><button id="cancelMedicalButton" type="button" class="cancel-button">Cancelar</button><button id="saveMedicalButton" type="submit" class="save-button">Salvar ficha médica</button></div>
       </div>
@@ -389,30 +527,168 @@
   </dialog>
 
 
-  <dialog id="chiefMedicalDialog" class="member-dialog medical-dialog">
-    <form id="chiefMedicalForm" method="dialog" class="member-form">
-      <div class="dialog-title-row">
-        <div><div class="eyebrow dark">FICHA MÉDICA DO ADULTO</div><h2>Dados de saúde</h2></div>
+  <dialog id="chiefMedicalDialog" class="member-dialog medical-dialog full-medical-dialog">
+    <form id="chiefMedicalForm" method="dialog" class="member-form full-medical-form">
+      <div class="dialog-title-row sticky-dialog-header">
+        <div><div class="eyebrow dark">FICHA MÉDICA DO ADULTO</div><h2>Ficha médica completa</h2></div>
         <button id="closeChiefMedicalDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
       </div>
       <input id="chiefMedicalChiefId" type="hidden" />
       <p id="chiefMedicalChiefName" class="dialog-helper medical-person-name"></p>
-      <p class="medical-form-warning">⚕ Dados sensíveis. Confira as informações antes de salvar.</p>
-      <div class="form-grid">
-        <label>Tipo sanguíneo<input id="chiefMedicalBloodType" type="text" maxlength="20" placeholder="Ex.: O+" /></label>
-        <label>Plano de saúde<input id="chiefMedicalHealthPlan" type="text" maxlength="160" placeholder="Se houver" /></label>
-        <label>Nº da carteirinha<input id="chiefMedicalCardNumber" type="text" maxlength="80" /></label>
-        <label>Contato de emergência<input id="chiefMedicalEmergencyName" type="text" maxlength="160" placeholder="Nome" /></label>
-        <label>Telefone de emergência<input id="chiefMedicalEmergencyPhone" type="tel" maxlength="40" placeholder="(47) 99999-9999" /></label>
-      </div>
-      <label>Alergias<textarea id="chiefMedicalAllergies" rows="3" placeholder="Informe alergias ou deixe em branco"></textarea></label>
-      <label>Medicamentos<textarea id="chiefMedicalContinuousMedication" rows="3" placeholder="Medicamento, dose e informações relevantes"></textarea></label>
-      <label>Restrições alimentares<textarea id="chiefMedicalFoodRestrictions" rows="3"></textarea></label>
-      <label>Condições relevantes<textarea id="chiefMedicalRelevantConditions" rows="3" placeholder="Condições de saúde importantes para a atividade"></textarea></label>
-      <label>Necessidades especiais / equipamentos de auxílio<textarea id="chiefMedicalSpecialNeeds" rows="3"></textarea></label>
-      <label>Observações<textarea id="chiefMedicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label>
+      <p class="medical-form-warning">⚕ Na consulta aparecem apenas os dados relevantes. Nesta tela ficam disponíveis todas as opções da ficha médica do Paxtu.</p>
+
+      <details class="medical-section" open>
+        <summary>Informações básicas</summary>
+        <div class="medical-section-body form-grid">
+          <label>Sexo<select data-full-key="sexo"><option value="">Não informado</option><option value="Masculino">Masculino</option><option value="Feminino">Feminino</option><option value="Outro">Outro</option></select></label>
+          <label>Altura<input type="text" data-full-key="altura" maxlength="20" placeholder="Ex.: 1,72 m" /></label>
+          <label>Peso<input type="text" data-full-key="peso" maxlength="20" placeholder="Ex.: 70 kg" /></label>
+          <label>Tipo sanguíneo<select id="chiefMedicalBloodType"><option value="">Não informado</option><option value="A">A</option><option value="B">B</option><option value="AB">AB</option><option value="O">O</option></select></label>
+          <label>Fator RH<select data-full-key="fator_rh"><option value="">Não informado</option><option value="+">Positivo (+)</option><option value="-">Negativo (-)</option></select></label>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Emergências médicas</summary>
+        <div class="medical-section-body">
+          <fieldset class="multi-fieldset"><legend>Em caso de emergência</legend><div class="medical-radio-row">
+            <label><input type="radio" name="chiefMedicalEmergencyDecision" value="" data-full-key="emergencia_conduta" /> Não informado</label>
+            <label><input type="radio" name="chiefMedicalEmergencyDecision" value="aguardar_pais" data-full-key="emergencia_conduta" /> Aguardar pais/responsáveis</label>
+            <label><input type="radio" name="chiefMedicalEmergencyDecision" value="aceita_decisoes_medicas" data-full-key="emergencia_conduta" /> Aceita decisões médicas</label>
+          </div></fieldset>
+          <fieldset class="multi-fieldset"><legend>Avisar em emergências</legend><div class="medical-radio-row">
+            <label><input type="radio" name="chiefMedicalEmergencyNotify" value="" data-full-key="avisar_emergencia" /> Não informado</label>
+            <label><input type="radio" name="chiefMedicalEmergencyNotify" value="pais" data-full-key="avisar_emergencia" /> Pais/responsáveis</label>
+            <label><input type="radio" name="chiefMedicalEmergencyNotify" value="outro" data-full-key="avisar_emergencia" /> Outro</label>
+          </div></fieldset>
+          <div class="form-grid">
+            <label>Outro / contato<input id="chiefMedicalEmergencyName" type="text" data-full-key="emergencia_outro" maxlength="160" placeholder="Nome ou identificação" /></label>
+            <label>Telefone de emergência<input id="chiefMedicalEmergencyPhone" type="tel" data-full-key="telefone_emergencia" maxlength="40" placeholder="(47) 99999-9999" /></label>
+          </div>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Plano de saúde</summary>
+        <div class="medical-section-body form-grid">
+          <label>Plano de saúde<input id="chiefMedicalHealthPlan" type="text" maxlength="160" placeholder="Se houver" /></label>
+          <label>Número do documento<input id="chiefMedicalCardNumber" type="text" maxlength="100" /></label>
+          <label>Médico de preferência<input type="text" data-full-key="medico_preferencia" maxlength="160" /></label>
+          <label>Telefone<input type="tel" data-full-key="telefone_plano" maxlength="40" /></label>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Informações gerais</summary>
+        <div class="medical-section-body">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="impedimento_fisico_marcado" /> <span>Impedimento físico</span></label><input class="medical-option-detail" type="text" data-full-key="impedimento_fisico" placeholder="Descreva o impedimento" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="restricao_alimentar_marcado" /> <span>Restrição alimentar</span></label><input class="medical-option-detail" type="text" data-full-key="restricao_alimentar" placeholder="Descreva a restrição" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sabe_nadar_marcado" /> <span>Sabe nadar</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="sonambulo_marcado" /> <span>Sonâmbulo</span></label></div>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalFoodRestrictions" rows="2" placeholder="Restrições alimentares já registradas ou informações adicionais"></textarea></label>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Alergias</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_picada_inseto_marcado" /> <span>Picada de inseto</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_picada_inseto" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_plantas_marcado" /> <span>Plantas</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_plantas" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_acaros_marcado" /> <span>Ácaros</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_acaros" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_fungos_marcado" /> <span>Fungos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_fungos" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_medicamentos_marcado" /> <span>Medicamentos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_medicamentos" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_outro_marcado" /> <span>Outro</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_outro" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="alergia_alimentos_marcado" /> <span>Alimentos</span></label><input class="medical-option-detail" type="text" data-full-key="alergia_alimentos" placeholder="Detalhes" /></div>
+        </div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalAllergies" rows="2"></textarea></label></div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Equipamentos de auxílio</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_oculos_marcado" /> <span>Óculos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_lentes_contato_marcado" /> <span>Lentes de contato</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_aparelho_dentario_marcado" /> <span>Aparelho dentário</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_sonda_marcado" /> <span>Sonda</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_marcapasso_marcado" /> <span>Marca-passo</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_aparelho_audicao_marcado" /> <span>Aparelho de audição</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_bomba_insulina_marcado" /> <span>Bomba de insulina</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="equipamento_outros_marcado" /> <span>Outros</span></label><input class="medical-option-detail" type="text" data-full-key="equipamento_outros" placeholder="Detalhes" /></div>
+        </div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Saúde física</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_asma_bronquite_marcado" /> <span>Asma ou bronquite</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_rinite_sinusite_marcado" /> <span>Rinite ou sinusite</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_hipertensao_marcado" /> <span>Hipertensão</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_diabetes_marcado" /> <span>Diabetes</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_convulsoes_epilepsia_marcado" /> <span>Convulsões ou epilepsia</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_dermatologicos_marcado" /> <span>Problemas dermatológicos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_cardiacos_marcado" /> <span>Problemas cardíacos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_reumatologicos_marcado" /> <span>Problemas reumatológicos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_hematologicos_marcado" /> <span>Problemas hematológicos</span></label></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="saude_outros_marcado" /> <span>Outros problemas</span></label><input class="medical-option-detail" type="text" data-full-key="saude_outros" placeholder="Detalhes" /></div>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Deficiências</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_fisica_marcado" /> <span>Física</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_fisica" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_mental_marcado" /> <span>Mental</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_mental" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_auditiva_marcado" /> <span>Auditiva</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_auditiva" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_intelectual_marcado" /> <span>Intelectual</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_intelectual" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="deficiencia_autismo_marcado" /> <span>Autismo</span></label><input class="medical-option-detail" type="text" data-full-key="deficiencia_autismo" placeholder="Detalhes" /></div>
+        </div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / necessidades já registradas<textarea id="chiefMedicalSpecialNeeds" rows="2"></textarea></label></div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Medicamentos</summary>
+        <div class="medical-section-body">
+          <div id="chiefMedicalMedicationsList" class="medical-medications-list"></div>
+          <button id="chiefMedicalAddMedicationButton" type="button" class="mini-primary medical-add-medication">＋ Adicionar medicamento</button>
+          <label class="medical-summary-field">Complemento / informação já registrada<textarea id="chiefMedicalContinuousMedication" rows="2" placeholder="Informações importadas anteriormente ou complemento"></textarea></label>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Saúde mental</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_transtorno_marcado" /> <span>Apresenta algum transtorno</span></label><input class="medical-option-detail" type="text" data-full-key="mental_transtorno" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_medicacao_marcado" /> <span>Faz uso de medicação para este transtorno</span></label><input class="medical-option-detail" type="text" data-full-key="mental_medicacao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_psicologo_marcado" /> <span>Acompanhamento com psicólogo</span></label><input class="medical-option-detail" type="text" data-full-key="mental_psicologo" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_medico_marcado" /> <span>Acompanhamento com médico</span></label><input class="medical-option-detail" type="text" data-full-key="mental_medico" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="mental_outro_profissional_marcado" /> <span>Acompanhamento com outro profissional</span></label><input class="medical-option-detail" type="text" data-full-key="mental_outro_profissional" placeholder="Detalhes" /></div>
+        </div>
+      </details>
+
+      <details class="medical-section">
+        <summary>Dados comportamentais</summary>
+        <div class="medical-section-body medical-options-grid">
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_autoagressao_marcado" /> <span>Crises de explosão em que agrida a si mesmo</span></label><input class="medical-option-detail" type="text" data-full-key="comp_autoagressao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_agressao_outros_marcado" /> <span>Crises de explosão em que agrida os outros</span></label><input class="medical-option-detail" type="text" data-full-key="comp_agressao_outros" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_agitacao_marcado" /> <span>Agitação psicomotora que atrapalhe a concentração</span></label><input class="medical-option-detail" type="text" data-full-key="comp_agitacao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_instrucao_verbal_marcado" /> <span>Dificuldade de obedecer instruções verbais</span></label><input class="medical-option-detail" type="text" data-full-key="comp_instrucao_verbal" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_fugas_marcado" /> <span>Tendência a fugas</span></label><input class="medical-option-detail" type="text" data-full-key="comp_fugas" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_autodestrutivo_marcado" /> <span>Comportamento auto-destrutivo</span></label><input class="medical-option-detail" type="text" data-full-key="comp_autodestrutivo" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_ansiedade_panico_marcado" /> <span>Crises de ansiedade ou pânico</span></label><input class="medical-option-detail" type="text" data-full-key="comp_ansiedade_panico" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_comunicacao_marcado" /> <span>Dificuldade de comunicação com outras pessoas</span></label><input class="medical-option-detail" type="text" data-full-key="comp_comunicacao" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_alimentares_marcado" /> <span>Dificuldades alimentares</span></label><input class="medical-option-detail" type="text" data-full-key="comp_alimentares" placeholder="Detalhes" /></div>
+          <div class="medical-option-row"><label class="medical-option"><input type="checkbox" data-full-key="comp_sono_marcado" /> <span>Dificuldades de sono</span></label><input class="medical-option-detail" type="text" data-full-key="comp_sono" placeholder="Detalhes" /></div>
+        </div>
+        <div class="medical-section-body"><label class="medical-summary-field">Complemento / condições já registradas<textarea id="chiefMedicalRelevantConditions" rows="3"></textarea></label></div>
+      </details>
+
+      <details class="medical-section" open>
+        <summary>Observações</summary>
+        <div class="medical-section-body"><label>Observações<textarea id="chiefMedicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label></div>
+      </details>
+
       <p id="chiefMedicalFormMessage" class="form-message" role="status"></p>
-      <div class="dialog-actions dialog-actions-split">
+      <div class="dialog-actions dialog-actions-split sticky-dialog-actions">
         <button id="deleteChiefMedicalButton" type="button" class="danger-button hidden">Apagar ficha médica</button>
         <div class="dialog-actions-right"><button id="cancelChiefMedicalButton" type="button" class="cancel-button">Cancelar</button><button id="saveChiefMedicalButton" type="submit" class="save-button">Salvar ficha médica</button></div>
       </div>
@@ -513,11 +789,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=21.1"></script>
+  <script src="app.js?v=22"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=21').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=22').catch(() => {});
       });
     }
   </script>
