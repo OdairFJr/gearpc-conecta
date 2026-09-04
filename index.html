@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=20" />
 </head>
 <body>
   <main class="app-shell">
@@ -345,6 +345,36 @@
     </div>
   </dialog>
 
+  <dialog id="medicalDialog" class="member-dialog medical-dialog">
+    <form id="medicalForm" method="dialog" class="member-form">
+      <div class="dialog-title-row">
+        <div><div class="eyebrow dark">FICHA MÉDICA</div><h2>Dados de saúde</h2></div>
+        <button id="closeMedicalDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
+      </div>
+      <input id="medicalMemberId" type="hidden" />
+      <p id="medicalMemberName" class="dialog-helper medical-person-name"></p>
+      <p class="medical-form-warning">⚕ Dados sensíveis. Confira as informações antes de salvar.</p>
+      <div class="form-grid">
+        <label>Tipo sanguíneo<input id="medicalBloodType" type="text" maxlength="20" placeholder="Ex.: O+" /></label>
+        <label>Plano de saúde<input id="medicalHealthPlan" type="text" maxlength="120" placeholder="Se houver" /></label>
+        <label>Nº da carteirinha<input id="medicalCardNumber" type="text" maxlength="80" /></label>
+        <label>Contato de emergência<input id="medicalEmergencyName" type="text" maxlength="160" placeholder="Nome" /></label>
+        <label>Telefone de emergência<input id="medicalEmergencyPhone" type="tel" maxlength="40" placeholder="(47) 99999-9999" /></label>
+      </div>
+      <label>Alergias<textarea id="medicalAllergies" rows="3" placeholder="Informe alergias ou deixe em branco"></textarea></label>
+      <label>Medicamentos de uso contínuo<textarea id="medicalContinuousMedication" rows="3" placeholder="Medicamento, dose e observações relevantes"></textarea></label>
+      <label>Restrições alimentares<textarea id="medicalFoodRestrictions" rows="3"></textarea></label>
+      <label>Condições relevantes<textarea id="medicalRelevantConditions" rows="3" placeholder="Condições de saúde importantes para a atividade"></textarea></label>
+      <label>Necessidades especiais<textarea id="medicalSpecialNeeds" rows="3"></textarea></label>
+      <label>Observações<textarea id="medicalObservations" rows="4" placeholder="Outras informações importantes"></textarea></label>
+      <p id="medicalFormMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions dialog-actions-split">
+        <button id="deleteMedicalButton" type="button" class="danger-button hidden">Apagar ficha médica</button>
+        <div class="dialog-actions-right"><button id="cancelMedicalButton" type="button" class="cancel-button">Cancelar</button><button id="saveMedicalButton" type="submit" class="save-button">Salvar ficha médica</button></div>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="chiefDetailDialog" class="member-dialog detail-dialog">
     <div class="detail-shell">
       <div class="dialog-title-row sticky-dialog-header">
@@ -452,11 +482,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=19').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=20').catch(() => {});
       });
     }
   </script>

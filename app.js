@@ -72,6 +72,26 @@
   const memberDetailAdminActions = $('memberDetailAdminActions');
   const memberDetailEditButton = $('memberDetailEditButton');
   const closeMemberDetailDialog = $('closeMemberDetailDialog');
+  const medicalDialog = $('medicalDialog');
+  const medicalForm = $('medicalForm');
+  const medicalMemberId = $('medicalMemberId');
+  const medicalMemberName = $('medicalMemberName');
+  const medicalBloodType = $('medicalBloodType');
+  const medicalAllergies = $('medicalAllergies');
+  const medicalContinuousMedication = $('medicalContinuousMedication');
+  const medicalFoodRestrictions = $('medicalFoodRestrictions');
+  const medicalRelevantConditions = $('medicalRelevantConditions');
+  const medicalSpecialNeeds = $('medicalSpecialNeeds');
+  const medicalHealthPlan = $('medicalHealthPlan');
+  const medicalCardNumber = $('medicalCardNumber');
+  const medicalEmergencyName = $('medicalEmergencyName');
+  const medicalEmergencyPhone = $('medicalEmergencyPhone');
+  const medicalObservations = $('medicalObservations');
+  const medicalFormMessage = $('medicalFormMessage');
+  const saveMedicalButton = $('saveMedicalButton');
+  const deleteMedicalButton = $('deleteMedicalButton');
+  const closeMedicalDialog = $('closeMedicalDialog');
+  const cancelMedicalButton = $('cancelMedicalButton');
   const journeyDialog = $('journeyDialog');
   const journeyForm = $('journeyForm');
   const journeyMemberId = $('journeyMemberId');
@@ -890,9 +910,9 @@
       </section>
 
       <section class="detail-card medical-card">
-        <h3>Ficha médica</h3>
+        <div class="detail-card-heading"><h3>Ficha médica</h3>${state.profile?.tipo === 'administrador' ? '<button type="button" class="mini-primary medical-edit-button" data-edit-medical="1">Editar ficha médica</button>' : ''}</div>
         <p class="medical-note">Dados sensíveis • consulta conforme as permissões do seu perfil.</p>
-        ${medItems.length ? `<div class="detail-grid">${medItems.join('')}</div>` : '<p class="detail-empty">Ficha médica ainda não cadastrada.</p>'}
+        ${medItems.length ? `<div class="detail-grid">${medItems.join('')}</div>${med?.atualizado_em ? `<p class="medical-updated">Última atualização: ${escapeHtml(formatDateTimeBR(med.atualizado_em))}</p>` : ''}` : '<p class="detail-empty">Ficha médica ainda não cadastrada.</p>'}
       </section>
     `;
 
@@ -901,7 +921,61 @@
     memberDetailBody.querySelector('[data-add-visit]')?.addEventListener('click', () => openVisitDialog(m.id));
     memberDetailBody.querySelectorAll('[data-edit-visit]').forEach((button) => button.addEventListener('click', () => openVisitDialog(m.id, Number(button.dataset.editVisit))));
     memberDetailBody.querySelectorAll('[data-delete-visit]').forEach((button) => button.addEventListener('click', () => deleteVisit(Number(button.dataset.deleteVisit), m.id)));
+    memberDetailBody.querySelector('[data-edit-medical]')?.addEventListener('click', () => openMedicalDialog(m.id));
     if (!memberDetailDialog.open) memberDetailDialog.showModal();
+  }
+
+  function openMedicalDialog(jovemId) {
+    if (state.profile?.tipo !== 'administrador') return;
+    const member = memberRows().find((item) => Number(item.id) === Number(jovemId));
+    if (!member) return;
+    const med = medicalForMember(jovemId);
+    medicalMemberId.value = String(jovemId);
+    medicalMemberName.textContent = member.nome_completo;
+    medicalBloodType.value = med?.tipo_sanguineo || '';
+    medicalAllergies.value = med?.alergias || '';
+    medicalContinuousMedication.value = med?.medicamentos_uso_continuo || '';
+    medicalFoodRestrictions.value = med?.restricoes_alimentares || '';
+    medicalRelevantConditions.value = med?.condicoes_relevantes || '';
+    medicalSpecialNeeds.value = med?.necessidades_especiais || '';
+    medicalHealthPlan.value = med?.plano_saude || '';
+    medicalCardNumber.value = med?.numero_carteirinha || '';
+    medicalEmergencyName.value = med?.contato_emergencia_nome || '';
+    medicalEmergencyPhone.value = med?.contato_emergencia_telefone || '';
+    medicalObservations.value = med?.observacoes || '';
+    medicalFormMessage.textContent = '';
+    deleteMedicalButton.classList.toggle('hidden', !med);
+    if (!medicalDialog.open) medicalDialog.showModal();
+  }
+
+  function closeMedicalForm() {
+    if (medicalDialog.open) medicalDialog.close();
+  }
+
+  async function refreshMedicalMember(jovemId) {
+    await loadMembersData();
+    if (state.selectedMemberDetailId === Number(jovemId)) openMemberDetail(jovemId);
+  }
+
+  async function deleteMedicalRecord() {
+    const jovemId = Number(medicalMemberId.value || 0);
+    if (!jovemId || state.profile?.tipo !== 'administrador') return;
+    const member = memberRows().find((item) => Number(item.id) === jovemId);
+    if (!window.confirm(`Apagar toda a ficha médica de ${member?.nome_completo || 'este jovem'}?\n\nEsta ação removerá os dados médicos cadastrados. Para vídeos de demonstração, você poderá cadastrar novamente depois.`)) return;
+    deleteMedicalButton.disabled = true;
+    medicalFormMessage.textContent = 'Apagando...';
+    try {
+      const { error } = await client.from('fichas_medicas').delete().eq('jovem_id', jovemId);
+      if (error) throw error;
+      closeMedicalForm();
+      await refreshMedicalMember(jovemId);
+      membersMessage.textContent = 'Ficha médica apagada com sucesso.';
+      window.setTimeout(() => { if (membersMessage.textContent.includes('apagada')) membersMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      medicalFormMessage.textContent = `Não foi possível apagar: ${error.message}`;
+    } finally {
+      deleteMedicalButton.disabled = false;
+    }
   }
 
   function closeChiefDetail() {
@@ -1392,6 +1466,44 @@
     } finally {
       saveChiefButton.disabled = false;
       saveChiefButton.textContent = 'Salvar chefe';
+    }
+  });
+
+  medicalForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.profile?.tipo !== 'administrador') return;
+    const jovemId = Number(medicalMemberId.value || 0);
+    if (!jovemId) return;
+    medicalFormMessage.textContent = '';
+    saveMedicalButton.disabled = true;
+    saveMedicalButton.textContent = 'Salvando...';
+    try {
+      const payload = {
+        jovem_id: jovemId,
+        tipo_sanguineo: medicalBloodType.value.trim() || null,
+        alergias: medicalAllergies.value.trim() || null,
+        medicamentos_uso_continuo: medicalContinuousMedication.value.trim() || null,
+        restricoes_alimentares: medicalFoodRestrictions.value.trim() || null,
+        condicoes_relevantes: medicalRelevantConditions.value.trim() || null,
+        necessidades_especiais: medicalSpecialNeeds.value.trim() || null,
+        plano_saude: medicalHealthPlan.value.trim() || null,
+        numero_carteirinha: medicalCardNumber.value.trim() || null,
+        contato_emergencia_nome: medicalEmergencyName.value.trim() || null,
+        contato_emergencia_telefone: medicalEmergencyPhone.value.trim() || null,
+        observacoes: medicalObservations.value.trim() || null,
+        atualizado_em: new Date().toISOString()
+      };
+      const { error } = await client.from('fichas_medicas').upsert(payload, { onConflict: 'jovem_id' });
+      if (error) throw error;
+      closeMedicalForm();
+      await refreshMedicalMember(jovemId);
+      membersMessage.textContent = 'Ficha médica salva com sucesso.';
+      window.setTimeout(() => { if (membersMessage.textContent.includes('médica')) membersMessage.textContent = ''; }, 3500);
+    } catch (error) {
+      medicalFormMessage.textContent = `Não foi possível salvar: ${error.message}`;
+    } finally {
+      saveMedicalButton.disabled = false;
+      saveMedicalButton.textContent = 'Salvar ficha médica';
     }
   });
 
@@ -2089,6 +2201,11 @@
     closeMemberDetail();
     if (id) openMemberDialog(id);
   });
+
+  closeMedicalDialog.addEventListener('click', closeMedicalForm);
+  cancelMedicalButton.addEventListener('click', closeMedicalForm);
+  deleteMedicalButton.addEventListener('click', deleteMedicalRecord);
+  medicalDialog.addEventListener('click', (event) => { if (event.target === medicalDialog) closeMedicalForm(); });
 
   closeChiefDetailDialog.addEventListener('click', closeChiefDetail);
   chiefDetailDialog.addEventListener('click', (event) => { if (event.target === chiefDetailDialog) closeChiefDetail(); });
