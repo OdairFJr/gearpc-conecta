@@ -272,6 +272,8 @@
     chiefsView.classList.add('hidden');
     attendanceView.classList.add('hidden');
     accessView.classList.add('hidden');
+    $('programmingView')?.classList.add('hidden');
+    $('programEditorView')?.classList.add('hidden');
   }
   function showLogin() { hideAllViews(); loginView.classList.remove('hidden'); }
   function showDashboard() { hideAllViews(); dashboardView.classList.remove('hidden'); }
@@ -309,6 +311,7 @@
     membersButton.classList.toggle('hidden', data.tipo === 'responsavel');
     chiefsButton.classList.remove('hidden');
     attendanceButton.classList.toggle('hidden', data.tipo === 'responsavel');
+    $('programmingButton')?.classList.toggle('hidden', data.tipo === 'responsavel');
     accessButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newChiefButton.classList.toggle('hidden', data.tipo !== 'administrador');
     newMemberButton.classList.toggle('hidden', data.tipo !== 'administrador');
@@ -2726,6 +2729,8 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       if (target) target.value = '';
     });
   });
+
+  window.GEARPC_RUNTIME = { client, state, showDashboard, showLogin, escapeHtml };
 
   client.auth.onAuthStateChange((event, session) => {
     window.setTimeout(async () => {

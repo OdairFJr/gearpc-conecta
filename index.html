@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=22.1" />
+  <link rel="stylesheet" href="styles.css?v=23.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -96,6 +96,16 @@
           <span class="launch-module-copy">
             <strong>Presença</strong>
             <small>Registre a chamada dos jovens da sua seção.</small>
+          </span>
+          <span class="launch-module-arrow" aria-hidden="true">›</span>
+        </button>
+
+
+        <button id="programmingButton" class="launch-module hidden" type="button">
+          <span class="launch-module-icon programming-icon" aria-hidden="true">🗓️</span>
+          <span class="launch-module-copy">
+            <strong>Programação</strong>
+            <small>Prepare reuniões, busque jogos e monte o roteiro da seção.</small>
           </span>
           <span class="launch-module-arrow" aria-hidden="true">›</span>
         </button>
@@ -217,6 +227,82 @@
       <section id="attendanceList" class="attendance-list" aria-live="polite"></section>
       <p id="attendanceMessage" class="members-message" role="status"></p>
     </section>
+
+    <section id="programmingView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="programmingBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Programação</strong></div></div>
+        <button id="programmingLogoutButton" class="secondary-button">Sair</button>
+      </header>
+
+      <section class="members-hero programming-hero">
+        <div>
+          <div class="eyebrow dark">PLANEJAMENTO</div>
+          <h2>Programações das atividades</h2>
+          <p>Monte a reunião, pesquise ideias e registre as observações do dia.</p>
+        </div>
+        <button id="newProgrammingButton" class="new-member-button" type="button">＋ Nova programação</button>
+      </section>
+
+      <section class="members-toolbar programming-toolbar">
+        <label class="filter-field"><span>Seção</span><select id="programmingSectionFilter"><option value="">Todas</option></select></label>
+        <button id="programmingRefreshButton" class="secondary-action-button" type="button">↻ Atualizar</button>
+      </section>
+
+      <div id="programmingRoleNote" class="role-note"></div>
+      <section id="programmingList" class="programming-list" aria-live="polite"></section>
+      <p id="programmingMessage" class="members-message" role="status"></p>
+    </section>
+
+    <section id="programEditorView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="programEditorBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Preparar programação</strong></div></div>
+        <button id="programEditorLogoutButton" class="secondary-button">Sair</button>
+      </header>
+
+      <section class="program-editor-card">
+        <div class="program-editor-title-row">
+          <div>
+            <div class="eyebrow dark">PROGRAMAÇÃO</div>
+            <h2 id="programEditorTitle">Atividade</h2>
+            <p id="programEditorPermissionNote" class="program-permission-note"></p>
+          </div>
+          <button id="programDeleteButton" class="danger-button hidden" type="button">Apagar programação</button>
+        </div>
+
+        <div class="program-basic-grid">
+          <label>Seção<select id="programEditorSection"></select></label>
+          <label>Data<input id="programEditorDate" type="date" /></label>
+          <label>Início<input id="programEditorStart" type="time" /></label>
+          <label>Término<input id="programEditorEnd" type="time" /></label>
+        </div>
+        <div class="program-basic-actions"><button id="programSaveBasicButton" class="save-button" type="button">Salvar data e horários</button></div>
+      </section>
+
+      <section id="programActionBar" class="program-action-bar">
+        <button id="programAddManualButton" type="button" class="new-member-button">＋ Criar atividade</button>
+        <button id="programSearchIdeasButton" type="button" class="secondary-action-button">🔎 Buscar ideias</button>
+        <button id="programNewLibraryButton" type="button" class="secondary-action-button">☁️ Nova ideia para o banco</button>
+      </section>
+
+      <section class="program-timeline-card">
+        <div class="program-section-heading">
+          <div><span class="eyebrow dark">ROTEIRO DO DIA</span><h3>Linha do tempo</h3></div>
+          <span id="programTimelineTotal" class="program-time-pill">0 min</span>
+        </div>
+        <div id="programTimeline" class="program-timeline" aria-live="polite"></div>
+        <p id="programEditorMessage" class="members-message" role="status"></p>
+      </section>
+
+      <section class="program-notes-card">
+        <div class="program-section-heading"><div><span class="eyebrow dark">APÓS A ATIVIDADE</span><h3>Observações do dia</h3></div></div>
+        <p>Use este espaço para registrar imprevistos, alterações feitas, cuidados, materiais, ocorrências ou pontos importantes para a próxima reunião.</p>
+        <textarea id="programFinalNotes" rows="6" placeholder="Registre aqui o que precisa ficar anotado sobre este dia..."></textarea>
+        <div class="program-basic-actions"><button id="programSaveNotesButton" class="save-button" type="button">Salvar observações</button></div>
+      </section>
+    </section>
+
 
     <section id="accessView" class="members-view hidden">
       <header class="subpage-header">
@@ -763,6 +849,86 @@
     </div>
   </dialog>
 
+  <dialog id="newProgrammingDialog" class="member-dialog program-dialog">
+    <form id="newProgrammingForm" method="dialog" class="member-form">
+      <div class="dialog-title-row"><div><div class="eyebrow dark">NOVA PROGRAMAÇÃO</div><h2>Preparar atividade</h2></div><button id="closeNewProgrammingDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <p class="dialog-helper">Ao criar, o app já inclui IBOA – Hasteamento, Intervalo e IBOA – Arriamento, todos com 15 minutos.</p>
+      <label>Seção<select id="newProgrammingSection" required></select></label>
+      <div class="form-grid">
+        <label>Data<input id="newProgrammingDate" type="date" required /></label>
+        <label>Horário de início<input id="newProgrammingStart" type="time" value="14:00" required /></label>
+        <label>Horário de término<input id="newProgrammingEnd" type="time" value="17:00" required /></label>
+      </div>
+      <p id="newProgrammingMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions"><button id="cancelNewProgrammingButton" type="button" class="cancel-button">Cancelar</button><button id="saveNewProgrammingButton" type="submit" class="save-button">Criar programação</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="programItemDialog" class="member-dialog program-activity-dialog">
+    <form id="programItemForm" method="dialog" class="member-form">
+      <div class="dialog-title-row sticky-dialog-header"><div><div class="eyebrow dark">FICHA DA ATIVIDADE</div><h2 id="programItemDialogTitle">Atividade</h2></div><button id="closeProgramItemDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <input id="programItemId" type="hidden" /><input id="programItemType" type="hidden" value="atividade" /><input id="programItemOrigin" type="hidden" value="manual" />
+      <p id="programItemFixedNotice" class="program-fixed-notice hidden">Este é um bloco fixo da programação. Ajuste apenas o horário de início.</p>
+      <div class="program-item-time-grid">
+        <label>Horário de início<input id="programItemStart" type="time" required /></label>
+        <label>Duração (min)<input id="programItemDuration" type="number" min="1" max="1440" value="15" required /></label>
+        <label class="activity-only">Quem irá conduzir<select id="programItemConductor"><option value="">A definir</option></select></label>
+      </div>
+      <label class="activity-only">Nome da atividade<input id="programItemName" type="text" maxlength="180" required /></label>
+      <label class="activity-only">Objetivo<textarea id="programItemObjective" rows="3"></textarea></label>
+
+      <fieldset class="multi-fieldset activity-only"><legend>Área(s) de desenvolvimento</legend><div id="programItemAreas" class="development-area-grid"></div></fieldset>
+
+      <details class="program-form-section activity-only" open><summary>Vinculação ao Programa Educativo</summary><div class="program-form-section-body">
+        <div class="form-grid"><label>Eixo<input id="programItemAxis" type="text" maxlength="160" placeholder="Ex.: Meio Ambiente" /></label><label>Bloco de Aprendizagem<input id="programItemBlock" type="text" maxlength="200" placeholder="Ex.: Vida ao Ar Livre" /></label></div>
+        <label>Item ou itens relacionados<textarea id="programItemProgressItems" rows="4" placeholder="Digite um item por linha"></textarea></label>
+      </div></details>
+
+      <details class="program-form-section activity-only" open><summary>Materiais e preparação</summary><div class="program-form-section-body"><label>Material a ser usado<textarea id="programItemMaterials" rows="3"></textarea></label><label>Preparação prévia<textarea id="programItemPreparation" rows="3"></textarea></label></div></details>
+      <details class="program-form-section activity-only" open><summary>Como aplicar</summary><div class="program-form-section-body"><label>Desenvolvimento / passo a passo<textarea id="programItemDevelopment" rows="5"></textarea></label><label>Regras<textarea id="programItemRules" rows="3"></textarea></label><label>Segurança / cuidados<textarea id="programItemSafety" rows="3"></textarea></label><label>Plano B / adaptações<textarea id="programItemPlanB" rows="3"></textarea></label></div></details>
+
+      <p id="programItemMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions dialog-actions-split sticky-dialog-actions"><button id="deleteProgramItemButton" type="button" class="danger-button hidden">Apagar item</button><div class="dialog-actions-right"><button id="cancelProgramItemButton" type="button" class="cancel-button">Cancelar</button><button id="saveProgramItemButton" type="submit" class="save-button">Salvar na programação</button></div></div>
+    </form>
+  </dialog>
+
+  <dialog id="ideaSearchDialog" class="member-dialog idea-search-dialog">
+    <div class="detail-shell">
+      <div class="dialog-title-row sticky-dialog-header"><div><div class="eyebrow dark">BANCO DE ATIVIDADES</div><h2>Buscar ideias</h2><p id="ideaSearchRamoLabel" class="dialog-helper"></p></div><button id="closeIdeaSearchDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <div class="idea-search-controls">
+        <label class="search-field"><span>🔎</span><input id="ideaSearchText" type="search" placeholder="Buscar por jogo, objetivo, material ou palavra-chave" /></label>
+        <div class="idea-filter-grid"><label>Eixo<select id="ideaSearchAxis"><option value="">Todos</option></select></label><label>Bloco<select id="ideaSearchBlock"><option value="">Todos</option></select></label><label>Área<select id="ideaSearchArea"><option value="">Todas</option></select></label></div>
+        <div class="idea-search-meta"><strong id="ideaSearchCount">0</strong><span>ideias encontradas</span><button id="ideaSearchNewLibraryButton" type="button" class="mini-primary">＋ Cadastrar nova ideia</button></div>
+      </div>
+      <div id="ideaSearchResults" class="idea-search-results"></div>
+      <p id="ideaSearchMessage" class="members-message" role="status"></p>
+    </div>
+  </dialog>
+
+  <dialog id="ideaDetailDialog" class="member-dialog activity-detail-dialog">
+    <div class="detail-shell">
+      <div class="dialog-title-row sticky-dialog-header"><div><div class="eyebrow dark">FICHA DA ATIVIDADE</div><h2 id="ideaDetailTitle">Atividade</h2></div><button id="closeIdeaDetailDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <div id="ideaDetailBody" class="activity-sheet-body"></div>
+      <div class="dialog-actions sticky-dialog-actions"><button id="ideaUseButton" type="button" class="save-button">Usar nesta programação</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="libraryActivityDialog" class="member-dialog program-activity-dialog">
+    <form id="libraryActivityForm" method="dialog" class="member-form">
+      <div class="dialog-title-row sticky-dialog-header"><div><div class="eyebrow dark">BANCO COMPARTILHADO</div><h2 id="libraryActivityDialogTitle">Nova ideia de atividade</h2></div><button id="closeLibraryActivityDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
+      <input id="libraryActivityId" type="hidden" />
+      <p class="dialog-helper">Preencha a mesma ficha usada nas sugestões. A atividade ficará salva na nuvem e poderá ser encontrada futuramente.</p>
+      <div class="form-grid"><label>Nome da atividade<input id="libraryActivityName" type="text" maxlength="180" required /></label><label>Ramo<select id="libraryActivityRamo" required></select></label><label>Duração prevista (min)<input id="libraryActivityDuration" type="number" min="1" max="1440" value="30" required /></label><label>Participantes<input id="libraryActivityParticipants" type="text" maxlength="120" placeholder="Ex.: patrulha / tropa" /></label><label>Local sugerido<input id="libraryActivityLocation" type="text" maxlength="180" /></label><label>Compartilhamento<select id="libraryActivityVisibility"><option value="grupo">Compartilhar com o grupo</option><option value="privado">Somente para mim</option></select></label></div>
+      <label>Objetivo<textarea id="libraryActivityObjective" rows="3" required></textarea></label>
+      <fieldset class="multi-fieldset"><legend>Área(s) de desenvolvimento</legend><div id="libraryActivityAreas" class="development-area-grid"></div></fieldset>
+      <details class="program-form-section" open><summary>Vinculação ao Programa Educativo</summary><div class="program-form-section-body"><div class="form-grid"><label>Eixo<input id="libraryActivityAxis" type="text" maxlength="160" /></label><label>Bloco de Aprendizagem<input id="libraryActivityBlock" type="text" maxlength="200" /></label></div><label>Item ou itens relacionados<textarea id="libraryActivityProgressItems" rows="4" placeholder="Digite um item por linha"></textarea></label></div></details>
+      <details class="program-form-section" open><summary>Materiais e aplicação</summary><div class="program-form-section-body"><label>Materiais<textarea id="libraryActivityMaterials" rows="3"></textarea></label><label>Preparação prévia<textarea id="libraryActivityPreparation" rows="3"></textarea></label><label>Desenvolvimento / passo a passo<textarea id="libraryActivityDevelopment" rows="5" required></textarea></label><label>Regras<textarea id="libraryActivityRules" rows="3"></textarea></label><label>Segurança / cuidados<textarea id="libraryActivitySafety" rows="3"></textarea></label><label>Plano B / adaptações<textarea id="libraryActivityPlanB" rows="3"></textarea></label><label>Palavras-chave / tags<input id="libraryActivityTags" type="text" placeholder="Ex.: cooperação; corrida; sem material" /></label></div></details>
+      <p id="libraryActivityMessage" class="form-message" role="status"></p>
+      <div class="dialog-actions dialog-actions-split sticky-dialog-actions"><button id="deleteLibraryActivityButton" type="button" class="danger-button hidden">Apagar do banco</button><div class="dialog-actions-right"><button id="cancelLibraryActivityButton" type="button" class="cancel-button">Cancelar</button><button id="saveLibraryActivityButton" type="submit" class="save-button">Salvar no banco</button><button id="saveAndUseLibraryActivityButton" type="button" class="new-member-button">Salvar e usar</button></div></div>
+    </form>
+  </dialog>
+
+
   <dialog id="passwordDialog" class="member-dialog password-dialog">
     <form id="passwordForm" method="dialog" class="member-form">
       <div class="dialog-title-row">
@@ -789,11 +955,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="app.js?v=22.1"></script>
+  <script src="ideas-data.js?v=23.0"></script>
+  <script src="app.js?v=23.0"></script>
+  <script src="programacao.js?v=23.0"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=22.1').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=23.0').catch(() => {});
       });
     }
   </script>

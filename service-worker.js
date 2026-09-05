@@ -1,9 +1,11 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v22-1';
+const CACHE_NAME = 'gearpc-conecta-offline-v23-0';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=22.1',
-  './app.js?v=22.1',
+  './styles.css?v=23.0',
+  './ideas-data.js?v=23.0',
+  './app.js?v=23.0',
+  './programacao.js?v=23.0',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -15,9 +17,7 @@ const APP_SHELL = [
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
-  );
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
 });
 
 self.addEventListener('activate', (event) => {
@@ -31,10 +31,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-
   event.respondWith(
     fetch(request)
       .then((response) => {
