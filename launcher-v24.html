@@ -30,7 +30,7 @@
 
       if ('serviceWorker' in navigator) {
         try {
-          const reg = await navigator.serviceWorker.register('./service-worker.js?v=26.0', { updateViaCache: 'none' });
+          const reg = await navigator.serviceWorker.register('./service-worker.js?v=27.0', { updateViaCache: 'none' });
           await reg.update().catch(() => {});
           await navigator.serviceWorker.ready;
         } catch (_) {
@@ -38,7 +38,7 @@
         }
       }
 
-      location.replace('./?pwa=26.0');
+      location.replace('./?pwa=27.0');
     })();
   </script>
 </body>
