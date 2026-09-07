@@ -1,5 +1,5 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v26-0';
-const PROFILE_CACHE = 'gearpc-conecta-profile-v26-0';
+const CACHE_NAME = 'gearpc-conecta-offline-v27-0';
+const PROFILE_CACHE = 'gearpc-conecta-profile-v27-0';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
 
@@ -24,6 +24,7 @@ const APP_SHELL = [
   './programming-permissions-v24.js',
   './first-access-v25.js',
   './mandatory-password-v26.js',
+  './admin-activity-v27.js',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -80,6 +81,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('mandatory-password-v26.js')) {
     html = html.replace('</body>', '  <script src="mandatory-password-v26.js"></script>\n</body>');
+  }
+  if (!html.includes('admin-activity-v27.js')) {
+    html = html.replace('</body>', '  <script src="admin-activity-v27.js"></script>\n</body>');
   }
 
   const headers = new Headers(response.headers);
