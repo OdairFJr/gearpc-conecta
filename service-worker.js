@@ -1,5 +1,5 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v24-4';
-const PROFILE_CACHE = 'gearpc-conecta-profile-v24-4';
+const CACHE_NAME = 'gearpc-conecta-offline-v25-0';
+const PROFILE_CACHE = 'gearpc-conecta-profile-v25-0';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
 
@@ -22,6 +22,7 @@ const APP_SHELL = [
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
   './programming-permissions-v24.js',
+  './first-access-v25.js',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -35,13 +36,8 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-
-    // Estes três arquivos garantem que o PWA consiga iniciar sem internet.
-    // O restante é cacheado de forma tolerante a falhas para que um único
-    // recurso temporariamente indisponível não invalide toda a instalação.
     await cache.addAll(CRITICAL_OFFLINE);
     await Promise.allSettled(APP_SHELL.map((asset) => cache.add(asset)));
-
     try { await cache.add(SUPABASE_LIB); } catch (_) {}
   })());
 });
@@ -77,6 +73,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('attendance-offline-v24.js')) {
     html = html.replace('</body>', '  <script src="attendance-offline-v24.js"></script>\n</body>');
+  }
+  if (!html.includes('first-access-v25.js')) {
+    html = html.replace('</body>', '  <script src="first-access-v25.js"></script>\n</body>');
   }
 
   const headers = new Headers(response.headers);
@@ -156,14 +155,11 @@ self.addEventListener('fetch', (event) => {
           await cache.put(request, response.clone());
         }
 
-        // O launcher e a tela offline são autônomos e não precisam receber
-        // os módulos da aplicação principal.
         if (url.pathname.endsWith('/launcher-v24.html') || url.pathname.endsWith('/offline.html')) {
           return response;
         }
         return await withRuntimeModules(response);
       } catch (_) {
-        // Qualquer navegação sem internet cai diretamente na Presença offline.
         const offline = await caches.match('./offline.html');
         if (offline) return offline;
 
