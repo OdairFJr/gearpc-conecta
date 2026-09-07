@@ -4,7 +4,7 @@
   "short_name": "GEArPC",
   "description": "Aplicativo do Grupo Escoteiro do Ar Paulo Carzino",
   "lang": "pt-BR",
-  "start_url": "./",
+  "start_url": "./launcher-v24.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
