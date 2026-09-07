@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a376c" />
+  <title>GEArPC Conecta</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#edf3f8;color:#17324d}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#edf3f8}
+    main{width:min(92vw,420px);background:white;border-radius:18px;padding:28px 22px;text-align:center;box-shadow:0 8px 28px #0002}
+    img{width:88px;height:88px;border-radius:50%;object-fit:cover;margin-bottom:12px}
+    h1{font-size:1.35rem;margin:0 0 8px}p{margin:0;color:#5c7184;line-height:1.45}.small{margin-top:12px;font-size:.82rem}
+  </style>
+</head>
+<body>
+  <main>
+    <img src="logo-grupo.jpeg" alt="Logo do GEArPC" />
+    <h1>GEArPC Conecta</h1>
+    <p id="status">Abrindo aplicativo…</p>
+    <p class="small">A Presença continua disponível mesmo sem internet.</p>
+  </main>
+  <script>
+    (async () => {
+      const status = document.getElementById('status');
+
+      // Se o navegador já informa que está offline, não tenta abrir a aplicação
+      // que depende da nuvem. Vai diretamente para a chamada local.
+      if (!navigator.onLine) {
+        location.replace('./offline.html');
+        return;
+      }
+
+      // Com internet, força o registro da versão atual do service worker antes
+      // de seguir para o aplicativo normal. Isso evita que o Android mantenha
+      // workers antigos após uma atualização/reinstalação do PWA.
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.register('./service-worker.js?v=24.4', { updateViaCache: 'none' });
+          await reg.update().catch(() => {});
+          await navigator.serviceWorker.ready;
+        } catch (_) {
+          status.textContent = 'Abrindo aplicativo…';
+        }
+      }
+
+      location.replace('./?pwa=24.4');
+    })();
+  </script>
+</body>
+</html>
