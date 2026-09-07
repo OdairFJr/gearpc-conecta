@@ -1,11 +1,18 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v24-3';
-const PROFILE_CACHE = 'gearpc-conecta-profile-v24-3';
+const CACHE_NAME = 'gearpc-conecta-offline-v24-4';
+const PROFILE_CACHE = 'gearpc-conecta-profile-v24-4';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
+
+const CRITICAL_OFFLINE = [
+  './offline.html',
+  './launcher-v24.html',
+  './manifest.webmanifest'
+];
 
 const APP_SHELL = [
   './',
   './index.html',
+  './launcher-v24.html',
   './offline.html',
   './styles.css?v=23.0',
   './ideas-data.js?v=23.0',
@@ -28,7 +35,13 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(APP_SHELL);
+
+    // Estes três arquivos garantem que o PWA consiga iniciar sem internet.
+    // O restante é cacheado de forma tolerante a falhas para que um único
+    // recurso temporariamente indisponível não invalide toda a instalação.
+    await cache.addAll(CRITICAL_OFFLINE);
+    await Promise.allSettled(APP_SHELL.map((asset) => cache.add(asset)));
+
     try { await cache.add(SUPABASE_LIB); } catch (_) {}
   })());
 });
@@ -128,7 +141,12 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return;
 
-  const isDocument = request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+  const isDocument = request.mode === 'navigate' ||
+    url.pathname.endsWith('/') ||
+    url.pathname.endsWith('/index.html') ||
+    url.pathname.endsWith('/launcher-v24.html') ||
+    url.pathname.endsWith('/offline.html');
+
   if (isDocument) {
     event.respondWith((async () => {
       try {
@@ -137,12 +155,28 @@ self.addEventListener('fetch', (event) => {
           const cache = await caches.open(CACHE_NAME);
           await cache.put(request, response.clone());
         }
+
+        // O launcher e a tela offline são autônomos e não precisam receber
+        // os módulos da aplicação principal.
+        if (url.pathname.endsWith('/launcher-v24.html') || url.pathname.endsWith('/offline.html')) {
+          return response;
+        }
         return await withRuntimeModules(response);
       } catch (_) {
-        // Sem internet, abre diretamente a tela local de Presença.
-        // Ela não depende do Supabase para iniciar e grava as marcações
-        // na mesma fila usada pelo módulo de sincronização do app normal.
-        return await caches.match('./offline.html') || await caches.match('./index.html');
+        // Qualquer navegação sem internet cai diretamente na Presença offline.
+        const offline = await caches.match('./offline.html');
+        if (offline) return offline;
+
+        const launcher = await caches.match('./launcher-v24.html');
+        if (launcher) return launcher;
+
+        const index = await caches.match('./index.html');
+        if (index) return index;
+
+        return new Response(
+          '<!doctype html><meta charset="utf-8"><title>GEArPC Conecta</title><h1>GEArPC Conecta</h1><p>Sem internet e o modo offline ainda não foi preparado neste aparelho.</p>',
+          { headers: { 'content-type': 'text/html; charset=utf-8' } }
+        );
       }
     })());
     return;
