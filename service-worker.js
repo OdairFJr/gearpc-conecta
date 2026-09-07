@@ -1,16 +1,18 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v24-2';
-const PROFILE_CACHE = 'gearpc-conecta-profile-v24-2';
+const CACHE_NAME = 'gearpc-conecta-offline-v24-3';
+const PROFILE_CACHE = 'gearpc-conecta-profile-v24-3';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
 
 const APP_SHELL = [
   './',
   './index.html',
+  './offline.html',
   './styles.css?v=23.0',
   './ideas-data.js?v=23.0',
   './app.js?v=23.0',
   './programacao.js?v=23.0',
   './offline-bootstrap-v24.js',
+  './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
   './programming-permissions-v24.js',
   './config.js',
@@ -27,9 +29,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(APP_SHELL);
-    // A biblioteca do Supabase era o principal recurso externo que impedia
-    // o PWA de iniciar sem internet. Tenta deixá-la disponível localmente,
-    // sem impedir a instalação do service worker caso o CDN falhe no momento.
     try { await cache.add(SUPABASE_LIB); } catch (_) {}
   })());
 });
@@ -60,6 +59,9 @@ async function withRuntimeModules(response) {
   if (!html.includes('programming-permissions-v24.js')) {
     html = html.replace(programmingTag, `<script src="programming-permissions-v24.js"></script>\n  ${programmingTag}`);
   }
+  if (!html.includes('offline-access-marker-v24.js')) {
+    html = html.replace('</body>', '  <script src="offline-access-marker-v24.js"></script>\n</body>');
+  }
   if (!html.includes('attendance-offline-v24.js')) {
     html = html.replace('</body>', '  <script src="attendance-offline-v24.js"></script>\n</body>');
   }
@@ -73,7 +75,7 @@ async function withRuntimeModules(response) {
   });
 }
 
-async function networkFirst(request, cacheName, fallbackRequest = null) {
+async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
     if (response && response.ok) {
@@ -81,18 +83,16 @@ async function networkFirst(request, cacheName, fallbackRequest = null) {
       await cache.put(request, response.clone());
     }
     return response;
-  } catch (_) {
+  } catch (error) {
     const cached = await caches.match(request);
     if (cached) return cached;
-    if (fallbackRequest) return caches.match(fallbackRequest);
-    throw _;
+    throw error;
   }
 }
 
 async function cachedSupabaseLibrary(request) {
   const cached = await caches.match(request) || await caches.match(SUPABASE_LIB);
   if (cached) {
-    // Atualiza em segundo plano quando houver rede, mas não segura a abertura.
     fetch(request).then(async (response) => {
       if (response?.ok) {
         const cache = await caches.open(CACHE_NAME);
@@ -116,15 +116,11 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  // Biblioteca externa necessária para iniciar o app sem internet.
   if (url.origin === 'https://cdn.jsdelivr.net' && url.pathname.includes('/@supabase/supabase-js@2')) {
     event.respondWith(cachedSupabaseLibrary(request));
     return;
   }
 
-  // Guarda somente a consulta do próprio perfil. A URL dessa consulta contém
-  // o user_id, então o cache continua separado por usuário. Outras consultas
-  // do Supabase não são cacheadas aqui para evitar misturar dados entre contas.
   if (url.hostname === SUPABASE_HOST && url.pathname === '/rest/v1/perfis_usuarios') {
     event.respondWith(networkFirst(request, PROFILE_CACHE));
     return;
@@ -135,8 +131,19 @@ self.addEventListener('fetch', (event) => {
   const isDocument = request.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
   if (isDocument) {
     event.respondWith((async () => {
-      const response = await networkFirst(request, CACHE_NAME, './index.html');
-      return withRuntimeModules(response);
+      try {
+        const response = await fetch(request);
+        if (response?.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        }
+        return await withRuntimeModules(response);
+      } catch (_) {
+        // Sem internet, abre diretamente a tela local de Presença.
+        // Ela não depende do Supabase para iniciar e grava as marcações
+        // na mesma fila usada pelo módulo de sincronização do app normal.
+        return await caches.match('./offline.html') || await caches.match('./index.html');
+      }
     })());
     return;
   }
