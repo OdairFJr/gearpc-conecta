@@ -23,20 +23,14 @@
   <script>
     (async () => {
       const status = document.getElementById('status');
-
-      // Se o navegador já informa que está offline, não tenta abrir a aplicação
-      // que depende da nuvem. Vai diretamente para a chamada local.
       if (!navigator.onLine) {
         location.replace('./offline.html');
         return;
       }
 
-      // Com internet, força o registro da versão atual do service worker antes
-      // de seguir para o aplicativo normal. Isso evita que o Android mantenha
-      // workers antigos após uma atualização/reinstalação do PWA.
       if ('serviceWorker' in navigator) {
         try {
-          const reg = await navigator.serviceWorker.register('./service-worker.js?v=24.4', { updateViaCache: 'none' });
+          const reg = await navigator.serviceWorker.register('./service-worker.js?v=25.0', { updateViaCache: 'none' });
           await reg.update().catch(() => {});
           await navigator.serviceWorker.ready;
         } catch (_) {
@@ -44,7 +38,7 @@
         }
       }
 
-      location.replace('./?pwa=24.4');
+      location.replace('./?pwa=25.0');
     })();
   </script>
 </body>
