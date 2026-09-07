@@ -4,50 +4,33 @@
 
   function installFirstAccessUi() {
     const form = document.getElementById('loginForm');
-    const email = document.getElementById('email');
     const forgot = document.getElementById('forgotPasswordButton');
-    const message = document.getElementById('loginMessage');
-    if (!form || !email || !forgot || !message) return false;
-    if (document.getElementById('firstAccessButton')) return true;
+    if (!form || !forgot) return false;
+    if (document.getElementById('temporaryPasswordHint')) return true;
 
     const helper = form.querySelector('.login-helper');
     if (helper) {
-      helper.textContent = 'Se você já criou sua senha, entre normalmente. No primeiro acesso, informe apenas seu e-mail e use o botão “É meu primeiro acesso”.';
+      helper.textContent = 'Entre com seu e-mail e senha. No primeiro acesso, use a senha temporária enviada pela direção do grupo.';
     }
+
+    const box = document.createElement('div');
+    box.id = 'temporaryPasswordHint';
+    box.style.cssText = 'margin:12px 0 8px;padding:11px 12px;border-radius:10px;background:#eaf3ff;border:1px solid #b9d5f5;color:#17324d;font-size:.86rem;line-height:1.4;text-align:left;';
+    box.innerHTML = '<strong>🔑 Primeiro acesso</strong><br>Use o seu e-mail e a senha temporária recebida. Assim que entrar, o aplicativo vai pedir que você crie uma senha pessoal nova.';
+
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton?.parentNode) loginButton.parentNode.insertBefore(box, loginButton);
 
     forgot.textContent = 'Esqueci minha senha';
-
-    const first = document.createElement('button');
-    first.type = 'button';
-    first.id = 'firstAccessButton';
-    first.className = 'login-link-button';
-    first.textContent = '🔑 É meu primeiro acesso — criar senha';
-    first.style.cssText = 'margin-top:12px;background:#0a376c;color:#fff;border:0;border-radius:10px;padding:12px 14px;font-weight:800;width:100%;cursor:pointer;';
-
     const recoveryHint = form.querySelector('.login-recovery-hint');
-    const firstHint = document.createElement('p');
-    firstHint.id = 'firstAccessHint';
-    firstHint.className = 'login-recovery-hint';
-    firstHint.textContent = 'Digite seu e-mail acima. Enviaremos um link seguro para você criar sua primeira senha.';
-    firstHint.style.marginTop = '6px';
-
-    forgot.parentNode.insertBefore(first, forgot);
-    forgot.parentNode.insertBefore(firstHint, forgot);
     if (recoveryHint) {
-      recoveryHint.textContent = 'Se você já tinha senha e esqueceu, informe seu e-mail e toque em “Esqueci minha senha”.';
+      recoveryHint.textContent = 'Use esta opção somente se você já criou sua senha pessoal e não lembra mais dela.';
     }
 
-    first.addEventListener('click', () => {
-      const value = email.value.trim();
-      message.classList.remove('success-message');
-      if (!value) {
-        message.textContent = 'Digite seu e-mail no campo acima para receber o link do primeiro acesso.';
-        email.focus();
-        return;
-      }
-      message.textContent = 'Enviando o link para criar sua senha...';
-      forgot.click();
-    });
+    const oldFirst = document.getElementById('firstAccessButton');
+    if (oldFirst) oldFirst.remove();
+    const oldHint = document.getElementById('firstAccessHint');
+    if (oldHint) oldHint.remove();
 
     return true;
   }
