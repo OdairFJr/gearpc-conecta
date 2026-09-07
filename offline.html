@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a376c" />
+  <title>GEArPC Conecta — Presença offline</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17324d;background:#edf3f8}
+    *{box-sizing:border-box}body{margin:0;background:#edf3f8}.shell{max-width:760px;margin:0 auto;min-height:100vh;background:#f8fbfd}
+    header{background:#0a376c;color:white;padding:18px 18px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+    header img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:white}header strong{display:block;font-size:1.05rem}header span{font-size:.82rem;opacity:.9}
+    main{padding:16px}.offline-banner{background:#fff3cd;border:1px solid #ffe08a;border-radius:14px;padding:12px 14px;margin-bottom:14px;font-weight:700;color:#765400}
+    .person{margin:0 0 14px;color:#4d6378;font-size:.92rem}.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:white;border-radius:16px;padding:14px;box-shadow:0 1px 5px #0001}
+    label{display:flex;flex-direction:column;gap:6px;font-size:.8rem;font-weight:700;color:#4d6378}select,input{width:100%;padding:11px;border:1px solid #cbd8e3;border-radius:10px;background:white;font:inherit;color:#17324d}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.stat{background:white;border-radius:14px;padding:12px;text-align:center;box-shadow:0 1px 4px #0001}.stat strong{font-size:1.45rem;display:block}.stat span{font-size:.75rem;color:#617589}.present strong{color:#177245}.absent strong{color:#b93838}.pending strong{color:#8b6c13}
+    #message{min-height:24px;margin:10px 2px;font-size:.9rem;color:#4b6175}.list{display:grid;gap:10px}.card{background:white;border-radius:15px;padding:13px;box-shadow:0 1px 5px #0001;border-left:5px solid #b7c7d5}.card.presente{border-left-color:#1f8a55}.card.ausente{border-left-color:#c54a4a}.name{font-weight:800;margin-bottom:9px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.actions button{border:0;border-radius:10px;padding:10px;font-weight:800;font-size:.86rem}.btn-present{background:#e4f6ec;color:#176a42}.btn-absent{background:#fde8e8;color:#9f3030}.btn-present.selected{background:#218653;color:white}.btn-absent.selected{background:#bd4545;color:white}.btn-clear{grid-column:1/-1;background:#eef3f6;color:#526779}
+    .empty{background:white;border-radius:15px;padding:22px;text-align:center;color:#65798b}.online-box{margin-top:16px;padding:14px;background:#e5f4ea;border:1px solid #b7ddc4;border-radius:14px}.online-box button{width:100%;border:0;border-radius:10px;padding:12px;background:#0a376c;color:white;font-weight:800}.hidden{display:none!important}.small{font-size:.78rem;color:#65798b;margin-top:6px}
+    @media(max-width:520px){.controls{grid-template-columns:1fr}.summary{gap:6px}.stat{padding:10px 6px}.stat strong{font-size:1.3rem}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header><img src="logo-grupo.jpeg" alt=""><div><strong>GEArPC Conecta</strong><span>Presença — modo offline</span></div></header>
+  <main>
+    <div class="offline-banner">📴 Sem internet — as marcações ficam salvas neste aparelho.</div>
+    <p id="person" class="person"></p>
+    <section class="controls">
+      <label>Seção<select id="section"><option value="">Selecione</option></select></label>
+      <label>Data da atividade<input id="date" type="date"></label>
+    </section>
+    <section class="summary">
+      <div class="stat present"><strong id="present">0</strong><span>presentes</span></div>
+      <div class="stat absent"><strong id="absent">0</strong><span>ausentes</span></div>
+      <div class="stat pending"><strong id="pending">0</strong><span>não marcados</span></div>
+    </section>
+    <p id="message"></p>
+    <section id="list" class="list"></section>
+    <section id="onlineBox" class="online-box hidden">
+      <strong>✓ A internet voltou.</strong>
+      <p class="small">Abra o aplicativo normal para enviar automaticamente as marcações salvas.</p>
+      <button id="syncButton" type="button">Abrir app e sincronizar</button>
+    </section>
+  </main>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const ui = {person:$('person'),section:$('section'),date:$('date'),present:$('present'),absent:$('absent'),pending:$('pending'),message:$('message'),list:$('list'),onlineBox:$('onlineBox'),sync:$('syncButton')};
+  const esc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+  const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+  let ctx = null;
+
+  function findContext(){
+    const found=[];
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i)||'';
+      if(!key.startsWith('gearpc-presenca-offline-v24:')) continue;
+      const uid=key.slice('gearpc-presenca-offline-v24:'.length);
+      try{
+        const store=JSON.parse(localStorage.getItem(key)||'null');
+        const access=JSON.parse(localStorage.getItem(`gearpc-offline-access-v24:${uid}`)||'null');
+        if(!store?.base?.secoes?.length || !store?.base?.jovens?.length || !access?.ativo) continue;
+        const at=Date.parse(access.savedAt||store.base.at||0)||0;
+        found.push({uid,key,store,access,at});
+      }catch{}
+    }
+    found.sort((a,b)=>b.at-a.at);
+    return found[0]||null;
+  }
+
+  function readStore(){ try{return JSON.parse(localStorage.getItem(ctx.key)||'null')||{base:null,calls:{},queue:[]};}catch{return {base:null,calls:{},queue:[]};} }
+  function writeStore(s){ localStorage.setItem(ctx.key,JSON.stringify(s)); ctx.store=s; }
+  function keyFor(){ return `${Number(ui.section.value||0)}|${ui.date.value||''}`; }
+  function allowedSections(){
+    const base=ctx.store.base;
+    const active=(base.secoes||[]).filter(s=>s.ativo!==false);
+    if(ctx.access.isAdmin) return active;
+    const own=new Set((base.own||[]).map(Number));
+    return active.filter(s=>own.has(Number(s.id)));
+  }
+  function renderSections(){
+    const base=ctx.store.base, ramo=new Map((base.ramos||[]).map(r=>[Number(r.id),r]));
+    const secs=allowedSections();
+    ui.section.innerHTML='<option value="">Selecione</option>'+secs.map(s=>`<option value="${s.id}">${esc(s.nome)}${ramo.get(Number(s.ramo_id))?` — ${esc(ramo.get(Number(s.ramo_id)).nome)}`:''}</option>`).join('');
+    if(secs[0]) ui.section.value=String(secs[0].id);
+  }
+  function selectionRows(){
+    const s=readStore(), key=keyFor(), baseRows=(s.calls?.[key]?.rows||[]);
+    const map=new Map(baseRows.map(r=>[Number(r.jovem_id),{...r}]));
+    for(const q of (s.queue||[]).filter(q=>q.key===key)){
+      if(q.type==='delete') map.delete(Number(q.jovemId));
+      if(q.type==='upsert') map.set(Number(q.jovemId),{jovem_id:Number(q.jovemId),status:q.status,_local:true});
+    }
+    return [...map.values()];
+  }
+  function queueOp(op){
+    const s=readStore(); s.queue ||= [];
+    s.queue=s.queue.filter(q=>!(q.key===op.key && Number(q.jovemId)===Number(op.jovemId)));
+    s.queue.push(op); writeStore(s);
+  }
+  function render(){
+    const sid=Number(ui.section.value||0), date=ui.date.value;
+    if(!sid||!date){ ui.list.innerHTML='<div class="empty">Selecione uma seção e uma data.</div>'; return; }
+    const base=ctx.store.base;
+    const young=(base.jovens||[]).filter(j=>j.ativo!==false&&Number(j.secao_id)===sid).sort((a,b)=>String(a.nome_completo).localeCompare(String(b.nome_completo),'pt-BR'));
+    const rows=selectionRows(), sm=new Map(rows.map(r=>[Number(r.jovem_id),r.status]));
+    let p=0,a=0; for(const j of young){ if(sm.get(Number(j.id))==='presente')p++; if(sm.get(Number(j.id))==='ausente')a++; }
+    ui.present.textContent=String(p); ui.absent.textContent=String(a); ui.pending.textContent=String(Math.max(0,young.length-p-a));
+    const queued=(readStore().queue||[]).filter(q=>q.key===keyFor()).length;
+    ui.message.textContent=queued?`📌 ${queued} alteração(ões) salva(s) neste aparelho, aguardando sincronização.`:'Faça a chamada normalmente. Nada será perdido ao fechar o app.';
+    if(!young.length){ ui.list.innerHTML='<div class="empty">Nenhum jovem ativo salvo para esta seção.</div>'; return; }
+    ui.list.innerHTML=young.map(j=>{const st=sm.get(Number(j.id))||'pendente';return `<article class="card ${st}"><div class="name">${esc(j.nome_completo)}</div><div class="actions"><button class="btn-present ${st==='presente'?'selected':''}" data-id="${j.id}" data-status="presente">✓ Presente</button><button class="btn-absent ${st==='ausente'?'selected':''}" data-id="${j.id}" data-status="ausente">✕ Ausente</button>${st!=='pendente'?`<button class="btn-clear" data-clear="${j.id}">↺ Limpar marcação</button>`:''}</div></article>`;}).join('');
+  }
+  function mark(id,status){ const sid=Number(ui.section.value||0),date=ui.date.value;if(!sid||!date)return;queueOp({type:'upsert',key:keyFor(),secaoId:sid,date,jovemId:Number(id),status,at:new Date().toISOString()});render(); }
+  function clear(id){ const sid=Number(ui.section.value||0),date=ui.date.value;if(!sid||!date)return;queueOp({type:'delete',key:keyFor(),secaoId:sid,date,jovemId:Number(id),at:new Date().toISOString()});render(); }
+  function updateOnline(){ ui.onlineBox.classList.toggle('hidden',!navigator.onLine); }
+
+  ctx=findContext();
+  ui.date.value=today();
+  if(!ctx){
+    ui.person.textContent='Este aparelho ainda não possui uma lista preparada para uso offline.';
+    ui.message.textContent='Conecte à internet, abra o GEArPC Conecta e entre em Presença uma vez. Depois o modo offline ficará disponível.';
+    ui.list.innerHTML='<div class="empty">Nenhuma lista offline encontrada.</div>';
+    updateOnline();
+    return;
+  }
+  ui.person.textContent=ctx.access.nome?`Usuário: ${ctx.access.nome}`:'Usuário autorizado neste aparelho';
+  renderSections();
+  if(!allowedSections().length){
+    ui.message.textContent='Este perfil não possui seção vinculada para lançamento de presença offline.';
+    ui.list.innerHTML='<div class="empty">Sem seção disponível.</div>';
+  }else render();
+
+  ui.section.addEventListener('change',render); ui.date.addEventListener('change',render);
+  ui.list.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.id)mark(Number(b.dataset.id),b.dataset.status);if(b.dataset.clear)clear(Number(b.dataset.clear));});
+  ui.sync.addEventListener('click',()=>location.href='./');
+  window.addEventListener('online',updateOnline); window.addEventListener('offline',updateOnline); updateOnline();
+})();
+</script>
+</body>
+</html>
