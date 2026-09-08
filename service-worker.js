@@ -1,5 +1,5 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v27-0';
-const PROFILE_CACHE = 'gearpc-conecta-profile-v27-0';
+const CACHE_NAME = 'gearpc-conecta-offline-v27-1';
+const PROFILE_CACHE = 'gearpc-conecta-profile-v27-1';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
 
@@ -22,6 +22,7 @@ const APP_SHELL = [
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
   './programming-permissions-v24.js',
+  './programming-ai-fixes-v27-1.js',
   './first-access-v25.js',
   './mandatory-password-v26.js',
   './admin-activity-v27.js',
@@ -68,7 +69,9 @@ async function withRuntimeModules(response) {
     html = html.replace(supabaseTag, `${supabaseTag}\n  <script src="offline-bootstrap-v24.js"></script>`);
   }
   if (!html.includes('programming-permissions-v24.js')) {
-    html = html.replace(programmingTag, `<script src="programming-permissions-v24.js"></script>\n  ${programmingTag}`);
+    html = html.replace(programmingTag, `<script src="programming-permissions-v24.js"></script>\n  ${programmingTag}\n  <script src="programming-ai-fixes-v27-1.js"></script>`);
+  } else if (!html.includes('programming-ai-fixes-v27-1.js')) {
+    html = html.replace(programmingTag, `${programmingTag}\n  <script src="programming-ai-fixes-v27-1.js"></script>`);
   }
   if (!html.includes('offline-access-marker-v24.js')) {
     html = html.replace('</body>', '  <script src="offline-access-marker-v24.js"></script>\n</body>');
