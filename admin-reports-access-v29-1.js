@@ -9,6 +9,8 @@
   const PDF_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
   const AUTOTABLE_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js';
   let accessRows = [];
+  let activeYouthCount = null;
+  let activeChiefCount = null;
   let preparing = null;
   let patched = false;
   let bypassGenerate = false;
@@ -48,6 +50,19 @@
     }
   }
 
+  async function loadActiveCounts() {
+    try {
+      const [youngRes, chiefRes] = await Promise.all([
+        client.from('jovens').select('id', { count:'exact', head:true }).eq('ativo', true),
+        client.from('chefes').select('id', { count:'exact', head:true }).eq('ativo', true)
+      ]);
+      if (!youngRes.error && Number.isFinite(youngRes.count)) activeYouthCount = youngRes.count;
+      if (!chiefRes.error && Number.isFinite(chiefRes.count)) activeChiefCount = chiefRes.count;
+    } catch (error) {
+      console.warn('GEArPC: totais cadastrais não puderam ser carregados para o PDF.', error);
+    }
+  }
+
   function historicSelected() {
     return Boolean(document.querySelector('[data-report-block="historico"]')?.checked);
   }
@@ -65,11 +80,31 @@
     }
   }
 
+  function patchSummaryTable(doc) {
+    if (typeof doc.autoTable !== 'function') return;
+    const originalAutoTable = doc.autoTable.bind(doc);
+    doc.autoTable = function(options = {}) {
+      try {
+        const head = options?.head?.[0] || [];
+        if (head[0] === 'Indicador' && head[1] === 'Quantidade' && Array.isArray(options.body)) {
+          const body = options.body.map((row) => {
+            if (row?.[0] === 'Jovens ativos' && Number.isFinite(activeYouthCount)) return [row[0], String(activeYouthCount)];
+            if (row?.[0] === 'Adultos ativos' && Number.isFinite(activeChiefCount)) return [row[0], String(activeChiefCount)];
+            return row;
+          });
+          return originalAutoTable({ ...options, body });
+        }
+      } catch (_) {}
+      return originalAutoTable(options);
+    };
+  }
+
   function patchConstructor() {
     if (patched || !window.jspdf?.jsPDF) return;
     const Original = window.jspdf.jsPDF;
     const Wrapped = function(...args) {
       const doc = new Original(...args);
+      patchSummaryTable(doc);
       const originalSave = doc.save.bind(doc);
       doc.save = function(filename, options) {
         if (historicSelected() && accessRows.length && typeof doc.autoTable === 'function') {
@@ -128,6 +163,7 @@
     preparing = (async () => {
       await Promise.all([
         loadAccessRows(),
+        loadActiveCounts(),
         (async () => {
           if (!window.jspdf?.jsPDF) await loadScript(PDF_LIB, 'gearpcJsPdfLib');
           if (!window.jspdf?.jsPDF) throw new Error('Biblioteca PDF indisponível.');
