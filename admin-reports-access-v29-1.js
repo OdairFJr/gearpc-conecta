@@ -38,13 +38,31 @@
   }
 
   async function loadAccessRows() {
-    const { data, error } = await client.rpc('relatorio_acessos_usuarios');
-    if (error) throw error;
-    accessRows = data || [];
+    try {
+      const { data, error } = await client.rpc('relatorio_acessos_usuarios');
+      if (error) throw error;
+      accessRows = data || [];
+    } catch (error) {
+      accessRows = [];
+      console.warn('GEArPC: dados de acesso não puderam ser carregados para o PDF.', error);
+    }
   }
 
   function historicSelected() {
     return Boolean(document.querySelector('[data-report-block="historico"]')?.checked);
+  }
+
+  function redrawFooters(doc) {
+    const pages = doc.getNumberOfPages();
+    for (let i = 1; i <= pages; i += 1) {
+      doc.setPage(i);
+      doc.setFillColor(255,255,255);
+      doc.rect(0, 286, 210, 11, 'F');
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.setTextColor(110);
+      doc.text(`GEArPC Conecta - uso administrativo - página ${i} de ${pages}`, 105, 291, { align:'center' });
+    }
   }
 
   function patchConstructor() {
@@ -92,6 +110,7 @@
             console.warn('GEArPC: não foi possível acrescentar a página de acessos ao PDF.', error);
           }
         }
+        try { redrawFooters(doc); } catch (_) {}
         return originalSave(filename, options);
       };
       return doc;
@@ -143,7 +162,7 @@
     document.addEventListener('click', async (event) => {
       const button = event.target instanceof Element ? event.target.closest('#reportGenerate') : null;
       if (!button || bypassGenerate) return;
-      if (patched && accessRows.length) return;
+      if (patched) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       const oldText = button.textContent;
