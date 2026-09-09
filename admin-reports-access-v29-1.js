@@ -194,6 +194,8 @@
     }
     relabelHistory();
     $('reportsButton')?.addEventListener('click', () => { void prepare().catch((e)=>console.warn('GEArPC relatórios:',e)); });
+    $('reportsLogoutButton')?.addEventListener('click', () => $('reportsView')?.classList.add('hidden'), true);
+    client.auth.onAuthStateChange((_event, session) => { if (!session) $('reportsView')?.classList.add('hidden'); });
 
     document.addEventListener('click', async (event) => {
       const button = event.target instanceof Element ? event.target.closest('#reportGenerate') : null;
