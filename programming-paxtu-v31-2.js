@@ -5,8 +5,9 @@
   const { client, state } = runtime;
   const $ = (id) => document.getElementById(id);
   const PAXTU_OK = 'conferida_paxtu';
+  const PAXTU_ADJUST = 'conferida_paxtu_ajustes';
   const PAXTU_MISSING = 'nao_lancada_paxtu';
-  const PAXTU_STATES = [PAXTU_OK, PAXTU_MISSING];
+  const PAXTU_STATES = [PAXTU_OK, PAXTU_ADJUST, PAXTU_MISSING];
   let refreshTimer = null;
   let refreshing = false;
 
@@ -60,10 +61,10 @@
       .program-paxtu-list-v312{display:grid;gap:10px}.program-paxtu-row-v312{border:1px solid #e1e7ee;border-radius:13px;padding:12px;background:#fafbfd}
       .program-paxtu-head-v312{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.program-paxtu-head-v312 strong{color:#26394c}
       .program-paxtu-status-v312{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:.78rem;font-weight:800;background:#eef2f6;color:#526476;white-space:nowrap}
-      .program-paxtu-status-v312.ok{background:#e8f6ed;color:#176b38}.program-paxtu-status-v312.missing{background:#fff1df;color:#86510b}
+      .program-paxtu-status-v312.ok{background:#e8f6ed;color:#176b38}.program-paxtu-status-v312.adjust{background:#fff6d9;color:#7b5b00}.program-paxtu-status-v312.missing{background:#fff1df;color:#86510b}
       .program-paxtu-actions-v312{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.program-paxtu-actions-v312 button{border:0;border-radius:10px;padding:9px 11px;font-weight:800;cursor:pointer}
-      .program-paxtu-ok-v312{background:#1f7a45;color:#fff}.program-paxtu-missing-v312{background:#a86412;color:#fff}.program-paxtu-clear-v312{background:#e8edf3;color:#33485d}
-      .program-paxtu-actions-v312 button:disabled{opacity:.55;cursor:default}.program-paxtu-note-v312{margin:7px 0 0;color:#667788;font-size:.86rem}
+      .program-paxtu-ok-v312{background:#1f7a45;color:#fff}.program-paxtu-adjust-v312{background:#b18412;color:#fff}.program-paxtu-missing-v312{background:#a86412;color:#fff}.program-paxtu-clear-v312{background:#e8edf3;color:#33485d}
+      .program-paxtu-actions-v312 button:disabled{opacity:.55;cursor:default}.program-paxtu-note-v312{margin:7px 0 0;color:#667788;font-size:.86rem}.program-paxtu-observation-v312{margin:8px 0 0;padding:9px 10px;border-radius:10px;background:#fff9e8;color:#6e5710;font-size:.88rem}
       @media(max-width:640px){.program-paxtu-head-v312{flex-direction:column}.program-paxtu-actions-v312 button{flex:1 1 100%}}
     `;
     document.head.appendChild(style);
@@ -111,6 +112,7 @@
 
   function statusInfo(status) {
     if (status === PAXTU_OK) return { label: '✓ Conferida no Paxtu', cls: 'ok' };
+    if (status === PAXTU_ADJUST) return { label: '✎ Conferida no Paxtu — precisa de ajustes', cls: 'adjust' };
     if (status === PAXTU_MISSING) return { label: '⚠ Não lançada no Paxtu', cls: 'missing' };
     return { label: 'Sem marcação do Paxtu', cls: '' };
   }
@@ -121,6 +123,9 @@
     const helper = hasInternalProgram
       ? 'Existe programação lançada no GEArPC Conecta. A marcação do Paxtu pode ser limpa se não for mais necessária.'
       : 'Use estes botões quando a programação desta seção estiver sendo controlada pelo Paxtu.';
+    const observation = review?.status === PAXTU_ADJUST && review?.observacao
+      ? `<p class="program-paxtu-observation-v312"><strong>Ajustes solicitados:</strong> ${escapeHtml(review.observacao)}</p>`
+      : '';
     return `
       <article class="program-paxtu-row-v312">
         <div class="program-paxtu-head-v312">
@@ -128,8 +133,10 @@
           <span class="program-paxtu-status-v312 ${info.cls}">${escapeHtml(info.label)}</span>
         </div>
         <p class="program-paxtu-note-v312">${escapeHtml(helper)}</p>
+        ${observation}
         <div class="program-paxtu-actions-v312">
           <button type="button" class="program-paxtu-ok-v312" data-paxtu-action="ok" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_OK ? 'disabled' : ''}>✓ Conferida no Paxtu</button>
+          <button type="button" class="program-paxtu-adjust-v312" data-paxtu-action="adjust" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_ADJUST ? 'disabled' : ''}>✎ Conferida — precisa de ajustes</button>
           <button type="button" class="program-paxtu-missing-v312" data-paxtu-action="missing" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_MISSING ? 'disabled' : ''}>⚠ Não lançada no Paxtu</button>
           ${paxtuMarked ? `<button type="button" class="program-paxtu-clear-v312" data-paxtu-action="clear" data-section-id="${section.id}" data-date="${date}">Limpar marcação Paxtu</button>` : ''}
         </div>
@@ -138,15 +145,21 @@
 
   function chiefRow(section, review) {
     const info = statusInfo(review?.status);
+    let helper = 'A administração verificou esta programação diretamente no Paxtu.';
+    if (review?.status === PAXTU_OK) helper = 'A administração conferiu esta programação diretamente no Paxtu.';
+    if (review?.status === PAXTU_ADJUST) helper = 'A administração conferiu a programação no Paxtu e identificou ajustes necessários.';
+    if (review?.status === PAXTU_MISSING) helper = 'A administração verificou o Paxtu e a programação ainda não estava lançada.';
+    const observation = review?.status === PAXTU_ADJUST && review?.observacao
+      ? `<p class="program-paxtu-observation-v312"><strong>Ajustes solicitados:</strong> ${escapeHtml(review.observacao)}</p>`
+      : '';
     return `
       <article class="program-paxtu-row-v312">
         <div class="program-paxtu-head-v312">
           <strong>${escapeHtml(section.nome)}</strong>
           <span class="program-paxtu-status-v312 ${info.cls}">${escapeHtml(info.label)}</span>
         </div>
-        <p class="program-paxtu-note-v312">${review?.status === PAXTU_OK
-          ? 'A administração conferiu esta programação diretamente no Paxtu.'
-          : 'A administração verificou o Paxtu e a programação ainda não estava lançada.'}</p>
+        <p class="program-paxtu-note-v312">${escapeHtml(helper)}</p>
+        ${observation}
       </article>`;
   }
 
@@ -201,12 +214,23 @@
     const date = button.dataset.date || '';
     if (!sectionId || !date) return;
 
+    let observation = '';
+    if (status === PAXTU_ADJUST) {
+      const reason = window.prompt('Informe quais ajustes a chefia precisa fazer na programação do Paxtu:');
+      if (reason === null) return;
+      if (!reason.trim()) {
+        window.alert('Informe os ajustes necessários antes de salvar.');
+        return;
+      }
+      observation = reason.trim();
+    } else if (status === PAXTU_OK) {
+      observation = 'Programação conferida pelo administrador diretamente no Paxtu.';
+    } else {
+      observation = 'Programação não localizada no Paxtu na conferência da administração.';
+    }
+
     button.disabled = true;
     const now = new Date().toISOString();
-    const observation = status === PAXTU_OK
-      ? 'Programação conferida pelo administrador diretamente no Paxtu.'
-      : 'Programação não localizada no Paxtu na conferência da administração.';
-
     const { error } = await client.from('programacao_revisoes').upsert({
       secao_id: sectionId,
       data_atividade: date,
@@ -257,12 +281,11 @@
 
   function patchExistingReviewLabels() {
     document.querySelectorAll('.program-review-state, .program-editor-review-status').forEach((el) => {
-      if ((el.textContent || '').includes(PAXTU_OK)) {
-        el.textContent = (el.textContent || '').replace(PAXTU_OK, 'Conferida no Paxtu');
-      }
-      if ((el.textContent || '').includes(PAXTU_MISSING)) {
-        el.textContent = (el.textContent || '').replace(PAXTU_MISSING, 'Não lançada no Paxtu');
-      }
+      let text = el.textContent || '';
+      if (text.includes(PAXTU_ADJUST)) text = text.replace(PAXTU_ADJUST, 'Conferida no Paxtu — precisa de ajustes');
+      if (text.includes(PAXTU_OK)) text = text.replace(PAXTU_OK, 'Conferida no Paxtu');
+      if (text.includes(PAXTU_MISSING)) text = text.replace(PAXTU_MISSING, 'Não lançada no Paxtu');
+      el.textContent = text;
     });
   }
 
@@ -282,6 +305,7 @@
       event.stopImmediatePropagation();
       const action = button.dataset.paxtuAction;
       if (action === 'ok') await savePaxtuStatus(button, PAXTU_OK);
+      else if (action === 'adjust') await savePaxtuStatus(button, PAXTU_ADJUST);
       else if (action === 'missing') await savePaxtuStatus(button, PAXTU_MISSING);
       else if (action === 'clear') await clearPaxtuStatus(button);
       return;
