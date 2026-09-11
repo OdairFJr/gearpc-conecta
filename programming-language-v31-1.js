@@ -29,15 +29,11 @@
     });
 
     document.querySelectorAll('.review-authorize').forEach((button) => {
-      if (button.textContent !== '✓ Programação conferida') {
-        button.textContent = '✓ Programação conferida';
-      }
+      if (button.textContent !== '✓ Programação conferida') button.textContent = '✓ Programação conferida';
     });
 
     document.querySelectorAll('.review-deny').forEach((button) => {
-      if (button.textContent !== '✎ Solicitar ajustes') {
-        button.textContent = '✎ Solicitar ajustes';
-      }
+      if (button.textContent !== '✎ Solicitar ajustes') button.textContent = '✎ Solicitar ajustes';
     });
 
     document.querySelectorAll('.review-cancel').forEach((button) => {
@@ -48,15 +44,11 @@
     });
 
     document.querySelectorAll('.program-auto-cancel-note').forEach((note) => {
-      if (/cancelamento automático/i.test(note.textContent || '')) {
-        note.textContent = 'Prazo de lançamento: sexta-feira às 14:00';
-      }
+      if (/cancelamento automático/i.test(note.textContent || '')) note.textContent = 'Prazo de lançamento: sexta-feira às 14:00';
     });
 
     document.querySelectorAll('[data-late-release="true"]').forEach((button) => {
-      if (button.textContent !== 'Liberar lançamento após prazo') {
-        button.textContent = 'Liberar lançamento após prazo';
-      }
+      if (button.textContent !== 'Liberar lançamento após prazo') button.textContent = 'Liberar lançamento após prazo';
     });
 
     document.querySelectorAll('.program-editor-review-status').forEach((box) => {
@@ -69,9 +61,7 @@
 
     document.querySelectorAll('.weekly-program-cancellation').forEach((card) => {
       const strong = card.querySelector('strong');
-      if (strong && /atividade cancelada/i.test(strong.textContent || '')) {
-        strong.textContent = '⏰ Programação não lançada no prazo';
-      }
+      if (strong && /atividade cancelada/i.test(strong.textContent || '')) strong.textContent = '⏰ Programação não lançada no prazo';
       const paragraph = card.querySelector('p');
       if (paragraph && /foi cancelada automaticamente/i.test(paragraph.textContent || '')) {
         paragraph.textContent = 'A programação não foi lançada até sexta-feira às 14:00. O prazo de lançamento foi encerrado; a atividade não é cancelada automaticamente pelo sistema.';
@@ -87,10 +77,7 @@
 
     const reason = window.prompt('Informe quais ajustes são necessários na programação:');
     if (reason === null) return;
-    if (!reason.trim()) {
-      window.alert('Informe os ajustes necessários para registrar a revisão.');
-      return;
-    }
+    if (!reason.trim()) return window.alert('Informe os ajustes necessários para registrar a revisão.');
 
     button.disabled = true;
     const now = new Date().toISOString();
@@ -105,9 +92,8 @@
     }, { onConflict: 'secao_id,data_atividade' });
 
     if (error) {
-      window.alert('Não foi possível registrar os ajustes da programação.');
       button.disabled = false;
-      return;
+      return window.alert('Não foi possível registrar os ajustes da programação.');
     }
 
     $('programmingRefreshButton')?.click();
@@ -139,24 +125,4 @@
   });
 
   patchProgrammingLanguage();
-})();
-
-(() => {
-  if (window.__GEARPC_PROGRAM_IMPORT_V33_LOADER__) return;
-  window.__GEARPC_PROGRAM_IMPORT_V33_LOADER__ = true;
-
-  function loadImportModule() {
-    if (document.getElementById('gearpcProgrammingImportV33')) return;
-    const script = document.createElement('script');
-    script.id = 'gearpcProgrammingImportV33';
-    script.src = 'programming-import-v33.js?v=33.0';
-    script.async = false;
-    document.head.appendChild(script);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadImportModule, { once: true });
-  } else {
-    loadImportModule();
-  }
 })();
