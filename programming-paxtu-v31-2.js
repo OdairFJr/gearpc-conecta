@@ -11,27 +11,17 @@
   let refreshTimer = null;
   let refreshing = false;
 
-  function isAdmin() {
-    return state.profile?.tipo === 'administrador';
-  }
-
-  function isChief() {
-    return state.profile?.tipo === 'chefia';
-  }
-
+  function isAdmin() { return state.profile?.tipo === 'administrador'; }
+  function isChief() { return state.profile?.tipo === 'chefia'; }
   function escapeHtml(value) {
     return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
   }
 
   function saoPauloDateParts(date = new Date()) {
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Sao_Paulo',
-      year: 'numeric', month: '2-digit', day: '2-digit'
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
     }).formatToParts(date);
     const get = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
     return { year: get('year'), month: get('month'), day: get('day') };
@@ -39,16 +29,14 @@
 
   function nextSaturdayYmd() {
     const p = saoPauloDateParts();
-    const base = new Date(Date.UTC(p.year, p.month - 1, p.day, 12, 0, 0));
-    const diff = (6 - base.getUTCDay() + 7) % 7;
-    base.setUTCDate(base.getUTCDate() + diff);
+    const base = new Date(Date.UTC(p.year, p.month - 1, p.day, 12));
+    base.setUTCDate(base.getUTCDate() + ((6 - base.getUTCDay() + 7) % 7));
     return base.toISOString().slice(0, 10);
   }
 
   function formatDate(iso) {
-    if (!iso) return '';
-    const [y, m, d] = String(iso).split('-');
-    return y && m && d ? `${d}/${m}/${y}` : String(iso);
+    const [y, m, d] = String(iso || '').split('-');
+    return y && m && d ? `${d}/${m}/${y}` : String(iso || '');
   }
 
   function injectStyles() {
@@ -77,7 +65,7 @@
     if (!panel) {
       panel = document.createElement('section');
       panel.id = 'programPaxtuPanelV312';
-      panel.className = 'program-paxtu-panel-v312';
+      panel.className = 'program-paxtu-panel-v312 hidden';
       const weekly = $('programWeeklyReviewPanel');
       const roleNote = $('programmingRoleNote');
       if (weekly) weekly.insertAdjacentElement('afterend', panel);
@@ -91,7 +79,8 @@
     if (direct.length) return [...new Set(direct)];
     const chiefId = Number(state.profile?.chefe_id || 0);
     if (!chiefId) return [];
-    const { data } = await client.from('chefe_secoes').select('secao_id').eq('chefe_id', chiefId);
+    const { data, error } = await client.from('chefe_secoes').select('secao_id').eq('chefe_id', chiefId);
+    if (error) return [];
     return [...new Set((data || []).map((row) => Number(row.secao_id)).filter(Boolean))];
   }
 
@@ -103,11 +92,7 @@
     ]);
     const firstError = [sectionsRes, programsRes, reviewsRes].find((res) => res.error)?.error;
     if (firstError) throw firstError;
-    return {
-      sections: sectionsRes.data || [],
-      programs: programsRes.data || [],
-      reviews: reviewsRes.data || []
-    };
+    return { sections: sectionsRes.data || [], programs: programsRes.data || [], reviews: reviewsRes.data || [] };
   }
 
   function statusInfo(status) {
@@ -124,23 +109,17 @@
       ? 'Existe programação lançada no GEArPC Conecta. A marcação do Paxtu pode ser limpa se não for mais necessária.'
       : 'Use estes botões quando a programação desta seção estiver sendo controlada pelo Paxtu.';
     const observation = review?.status === PAXTU_ADJUST && review?.observacao
-      ? `<p class="program-paxtu-observation-v312"><strong>Ajustes solicitados:</strong> ${escapeHtml(review.observacao)}</p>`
-      : '';
-    return `
-      <article class="program-paxtu-row-v312">
-        <div class="program-paxtu-head-v312">
-          <strong>${escapeHtml(section.nome)}</strong>
-          <span class="program-paxtu-status-v312 ${info.cls}">${escapeHtml(info.label)}</span>
-        </div>
-        <p class="program-paxtu-note-v312">${escapeHtml(helper)}</p>
-        ${observation}
-        <div class="program-paxtu-actions-v312">
-          <button type="button" class="program-paxtu-ok-v312" data-paxtu-action="ok" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_OK ? 'disabled' : ''}>✓ Conferida no Paxtu</button>
-          <button type="button" class="program-paxtu-adjust-v312" data-paxtu-action="adjust" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_ADJUST ? 'disabled' : ''}>✎ Conferida — precisa de ajustes</button>
-          <button type="button" class="program-paxtu-missing-v312" data-paxtu-action="missing" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_MISSING ? 'disabled' : ''}>⚠ Não lançada no Paxtu</button>
-          ${paxtuMarked ? `<button type="button" class="program-paxtu-clear-v312" data-paxtu-action="clear" data-section-id="${section.id}" data-date="${date}">Limpar marcação Paxtu</button>` : ''}
-        </div>
-      </article>`;
+      ? `<p class="program-paxtu-observation-v312"><strong>Ajustes solicitados:</strong> ${escapeHtml(review.observacao)}</p>` : '';
+    return `<article class="program-paxtu-row-v312">
+      <div class="program-paxtu-head-v312"><strong>${escapeHtml(section.nome)}</strong><span class="program-paxtu-status-v312 ${info.cls}">${escapeHtml(info.label)}</span></div>
+      <p class="program-paxtu-note-v312">${escapeHtml(helper)}</p>${observation}
+      <div class="program-paxtu-actions-v312">
+        <button type="button" class="program-paxtu-ok-v312" data-paxtu-action="ok" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_OK ? 'disabled' : ''}>✓ Conferida no Paxtu</button>
+        <button type="button" class="program-paxtu-adjust-v312" data-paxtu-action="adjust" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_ADJUST ? 'disabled' : ''}>✎ Conferida — precisa de ajustes</button>
+        <button type="button" class="program-paxtu-missing-v312" data-paxtu-action="missing" data-section-id="${section.id}" data-date="${date}" ${review?.status === PAXTU_MISSING ? 'disabled' : ''}>⚠ Não lançada no Paxtu</button>
+        ${paxtuMarked ? `<button type="button" class="program-paxtu-clear-v312" data-paxtu-action="clear" data-section-id="${section.id}" data-date="${date}">Limpar marcação Paxtu</button>` : ''}
+      </div>
+    </article>`;
   }
 
   function chiefRow(section, review) {
@@ -150,17 +129,11 @@
     if (review?.status === PAXTU_ADJUST) helper = 'A administração conferiu a programação no Paxtu e identificou ajustes necessários.';
     if (review?.status === PAXTU_MISSING) helper = 'A administração verificou o Paxtu e a programação ainda não estava lançada.';
     const observation = review?.status === PAXTU_ADJUST && review?.observacao
-      ? `<p class="program-paxtu-observation-v312"><strong>Ajustes solicitados:</strong> ${escapeHtml(review.observacao)}</p>`
-      : '';
-    return `
-      <article class="program-paxtu-row-v312">
-        <div class="program-paxtu-head-v312">
-          <strong>${escapeHtml(section.nome)}</strong>
-          <span class="program-paxtu-status-v312 ${info.cls}">${escapeHtml(info.label)}</span>
-        </div>
-        <p class="program-paxtu-note-v312">${escapeHtml(helper)}</p>
-        ${observation}
-      </article>`;
+      ? `<p class="program-paxtu-observation-v312"><strong>Ajustes solicitados:</strong> ${escapeHtml(review.observacao)}</p>` : '';
+    return `<article class="program-paxtu-row-v312">
+      <div class="program-paxtu-head-v312"><strong>${escapeHtml(section.nome)}</strong><span class="program-paxtu-status-v312 ${info.cls}">${escapeHtml(info.label)}</span></div>
+      <p class="program-paxtu-note-v312">${escapeHtml(helper)}</p>${observation}
+    </article>`;
   }
 
   async function refreshPanel() {
@@ -183,9 +156,7 @@
           return !programSectionIds.has(Number(section.id)) || PAXTU_STATES.includes(review?.status);
         });
         if (!relevant.length) {
-          panel.classList.add('hidden');
-          panel.innerHTML = '';
-          return;
+          panel.classList.add('hidden'); panel.innerHTML = ''; return;
         }
         panel.classList.remove('hidden');
         panel.innerHTML = `<h3>Controle pelo Paxtu</h3><p>Programações de sábado ${escapeHtml(formatDate(date))} que podem ser acompanhadas diretamente no Paxtu.</p><div class="program-paxtu-list-v312">${relevant.map((section) => adminRow(section, reviewBySection.get(Number(section.id)), date, programSectionIds.has(Number(section.id)))).join('')}</div>`;
@@ -195,9 +166,7 @@
       const ownIds = new Set(await ownSectionIds());
       const visible = sections.filter((section) => ownIds.has(Number(section.id)) && PAXTU_STATES.includes(reviewBySection.get(Number(section.id))?.status));
       if (!visible.length) {
-        panel.classList.add('hidden');
-        panel.innerHTML = '';
-        return;
+        panel.classList.add('hidden'); panel.innerHTML = ''; return;
       }
       panel.classList.remove('hidden');
       panel.innerHTML = `<h3>Status da programação no Paxtu</h3><p>Sábado ${escapeHtml(formatDate(date))}.</p><div class="program-paxtu-list-v312">${visible.map((section) => chiefRow(section, reviewBySection.get(Number(section.id)))).join('')}</div>`;
@@ -208,53 +177,38 @@
     }
   }
 
+  function scheduleRefresh(delay = 250) {
+    window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(refreshPanel, delay);
+  }
+
   async function savePaxtuStatus(button, status) {
     if (!isAdmin() || !state.user?.id) return;
     const sectionId = Number(button.dataset.sectionId || 0);
     const date = button.dataset.date || '';
     if (!sectionId || !date) return;
-
     let observation = '';
     if (status === PAXTU_ADJUST) {
       const reason = window.prompt('Informe quais ajustes a chefia precisa fazer na programação do Paxtu:');
       if (reason === null) return;
-      if (!reason.trim()) {
-        window.alert('Informe os ajustes necessários antes de salvar.');
-        return;
-      }
+      if (!reason.trim()) return window.alert('Informe os ajustes necessários antes de salvar.');
       observation = reason.trim();
-    } else if (status === PAXTU_OK) {
-      observation = 'Programação conferida pelo administrador diretamente no Paxtu.';
-    } else {
-      observation = 'Programação não localizada no Paxtu na conferência da administração.';
-    }
+    } else if (status === PAXTU_OK) observation = 'Programação conferida pelo administrador diretamente no Paxtu.';
+    else observation = 'Programação não localizada no Paxtu na conferência da administração.';
 
     button.disabled = true;
     const now = new Date().toISOString();
     const { error } = await client.from('programacao_revisoes').upsert({
-      secao_id: sectionId,
-      data_atividade: date,
-      status,
-      observacao: observation,
-      revisado_por: state.user.id,
-      revisado_em: now,
-      atualizado_em: now
+      secao_id: sectionId, data_atividade: date, status, observacao: observation,
+      revisado_por: state.user.id, revisado_em: now, atualizado_em: now
     }, { onConflict: 'secao_id,data_atividade' });
-
     if (error) {
-      window.alert('Não foi possível salvar o status do Paxtu.');
       button.disabled = false;
-      return;
+      return window.alert('Não foi possível salvar o status do Paxtu.');
     }
-
-    await client.from('notificacoes')
-      .update({ lida: true })
-      .eq('tipo', 'cancelamento_programacao')
-      .eq('secao_id', sectionId)
-      .eq('data_referencia', date);
-
-    $('programmingRefreshButton')?.click();
-    scheduleRefresh(120);
+    await client.from('notificacoes').update({ lida: true })
+      .eq('tipo', 'cancelamento_programacao').eq('secao_id', sectionId).eq('data_referencia', date);
+    scheduleRefresh(50);
   }
 
   async function clearPaxtuStatus(button) {
@@ -262,71 +216,50 @@
     const sectionId = Number(button.dataset.sectionId || 0);
     const date = button.dataset.date || '';
     if (!sectionId || !date) return;
-    const ok = window.confirm('Limpar a marcação do Paxtu para esta seção?');
-    if (!ok) return;
+    if (!window.confirm('Limpar a marcação do Paxtu para esta seção?')) return;
     button.disabled = true;
-    const { error } = await client.from('programacao_revisoes')
-      .delete()
-      .eq('secao_id', sectionId)
-      .eq('data_atividade', date)
-      .in('status', PAXTU_STATES);
+    const { error } = await client.from('programacao_revisoes').delete()
+      .eq('secao_id', sectionId).eq('data_atividade', date).in('status', PAXTU_STATES);
     if (error) {
-      window.alert('Não foi possível limpar a marcação do Paxtu.');
       button.disabled = false;
-      return;
+      return window.alert('Não foi possível limpar a marcação do Paxtu.');
     }
-    $('programmingRefreshButton')?.click();
-    scheduleRefresh(120);
-  }
-
-  function patchExistingReviewLabels() {
-    document.querySelectorAll('.program-review-state, .program-editor-review-status').forEach((el) => {
-      let text = el.textContent || '';
-      if (text.includes(PAXTU_ADJUST)) text = text.replace(PAXTU_ADJUST, 'Conferida no Paxtu — precisa de ajustes');
-      if (text.includes(PAXTU_OK)) text = text.replace(PAXTU_OK, 'Conferida no Paxtu');
-      if (text.includes(PAXTU_MISSING)) text = text.replace(PAXTU_MISSING, 'Não lançada no Paxtu');
-      el.textContent = text;
-    });
-  }
-
-  function scheduleRefresh(delay = 250) {
-    window.clearTimeout(refreshTimer);
-    refreshTimer = window.setTimeout(async () => {
-      patchExistingReviewLabels();
-      await refreshPanel();
-      patchExistingReviewLabels();
-    }, delay);
+    scheduleRefresh(50);
   }
 
   document.addEventListener('click', async (event) => {
-    const button = event.target.closest('[data-paxtu-action]');
-    if (button) {
+    const paxtu = event.target.closest('[data-paxtu-action]');
+    if (paxtu) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      const action = button.dataset.paxtuAction;
-      if (action === 'ok') await savePaxtuStatus(button, PAXTU_OK);
-      else if (action === 'adjust') await savePaxtuStatus(button, PAXTU_ADJUST);
-      else if (action === 'missing') await savePaxtuStatus(button, PAXTU_MISSING);
-      else if (action === 'clear') await clearPaxtuStatus(button);
+      const action = paxtu.dataset.paxtuAction;
+      if (action === 'ok') await savePaxtuStatus(paxtu, PAXTU_OK);
+      else if (action === 'adjust') await savePaxtuStatus(paxtu, PAXTU_ADJUST);
+      else if (action === 'missing') await savePaxtuStatus(paxtu, PAXTU_MISSING);
+      else if (action === 'clear') await clearPaxtuStatus(paxtu);
       return;
     }
-    if (event.target.closest('#programmingButton, #programmingRefreshButton, #programEditorBackButton, .program-list-card')) {
-      scheduleRefresh();
+
+    if (event.target.closest('#programmingButton, #programmingRefreshButton, #programEditorBackButton')) {
+      scheduleRefresh(400);
     }
   }, true);
 
-  const observer = new MutationObserver(() => {
-    patchExistingReviewLabels();
-    scheduleRefresh(180);
-  });
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  const programmingView = $('programmingView');
+  if (programmingView) {
+    const viewObserver = new MutationObserver((mutations) => {
+      if (mutations.some((m) => m.attributeName === 'class') && !programmingView.classList.contains('hidden')) {
+        scheduleRefresh(250);
+      }
+    });
+    viewObserver.observe(programmingView, { attributes: true, attributeFilter: ['class'] });
+  }
 
-  client.auth.onAuthStateChange((_event, session) => {
+  runtime.client.auth.onAuthStateChange((_event, session) => {
     if (session) scheduleRefresh(700);
     else $('programPaxtuPanelV312')?.remove();
   });
 
-  client.auth.getSession().then(({ data }) => {
-    if (data?.session) scheduleRefresh(700);
-  }).catch(() => {});
+  injectStyles();
+  scheduleRefresh(700);
 })();
