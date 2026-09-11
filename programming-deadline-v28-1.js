@@ -30,8 +30,8 @@
     style.id = 'programDeadlineV281Styles';
     style.textContent = `
       .weekly-program-cancellations{margin:14px 0 18px;display:grid;gap:10px}
-      .weekly-program-cancellation{background:#fff0ee;border:1px solid #e3aaa5;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.05)}
-      .weekly-program-cancellation strong{display:block;color:#8f2d25;margin-bottom:4px}.weekly-program-cancellation p{margin:0;color:#6f3b36;line-height:1.4}.weekly-program-cancellation button{border:0;border-radius:10px;padding:9px 12px;background:#8f2d25;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
+      .weekly-program-cancellation{background:#fff7d6;border:1px solid #e7c96a;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.05)}
+      .weekly-program-cancellation strong{display:block;color:#6d5200;margin-bottom:4px}.weekly-program-cancellation p{margin:0;color:#5f532d;line-height:1.4}.weekly-program-cancellation button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
       .program-auto-cancel-note{display:inline-flex;align-items:center;padding:8px 10px;border-radius:10px;background:#f4f6f8;color:#5d6874;font-size:.86rem;font-weight:700}
       @media(max-width:640px){.weekly-program-cancellation{flex-direction:column}.weekly-program-cancellation button{width:100%}}
     `;
@@ -77,7 +77,7 @@
 
     host.innerHTML = data.map((notice) => `
       <article class="weekly-program-cancellation" data-cancel-notice-id="${Number(notice.id)}">
-        <div><strong>⛔ ${escapeHtml(notice.titulo || 'Atividade cancelada')}</strong><p>${escapeHtml(notice.mensagem || '')}</p></div>
+        <div><strong>⏰ ${escapeHtml(notice.titulo || 'Programação não lançada no prazo')}</strong><p>${escapeHtml(notice.mensagem || '')}</p></div>
         <button type="button" data-dismiss-cancel-notice="${Number(notice.id)}">Entendi</button>
       </article>
     `).join('');
@@ -94,34 +94,40 @@
 
   function patchProgrammingUi() {
     document.querySelectorAll('.program-deadline-note').forEach((note) => {
-      if (note.textContent.includes('quinta-feira')) {
-        note.innerHTML = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>sexta-feira, às 14:00</strong>.';
-      }
+      const desired = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>sexta-feira, às 14:00</strong>.';
+      if (note.innerHTML !== desired) note.innerHTML = desired;
     });
 
     if (!isAdmin()) return;
 
     document.querySelectorAll('.program-review-card').forEach((card) => {
-      const stateText = card.querySelector('.program-review-state')?.textContent?.trim() || '';
-      const cancelled = stateText.includes('cancelada por falta de programação');
+      const stateEl = card.querySelector('.program-review-state');
+      const stateText = stateEl?.textContent?.trim() || '';
+      const deadlineMissed = Boolean(
+        stateEl?.classList.contains('cancel') ||
+        stateText.toLowerCase().includes('não lançada no prazo') ||
+        stateText.toLowerCase().includes('cancelada por falta de programação')
+      );
       const cancelButton = card.querySelector('[data-review-action="cancel"]');
 
       if (cancelButton) {
-        if (cancelled) {
-          cancelButton.remove();
-        } else {
-          const note = document.createElement('span');
-          note.className = 'program-auto-cancel-note';
-          note.textContent = 'Cancelamento automático sexta-feira às 14:00 se a programação não for lançada.';
-          cancelButton.replaceWith(note);
-        }
+        const note = document.createElement('span');
+        note.className = 'program-auto-cancel-note';
+        note.textContent = deadlineMissed
+          ? 'Programação não lançada no prazo'
+          : 'Programação ainda não lançada • prazo sexta-feira às 14:00';
+        cancelButton.replaceWith(note);
       }
 
       const clearButton = card.querySelector('[data-review-action="clear"]');
-      if (clearButton && cancelled) {
-        clearButton.textContent = 'Liberar após justificativa';
-        clearButton.dataset.lateRelease = 'true';
-      } else if (clearButton) {
+      if (clearButton && deadlineMissed) {
+        if (clearButton.textContent !== 'Liberar lançamento após prazo') {
+          clearButton.textContent = 'Liberar lançamento após prazo';
+        }
+        if (clearButton.dataset.lateRelease !== 'true') {
+          clearButton.dataset.lateRelease = 'true';
+        }
+      } else if (clearButton?.dataset.lateRelease) {
         delete clearButton.dataset.lateRelease;
       }
     });
@@ -133,7 +139,7 @@
     const date = button.dataset.date || '';
     if (!sectionId || !date) return;
 
-    const ok = window.confirm('Liberar esta atividade após justificativa da chefia? Ela voltará a ficar aguardando programação/conferência.');
+    const ok = window.confirm('Liberar o lançamento desta programação após o prazo? Ela voltará a ficar aguardando programação/conferência.');
     if (!ok) return;
 
     button.disabled = true;
@@ -155,14 +161,14 @@
       window.setTimeout(patchProgrammingUi, 500);
     } catch (error) {
       console.error(error);
-      window.alert('Não foi possível liberar a atividade após a justificativa.');
+      window.alert('Não foi possível liberar o lançamento da programação após o prazo.');
       button.disabled = false;
     }
   }
 
   function schedulePatch() {
     clearTimeout(refreshTimer);
-    refreshTimer = window.setTimeout(patchProgrammingUi, 450);
+    refreshTimer = window.setTimeout(patchProgrammingUi, 200);
   }
 
   function bindEvents() {
@@ -189,7 +195,7 @@
     const panel = $('programmingView');
     if (panel) {
       const observer = new MutationObserver(schedulePatch);
-      observer.observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      observer.observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-late-release'] });
     }
   }
 
