@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v33';
+const CACHE_NAME = 'gearpc-conecta-offline-v34';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -27,6 +27,7 @@ const APP_SHELL = [
   './programming-deadline-v28-1.js',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
+  './programming-paxtu-v31-2.js',
   './admin-reports-v29.js',
   './admin-reports-access-v29-1.js',
   './first-access-v25.js',
@@ -115,6 +116,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('programming-language-v31-1.js')) {
     html = html.replace('</body>', '  <script src="programming-language-v31-1.js"></script>\n</body>');
+  }
+  if (!html.includes('programming-paxtu-v31-2.js')) {
+    html = html.replace('</body>', '  <script src="programming-paxtu-v31-2.js"></script>\n</body>');
   }
 
   const headers = new Headers(response.headers);
