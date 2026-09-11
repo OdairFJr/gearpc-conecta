@@ -11,14 +11,10 @@
     patchTimer = window.setTimeout(patchProgrammingLanguage, 80);
   }
 
-  function replaceText(node, from, to) {
-    if (!node || !node.textContent?.includes(from)) return;
-    node.textContent = node.textContent.replace(from, to);
-  }
-
   function patchProgrammingLanguage() {
     document.querySelectorAll('.program-deadline-note').forEach((note) => {
-      note.innerHTML = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>sexta-feira, às 14:00</strong>.';
+      const desired = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>sexta-feira, às 14:00</strong>.';
+      if (note.innerHTML !== desired) note.innerHTML = desired;
     });
 
     document.querySelectorAll('.program-review-state').forEach((stateEl) => {
@@ -33,11 +29,15 @@
     });
 
     document.querySelectorAll('.review-authorize').forEach((button) => {
-      button.textContent = '✓ Programação conferida';
+      if (button.textContent !== '✓ Programação conferida') {
+        button.textContent = '✓ Programação conferida';
+      }
     });
 
     document.querySelectorAll('.review-deny').forEach((button) => {
-      button.textContent = '✎ Solicitar ajustes';
+      if (button.textContent !== '✎ Solicitar ajustes') {
+        button.textContent = '✎ Solicitar ajustes';
+      }
     });
 
     document.querySelectorAll('.review-cancel').forEach((button) => {
@@ -54,19 +54,17 @@
     });
 
     document.querySelectorAll('[data-late-release="true"]').forEach((button) => {
-      button.textContent = 'Liberar lançamento após prazo';
+      if (button.textContent !== 'Liberar lançamento após prazo') {
+        button.textContent = 'Liberar lançamento após prazo';
+      }
     });
 
     document.querySelectorAll('.program-editor-review-status').forEach((box) => {
-      if (box.innerHTML.includes('Atividade conferida e autorizada')) {
-        box.innerHTML = box.innerHTML.replaceAll('Atividade conferida e autorizada', 'Programação conferida');
-      }
-      if (box.innerHTML.includes('Atividade conferida e não autorizada')) {
-        box.innerHTML = box.innerHTML.replaceAll('Atividade conferida e não autorizada', 'Programação precisa de ajustes');
-      }
-      if (box.innerHTML.includes('Atividade cancelada por falta de programação')) {
-        box.innerHTML = box.innerHTML.replaceAll('Atividade cancelada por falta de programação', 'Programação não lançada no prazo');
-      }
+      let html = box.innerHTML;
+      html = html.replaceAll('Atividade conferida e autorizada', 'Programação conferida');
+      html = html.replaceAll('Atividade conferida e não autorizada', 'Programação precisa de ajustes');
+      html = html.replaceAll('Atividade cancelada por falta de programação', 'Programação não lançada no prazo');
+      if (html !== box.innerHTML) box.innerHTML = html;
     });
 
     document.querySelectorAll('.weekly-program-cancellation').forEach((card) => {
