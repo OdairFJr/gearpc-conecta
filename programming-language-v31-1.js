@@ -140,3 +140,23 @@
 
   patchProgrammingLanguage();
 })();
+
+(() => {
+  if (window.__GEARPC_PROGRAM_IMPORT_V33_LOADER__) return;
+  window.__GEARPC_PROGRAM_IMPORT_V33_LOADER__ = true;
+
+  function loadImportModule() {
+    if (document.getElementById('gearpcProgrammingImportV33')) return;
+    const script = document.createElement('script');
+    script.id = 'gearpcProgrammingImportV33';
+    script.src = 'programming-import-v33.js?v=33.0';
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadImportModule, { once: true });
+  } else {
+    loadImportModule();
+  }
+})();
