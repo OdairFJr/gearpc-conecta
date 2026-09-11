@@ -95,7 +95,7 @@
   function patchProgrammingUi() {
     document.querySelectorAll('.program-deadline-note').forEach((note) => {
       if (note.textContent.includes('quinta-feira')) {
-        note.innerHTML = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>quinta-feira, às 20:00</strong>.';
+        note.innerHTML = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>sexta-feira, às 14:00</strong>.';
       }
     });
 
@@ -112,7 +112,7 @@
         } else {
           const note = document.createElement('span');
           note.className = 'program-auto-cancel-note';
-          note.textContent = 'Cancelamento automático quinta-feira às 20:00 se a programação não for lançada.';
+          note.textContent = 'Cancelamento automático sexta-feira às 14:00 se a programação não for lançada.';
           cancelButton.replaceWith(note);
         }
       }
