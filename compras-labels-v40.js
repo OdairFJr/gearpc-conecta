@@ -9,13 +9,27 @@
     if (el && el.textContent !== text) el.textContent = text;
   }
 
+  function setCountLabel() {
+    const count = document.getElementById('purchaseRequestCount');
+    const parent = count?.parentElement;
+    if (!parent) return;
+    const desired = ' requisição(ões) aguardando compra';
+    let textNode = [...parent.childNodes].find((node) => node.nodeType === Node.TEXT_NODE);
+    if (!textNode) {
+      textNode = document.createTextNode(desired);
+      parent.appendChild(textNode);
+    } else if (textNode.nodeValue !== desired) {
+      textNode.nodeValue = desired;
+    }
+  }
+
   function applyLabels() {
     const moduleButton = document.getElementById('purchaseRequestsButton');
     if (moduleButton) {
       const title = moduleButton.querySelector('.launch-module-copy strong');
       const helper = moduleButton.querySelector('.launch-module-copy small');
-      if (title) title.textContent = 'Requisição de Distintivos';
-      if (helper) helper.textContent = 'Requisições, entregas e histórico dos distintivos.';
+      if (title && title.textContent !== 'Requisição de Distintivos') title.textContent = 'Requisição de Distintivos';
+      if (helper && helper.textContent !== 'Requisições, entregas e histórico dos distintivos.') helper.textContent = 'Requisições, entregas e histórico dos distintivos.';
     }
 
     const view = document.getElementById('purchaseRequestsView');
@@ -27,21 +41,16 @@
         const eyebrow = hero.querySelector('.eyebrow');
         const heading = hero.querySelector('h2');
         const paragraph = hero.querySelector('p');
-        if (eyebrow) eyebrow.textContent = 'REQUISIÇÃO DE DISTINTIVOS';
-        if (heading) heading.textContent = 'Controle de distintivos';
-        if (paragraph) paragraph.textContent = 'Solicite, acompanhe a compra e registre a entrega dos distintivos.';
+        if (eyebrow && eyebrow.textContent !== 'REQUISIÇÃO DE DISTINTIVOS') eyebrow.textContent = 'REQUISIÇÃO DE DISTINTIVOS';
+        if (heading && heading.textContent !== 'Controle de distintivos') heading.textContent = 'Controle de distintivos';
+        if (paragraph && paragraph.textContent !== 'Solicite, acompanhe a compra e registre a entrega dos distintivos.') paragraph.textContent = 'Solicite, acompanhe a compra e registre a entrega dos distintivos.';
       }
 
       setText('#newPurchaseRequestButton', '＋ Nova requisição');
 
       const requestsTab = view.querySelector('[data-purchase-tab="requests"]');
-      if (requestsTab) requestsTab.textContent = 'Requisições';
-
-      const requestCount = document.getElementById('purchaseRequestCount');
-      if (requestCount?.parentElement) {
-        const count = requestCount.textContent || '0';
-        requestCount.parentElement.innerHTML = `<strong id="purchaseRequestCount">${count}</strong> requisição(ões) aguardando compra`;
-      }
+      if (requestsTab && requestsTab.textContent !== 'Requisições') requestsTab.textContent = 'Requisições';
+      setCountLabel();
     }
 
     const requestDialog = document.getElementById('purchaseRequestDialog');
@@ -49,9 +58,9 @@
       const eyebrow = requestDialog.querySelector('.eyebrow');
       const heading = requestDialog.querySelector('h2');
       const save = document.getElementById('savePurchaseRequestButton');
-      if (eyebrow) eyebrow.textContent = 'REQUISIÇÃO DE DISTINTIVOS';
-      if (heading) heading.textContent = 'Nova requisição';
-      if (save) save.textContent = 'Enviar requisição';
+      if (eyebrow && eyebrow.textContent !== 'REQUISIÇÃO DE DISTINTIVOS') eyebrow.textContent = 'REQUISIÇÃO DE DISTINTIVOS';
+      if (heading && heading.textContent !== 'Nova requisição') heading.textContent = 'Nova requisição';
+      if (save && save.textContent !== 'Enviar requisição') save.textContent = 'Enviar requisição';
     }
 
     document.querySelectorAll('.purchase-delete-button, .purchase-delete-delivery-v39').forEach((button) => {
@@ -60,7 +69,7 @@
   }
 
   const observer = new MutationObserver(() => applyLabels());
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyLabels, { once: true });
