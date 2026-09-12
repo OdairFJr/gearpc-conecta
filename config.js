@@ -18,4 +18,5 @@ window.GEARPC_CONFIG = {
 
   loadModule('compras-v37', 'compras-v37.js?v=37.0');
   loadModule('compras-fixes-v39', 'compras-fixes-v39.js?v=39.0');
+  loadModule('compras-labels-v40', 'compras-labels-v40.js?v=40.0');
 })();
