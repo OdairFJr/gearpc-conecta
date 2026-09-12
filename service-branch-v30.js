@@ -10,10 +10,17 @@
 
   function nextSaturdayDate(base = new Date()) {
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
-    let days = (6 - d.getDay() + 7) % 7;
-    if (days === 0) days = 7;
+    const days = (6 - d.getDay() + 7) % 7;
     d.setDate(d.getDate() + days);
     return d;
+  }
+
+  function isSaturday(base = new Date()) {
+    return base.getDay() === 6;
+  }
+
+  function serviceHeading(base = new Date()) {
+    return isSaturday(base) ? 'Ramo de serviço de hoje' : SERVICE_TITLE;
   }
 
   function isoDateLocal(date) {
@@ -137,7 +144,7 @@
         <div class="service-branch-icon-v30" aria-hidden="true">📣</div>
         <div class="service-branch-copy-v30">
           <div class="service-branch-kicker-v30">AVISO IMPORTANTE</div>
-          <h3>Ramo de serviço do próximo sábado</h3>
+          <h3 id="serviceBranchTitleV30">Ramo de serviço do próximo sábado</h3>
           <p id="serviceBranchDateV30" class="service-branch-date-v30"></p>
         </div>
       </div>
@@ -166,8 +173,8 @@
       <form id="serviceBranchFormV30" method="dialog" class="service-branch-dialog-body-v30">
         <div class="service-branch-kicker-v30">ADMINISTRADOR</div>
         <h2>Ramo de serviço</h2>
-        <p>Escolha o ramo responsável pelo serviço do próximo sábado.</p>
-        <label class="service-branch-field-v30">Data do próximo sábado
+        <p id="serviceBranchDialogHelpV30">Escolha o ramo responsável pelo serviço do próximo sábado.</p>
+        <label class="service-branch-field-v30"><span id="serviceBranchDateLabelV30">Data do próximo sábado</span>
           <input id="serviceBranchDateInputV30" type="text" readonly />
         </label>
         <label class="service-branch-field-v30">Ramo responsável
@@ -202,11 +209,13 @@
     const parsed = currentNotice ? safeParseMessage(currentNotice.mensagem) : null;
     const valid = parsed && parsed.data === expectedDate && parsed.ramo_nome;
 
+    const titleEl = document.getElementById('serviceBranchTitleV30');
     const dateEl = document.getElementById('serviceBranchDateV30');
     const nameEl = document.getElementById('serviceBranchNameV30');
     const adminWrap = document.getElementById('serviceBranchAdminV30');
     const editButton = document.getElementById('serviceBranchEditV30');
 
+    if (titleEl) titleEl.textContent = serviceHeading();
     if (dateEl) dateEl.textContent = formatDateBR(expectedDate);
     if (nameEl) {
       nameEl.textContent = valid ? parsed.ramo_nome : 'Aguardando definição';
@@ -281,6 +290,8 @@
     const parsed = currentNotice ? safeParseMessage(currentNotice.mensagem) : null;
     const select = document.getElementById('serviceBranchSelectV30');
     const dateInput = document.getElementById('serviceBranchDateInputV30');
+    const help = document.getElementById('serviceBranchDialogHelpV30');
+    const dateLabel = document.getElementById('serviceBranchDateLabelV30');
     const message = document.getElementById('serviceBranchFormMessageV30');
     const deleteButton = document.getElementById('serviceBranchDeleteV30');
 
@@ -295,6 +306,10 @@
       select.value = parsed?.data === expectedDate && parsed?.ramo_id ? String(parsed.ramo_id) : '';
     }
     if (dateInput) dateInput.value = formatDateBR(expectedDate);
+    if (help) help.textContent = isSaturday()
+      ? 'Confira ou atualize o ramo responsável pelo serviço de hoje.'
+      : 'Escolha o ramo responsável pelo serviço do próximo sábado.';
+    if (dateLabel) dateLabel.textContent = isSaturday() ? 'Data de hoje' : 'Data do próximo sábado';
     if (message) message.textContent = '';
     if (deleteButton) deleteButton.hidden = !currentNotice;
     dialog.showModal();
