@@ -7,10 +7,15 @@ window.GEARPC_CONFIG = {
 
 // Módulos incrementais do GEArPC Conecta.
 (() => {
-  if (document.querySelector('script[data-gearpc-module="compras-v37"]')) return;
-  const script = document.createElement('script');
-  script.src = 'compras-v37.js?v=37.0';
-  script.async = false;
-  script.dataset.gearpcModule = 'compras-v37';
-  document.head.appendChild(script);
+  function loadModule(id, src) {
+    if (document.querySelector(`script[data-gearpc-module="${id}"]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = false;
+    script.dataset.gearpcModule = id;
+    document.head.appendChild(script);
+  }
+
+  loadModule('compras-v37', 'compras-v37.js?v=37.0');
+  loadModule('compras-entrega-v38', 'compras-entrega-v38.js?v=38.0');
 })();
