@@ -133,18 +133,37 @@
           : 'Nenhum dirigente ativo foi encontrado.');
   }
 
+  function isManagerFunction(value) {
+    const role = String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('pt-BR');
+    return role.includes('diretor') || role.includes('presidente');
+  }
+
   async function loadManagers() {
-    const { data, error } = await client
-      .from('perfis_usuarios')
-      .select('nome_completo,tipo,ativo,acesso_geral_consulta')
+    const { data: functions, error: functionsError } = await client
+      .from('chefe_funcoes')
+      .select('chefe_id,funcao');
+
+    if (functionsError) throw functionsError;
+
+    const managerIds = [...new Set((functions || [])
+      .filter((row) => isManagerFunction(row.funcao))
+      .map((row) => Number(row.chefe_id))
+      .filter(Boolean))];
+
+    if (!managerIds.length) return [];
+
+    const { data: chiefs, error: chiefsError } = await client
+      .from('chefes')
+      .select('id,nome_completo,ativo')
+      .in('id', managerIds)
       .eq('ativo', true)
       .order('nome_completo');
 
-    if (error) throw error;
-
-    return uniqueNames((data || []).filter((profile) =>
-      profile.tipo === 'administrador' || profile.acesso_geral_consulta === true
-    ));
+    if (chiefsError) throw chiefsError;
+    return uniqueNames(chiefs || []);
   }
 
   async function loadSectionRecipients(sectionId) {
