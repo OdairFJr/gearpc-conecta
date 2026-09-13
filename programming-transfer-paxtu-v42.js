@@ -37,12 +37,15 @@
     };
     const buttonByText = (text) => [...document.querySelectorAll('button')]
       .find((button) => visible(button) && norm(button.textContent).includes(norm(text)));
-    const stageInputs = () => [...document.querySelectorAll('input')].filter((input) => {
-      if (!visible(input) || ['date', 'time', 'checkbox', 'radio', 'hidden'].includes(input.type)) return false;
-      const parentText = norm((input.closest('label') || input.parentElement)?.textContent);
-      return parentText.includes('etapa') || norm(input.getAttribute('aria-label')).includes('etapa');
-    });
     const timeInputs = () => [...document.querySelectorAll('input[type="time"]')].filter(visible);
+    const stageInputs = () => {
+      const firstTimeTop = Math.min(...timeInputs().map((input) => input.getBoundingClientRect().top));
+      if (!Number.isFinite(firstTimeTop)) return [];
+      return [...document.querySelectorAll('input')].filter((input) => {
+        if (!visible(input) || ['date', 'time', 'checkbox', 'radio', 'hidden'].includes(input.type)) return false;
+        return input.getBoundingClientRect().top >= firstTimeTop - 24;
+      });
+    };
 
     async function run() {
       if (!/paxtu100\.escoteiros\.org\.br$/i.test(location.hostname) || !location.pathname.includes('/atividades/nova/sede')) {
@@ -100,13 +103,21 @@
         alert('Não encontrei o botão “Adicionar Etapa” nesta página do Paxtu. Nenhuma atividade foi salva.');
         return;
       }
-      while (stageInputs().length < payload.etapas.length) {
+      let attempts = 0;
+      while (stageInputs().length < payload.etapas.length && attempts < payload.etapas.length + 1) {
+        const before = stageInputs().length;
         addButton.click();
-        await new Promise((resolve) => setTimeout(resolve, 120));
+        attempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 180));
+        if (stageInputs().length <= before) break;
       }
 
       const stages = stageInputs();
       const times = timeInputs();
+      if (!stages.length || stages.length < payload.etapas.length) {
+        alert(`O Paxtu criou ${stages.length} de ${payload.etapas.length} linhas necessárias, mas o preenchimento foi interrompido por segurança. Não salve esta atividade; envie uma imagem da tela para ajustarmos.`);
+        return;
+      }
       for (let i = 0; i < payload.etapas.length; i += 1) {
         const item = payload.etapas[i];
         if (i > 0 && stages[i]) setNative(stages[i], item.nome);
