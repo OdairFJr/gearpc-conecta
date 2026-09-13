@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v45';
+const CACHE_NAME = 'gearpc-conecta-offline-v46';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -17,7 +17,8 @@ const APP_SHELL = [
   './styles.css?v=23.0',
   './ideas-data.js?v=23.0',
   './app.js?v=23.0',
-  './programacao.js?v=45.0',
+  './programacao.js?v=46.0',
+  './programming-import-v33.js?v=46.0',
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
@@ -72,7 +73,7 @@ async function withRuntimeModules(response) {
 
   let html = await response.text();
   const supabaseTag = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>';
-  const programmingTag = '<script src="programacao.js?v=45.0"></script>';
+  const programmingTag = '<script src="programacao.js?v=46.0"></script>';
 
   if (!html.includes('offline-bootstrap-v24.js')) {
     html = html.replace(supabaseTag, `${supabaseTag}\n  <script src="offline-bootstrap-v24.js"></script>`);
@@ -81,6 +82,9 @@ async function withRuntimeModules(response) {
     html = html.replace(programmingTag, `<script src="programming-permissions-v24.js"></script>\n  ${programmingTag}\n  <script src="programming-ai-fixes-v27-1.js"></script>`);
   } else if (!html.includes('programming-ai-fixes-v27-1.js')) {
     html = html.replace(programmingTag, `${programmingTag}\n  <script src="programming-ai-fixes-v27-1.js"></script>`);
+  }
+  if (!html.includes('programming-import-v33.js')) {
+    html = html.replace(programmingTag, `${programmingTag}\n  <script src="programming-import-v33.js?v=46.0"></script>`);
   }
   if (!html.includes('offline-access-marker-v24.js')) {
     html = html.replace('</body>', '  <script src="offline-access-marker-v24.js"></script>\n</body>');
