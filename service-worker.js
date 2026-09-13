@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v34';
+const CACHE_NAME = 'gearpc-conecta-offline-v34-1';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
