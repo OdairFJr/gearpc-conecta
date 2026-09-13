@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v41-3';
+const CACHE_NAME = 'gearpc-conecta-offline-v42';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -22,6 +22,7 @@ const APP_SHELL = [
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
   './attendance-paxtu-v41.js?v=41.3',
+  './programming-transfer-paxtu-v42.js?v=42.0',
   './programming-permissions-v24.js',
   './programming-ai-fixes-v27-1.js',
   './programming-review-v28.js',
@@ -90,6 +91,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('attendance-paxtu-v41.js')) {
     html = html.replace('</body>', '  <script src="attendance-paxtu-v41.js?v=41.3"></script>\n</body>');
+  }
+  if (!html.includes('programming-transfer-paxtu-v42.js')) {
+    html = html.replace('</body>', '  <script src="programming-transfer-paxtu-v42.js?v=42.0"></script>\n</body>');
   }
   if (!html.includes('first-access-v25.js')) {
     html = html.replace('</body>', '  <script src="first-access-v25.js"></script>\n</body>');
