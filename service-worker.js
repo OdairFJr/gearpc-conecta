@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v44';
+const CACHE_NAME = 'gearpc-conecta-offline-v45';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -17,7 +17,7 @@ const APP_SHELL = [
   './styles.css?v=23.0',
   './ideas-data.js?v=23.0',
   './app.js?v=23.0',
-  './programacao.js?v=44.0',
+  './programacao.js?v=45.0',
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
@@ -72,7 +72,7 @@ async function withRuntimeModules(response) {
 
   let html = await response.text();
   const supabaseTag = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>';
-  const programmingTag = '<script src="programacao.js?v=44.0"></script>';
+  const programmingTag = '<script src="programacao.js?v=45.0"></script>';
 
   if (!html.includes('offline-bootstrap-v24.js')) {
     html = html.replace(supabaseTag, `${supabaseTag}\n  <script src="offline-bootstrap-v24.js"></script>`);

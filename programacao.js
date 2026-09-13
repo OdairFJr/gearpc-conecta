@@ -40,6 +40,8 @@
     actionBar: $('programActionBar'),
     addManual: $('programAddManualButton'),
     searchIdeas: $('programSearchIdeasButton'),
+    importFile: $('programImportFileButton'),
+    importFileInput: $('programImportFileInput'),
     newLibrary: $('programNewLibraryButton'),
     timeline: $('programTimeline'),
     timelineTotal: $('programTimelineTotal'),
@@ -198,6 +200,118 @@
 
   function splitTags(value) {
     return String(value || '').split(/[;,]/).map((v) => v.trim()).filter(Boolean);
+  }
+
+  function cleanImportedText(value) {
+    return String(value || '')
+      .replace(/\r/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  async function readPdfFile(file) {
+    if (!window.pdfjsLib) throw new Error('Leitor de PDF indisponível. Conecte-se à internet e tente novamente.');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const pages = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      pages.push(content.items.map((item) => `${item.str}${item.hasEOL ? '\n' : ' '}`).join(''));
+    }
+    return cleanImportedText(pages.join('\n\n'));
+  }
+
+  async function readWordFile(file) {
+    if (/\.doc$/i.test(file.name)) {
+      throw new Error('Esse é um Word antigo (.doc). Abra-o no Word, salve como .docx e tente novamente.');
+    }
+    if (!window.mammoth) throw new Error('Leitor de Word indisponível. Conecte-se à internet e tente novamente.');
+    const result = await window.mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+    return cleanImportedText(result.value);
+  }
+
+  function importedSection(text, aliases) {
+    const labels = aliases.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const allLabels = [
+      'nome(?: da atividade)?', 't[ií]tulo', 'objetivo(?:s)?', '[aá]rea(?:s)? de desenvolvimento',
+      'eixo', 'bloco(?: de aprendizagem)?', 'item(?: ou itens)?(?: relacionados| de progress[aã]o)?',
+      'materiais?', 'recursos?', 'prepara[cç][aã]o(?: pr[eé]via)?', 'desenvolvimento',
+      'passo a passo', 'como aplicar', 'regras?', 'seguran[cç]a', 'cuidados?', 'plano b',
+      'adapta[cç][oõ]es?', 'participantes?', 'local(?: sugerido)?', 'dura[cç][aã]o', 'tempo(?: previsto)?'
+    ].join('|');
+    const pattern = new RegExp(`(?:^|\\n)\\s*(?:${labels})\\s*[:\\-]?\\s*([\\s\\S]*?)(?=\\n\\s*(?:${allLabels})\\s*[:\\-]?|$)`, 'i');
+    return cleanImportedText(text.match(pattern)?.[1] || '');
+  }
+
+  function parseImportedActivity(text, fileName) {
+    const lines = cleanImportedText(text).split('\n').map((line) => line.trim()).filter(Boolean);
+    const unwantedTitle = /^(ficha|modelo|atividade|programa[cç][aã]o)(\s+de\s+atividade)?$/i;
+    const explicitName = importedSection(text, ['nome(?: da atividade)?', 't[ií]tulo']);
+    const fallbackName = lines.find((line) => line.length >= 4 && line.length <= 180 && !unwantedTitle.test(line)) || fileName.replace(/\.(pdf|docx?)$/i, '');
+    const durationText = importedSection(text, ['dura[cç][aã]o', 'tempo(?: previsto)?']);
+    const durationMatch = `${durationText} ${text}`.match(/(?:dura[cç][aã]o|tempo)?\s*[:\-]?\s*(\d{1,3})\s*(?:min|minutos?)/i);
+    const areas = AREAS.filter((area) => normalize(text).includes(normalize(area)));
+    const development = importedSection(text, ['desenvolvimento', 'passo a passo', 'como aplicar']);
+    return {
+      nome: cleanImportedText(explicitName).split('\n')[0] || fallbackName,
+      objetivo: importedSection(text, ['objetivo(?:s)?']),
+      areas_desenvolvimento: areas,
+      eixo: importedSection(text, ['eixo']),
+      bloco: importedSection(text, ['bloco(?: de aprendizagem)?']),
+      itens_progressao: splitLines(importedSection(text, ['item(?: ou itens)?(?: relacionados| de progress[aã]o)?'])),
+      materiais: importedSection(text, ['materiais?', 'recursos?']),
+      preparacao: importedSection(text, ['prepara[cç][aã]o(?: pr[eé]via)?']),
+      desenvolvimento: development || cleanImportedText(text),
+      regras: importedSection(text, ['regras?']),
+      seguranca: importedSection(text, ['seguran[cç]a', 'cuidados?']),
+      plano_b: importedSection(text, ['plano b', 'adapta[cç][oõ]es?']),
+      participantes: importedSection(text, ['participantes?']),
+      local_sugerido: importedSection(text, ['local(?: sugerido)?']),
+      duracao_min: Math.max(1, Math.min(1440, Number(durationMatch?.[1] || 30)))
+    };
+  }
+
+  function fillLibraryFromImport(activity, file) {
+    openLibraryDialog();
+    ui.libraryTitle.textContent = 'Conferir atividade importada';
+    ui.libraryName.value = activity.nome || '';
+    ui.libraryDuration.value = activity.duracao_min || 30;
+    ui.libraryParticipants.value = activity.participantes || '';
+    ui.libraryLocation.value = activity.local_sugerido || '';
+    ui.libraryObjective.value = activity.objetivo || '';
+    ui.libraryAxis.value = activity.eixo || '';
+    ui.libraryBlock.value = activity.bloco || '';
+    ui.libraryProgressItems.value = (activity.itens_progressao || []).join('\n');
+    ui.libraryMaterials.value = activity.materiais || '';
+    ui.libraryPreparation.value = activity.preparacao || '';
+    ui.libraryDevelopment.value = activity.desenvolvimento || '';
+    ui.libraryRules.value = activity.regras || '';
+    ui.librarySafety.value = activity.seguranca || '';
+    ui.libraryPlanB.value = activity.plano_b || '';
+    ui.libraryTags.value = `importada; ${/\.pdf$/i.test(file.name) ? 'PDF' : 'Word'}`;
+    setAreas(ui.libraryAreas, activity.areas_desenvolvimento || []);
+    setMessage(ui.libraryMessage, 'Confira os campos. “Salvar e usar” guarda no Banco de Ideias e inclui nesta programação.', true);
+  }
+
+  async function importActivityFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !canManageCurrent()) return;
+    if (file.size > 15 * 1024 * 1024) return setMessage(ui.editorMessage, 'O arquivo deve ter no máximo 15 MB.');
+    setMessage(ui.editorMessage, 'Lendo a ficha de atividade...');
+    ui.importFile.disabled = true;
+    try {
+      const text = /\.pdf$/i.test(file.name) ? await readPdfFile(file) : await readWordFile(file);
+      if (text.length < 20) throw new Error('Não encontrei texto no arquivo. Se o PDF for uma foto, será necessário usar uma versão com texto selecionável.');
+      fillLibraryFromImport(parseImportedActivity(text, file.name), file);
+      setMessage(ui.editorMessage, '');
+    } catch (error) {
+      setMessage(ui.editorMessage, error?.message || 'Não foi possível ler esse arquivo.');
+    } finally {
+      ui.importFile.disabled = false;
+    }
   }
 
   function unique(values) {
@@ -1178,6 +1292,8 @@
       areas_desenvolvimento: [], itens_progressao: []
     }));
     ui.searchIdeas?.addEventListener('click', openIdeaSearch);
+    ui.importFile?.addEventListener('click', () => ui.importFileInput?.click());
+    ui.importFileInput?.addEventListener('change', importActivityFile);
     ui.newLibrary?.addEventListener('click', openLibraryDialog);
     ui.timeline?.addEventListener('click', onTimelineClick);
 
