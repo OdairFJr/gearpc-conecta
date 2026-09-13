@@ -17,6 +17,14 @@
     roleNote: $('programmingRoleNote'),
     list: $('programmingList'),
     message: $('programmingMessage'),
+    previewDialog: $('programPreviewDialog'),
+    previewTitle: $('programPreviewTitle'),
+    previewMeta: $('programPreviewMeta'),
+    previewTimeline: $('programPreviewTimeline'),
+    previewNotes: $('programPreviewNotes'),
+    previewMessage: $('programPreviewMessage'),
+    previewClose: $('closeProgramPreviewDialog'),
+    previewEdit: $('editProgramFromPreviewButton'),
 
     editorView: $('programEditorView'),
     editorBack: $('programEditorBackButton'),
@@ -344,19 +352,71 @@
   function renderPrograms() {
     const sectionId = Number(ui.sectionFilter.value || 0);
     let rows = [...moduleState.programs];
+    if (!isAdmin() && !isDirigente()) {
+      const allowed = new Set(moduleState.ownSectionIds.map(Number));
+      rows = rows.filter((p) => allowed.has(Number(p.secao_id)));
+    }
     if (sectionId) rows = rows.filter((p) => Number(p.secao_id) === sectionId);
     if (!rows.length) {
       ui.list.innerHTML = '<div class="program-empty"><strong>Nenhuma programação encontrada.</strong><span>Crie uma nova programação para começar.</span></div>';
       return;
     }
     ui.list.innerHTML = rows.map((p) => {
-      const manage = canManageSection(p.secao_id);
       return `<button type="button" class="program-list-card" data-program-id="${p.id}">
         <span class="program-list-date"><strong>${escapeHtml(formatDate(p.data_atividade))}</strong><small>${escapeHtml(formatTime(p.horario_inicio))}–${escapeHtml(formatTime(p.horario_termino))}</small></span>
-        <span class="program-list-copy"><strong>${escapeHtml(sectionName(p.secao_id))}</strong><small>${manage ? 'Editar programação' : 'Consultar programação'}</small></span>
+        <span class="program-list-copy"><strong>${escapeHtml(sectionName(p.secao_id))}</strong><small>Ver e acompanhar programação</small></span>
         <span class="program-list-arrow">›</span>
       </button>`;
     }).join('');
+  }
+
+  async function openProgramPreview(id) {
+    await loadReferences();
+    ui.previewMessage.textContent = 'Carregando programação...';
+    ui.previewTimeline.innerHTML = '';
+    ui.previewNotes.classList.add('hidden');
+    ui.previewEdit.classList.add('hidden');
+    ui.previewDialog.showModal();
+    const { data: program, error } = await client.from('programacoes')
+      .select('id,secao_id,data_atividade,horario_inicio,horario_termino,observacoes_finais')
+      .eq('id', Number(id)).single();
+    if (error || !program) {
+      ui.previewMessage.textContent = 'Não foi possível abrir esta programação.';
+      return;
+    }
+    const { data: items, error: itemError } = await client.from('programacao_itens')
+      .select('id,ordem,tipo,hora_inicio,duracao_min,nome,condutor_chefe_id,objetivo,materiais,desenvolvimento,regras,seguranca')
+      .eq('programacao_id', program.id).order('hora_inicio', { ascending: true }).order('ordem', { ascending: true });
+    if (itemError) {
+      ui.previewMessage.textContent = 'Não foi possível carregar as etapas da programação.';
+      return;
+    }
+    ui.previewTitle.textContent = sectionName(program.secao_id);
+    ui.previewMeta.textContent = `${formatDate(program.data_atividade)} • ${formatTime(program.horario_inicio)}–${formatTime(program.horario_termino)}`;
+    const rows = items || [];
+    ui.previewTimeline.innerHTML = rows.length ? rows.map((item) => {
+      const start = toMinutes(item.hora_inicio);
+      const end = start == null ? null : start + Number(item.duracao_min || 0);
+      const conductor = item.condutor_chefe_id ? chiefName(item.condutor_chefe_id) : '';
+      const details = [
+        item.objetivo ? `<p><strong>Objetivo:</strong> ${escapeHtml(item.objetivo)}</p>` : '',
+        item.materiais ? `<p><strong>Materiais:</strong> ${escapeHtml(item.materiais)}</p>` : '',
+        item.desenvolvimento ? `<p><strong>Desenvolvimento:</strong> ${escapeHtml(item.desenvolvimento)}</p>` : '',
+        item.regras ? `<p><strong>Regras:</strong> ${escapeHtml(item.regras)}</p>` : '',
+        item.seguranca ? `<p><strong>Segurança:</strong> ${escapeHtml(item.seguranca)}</p>` : ''
+      ].filter(Boolean).join('');
+      return `<article class="program-preview-item">
+        <div class="program-preview-time"><strong>${escapeHtml(formatTime(item.hora_inicio))}</strong><span>${end == null ? '--:--' : escapeHtml(fromMinutes(end))}</span></div>
+        <div class="program-preview-main"><h3>${escapeHtml(item.nome)}</h3>${conductor ? `<p>Responsável: <strong>${escapeHtml(conductor)}</strong></p>` : ''}${details ? `<details><summary>Ver detalhes</summary><div>${details}</div></details>` : ''}</div>
+      </article>`;
+    }).join('') : '<div class="program-empty"><strong>Programação sem etapas.</strong></div>';
+    if (program.observacoes_finais) {
+      ui.previewNotes.innerHTML = `<h3>Observações do dia</h3><p>${escapeHtml(program.observacoes_finais)}</p>`;
+      ui.previewNotes.classList.remove('hidden');
+    }
+    ui.previewEdit.dataset.programId = String(program.id);
+    ui.previewEdit.classList.toggle('hidden', !canManageSection(program.secao_id));
+    ui.previewMessage.textContent = '';
   }
 
   function openNewProgrammingDialog() {
@@ -1051,7 +1111,7 @@
 
   function onProgramListClick(event) {
     const card = event.target.closest('[data-program-id]');
-    if (card) openProgramEditor(Number(card.dataset.programId));
+    if (card) openProgramPreview(Number(card.dataset.programId));
   }
 
   function onTimelineClick(event) {
@@ -1071,6 +1131,14 @@
     ui.refresh?.addEventListener('click', () => loadPrograms());
     ui.sectionFilter?.addEventListener('change', renderPrograms);
     ui.list?.addEventListener('click', onProgramListClick);
+    ui.previewClose?.addEventListener('click', () => closeDialog(ui.previewDialog));
+    ui.previewDialog?.addEventListener('click', (e) => { if (e.target === ui.previewDialog) closeDialog(ui.previewDialog); });
+    ui.previewEdit?.addEventListener('click', () => {
+      const id = Number(ui.previewEdit.dataset.programId || 0);
+      if (!id) return;
+      closeDialog(ui.previewDialog);
+      openProgramEditor(id);
+    });
 
     ui.newForm?.addEventListener('submit', createProgramming);
     ui.closeNew?.addEventListener('click', () => closeDialog(ui.newDialog));
