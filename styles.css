@@ -712,8 +712,6 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 .attendance-paxtu-warning { display: grid; gap: 3px; padding: 13px 15px; border: 1px solid #edcf82; border-radius: 12px; background: #fff9e8; color: #684f0d; }
 .attendance-paxtu-bookmark { display: inline-block; padding: 11px 16px; border-radius: 10px; background: #195f46; color: #fff; font-weight: 800; text-decoration: none; cursor: grab; }
 .attendance-paxtu-bookmark:active { cursor: grabbing; }
-.attendance-paxtu-test-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin: 12px 0 8px; }
-.attendance-paxtu-test-row select { min-width: 0; }
 @media (max-width: 560px) { .attendance-paxtu-button { margin: 8px 0 0; width: 100%; } }
 .attendance-admin-actions .danger-button { min-height: 40px; }
 .attendance-list { display: grid; gap: 9px; }

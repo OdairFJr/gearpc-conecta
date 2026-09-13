@@ -101,19 +101,18 @@
   dialog.innerHTML = `
     <div class="detail-shell">
       <div class="dialog-title-row sticky-dialog-header">
-        <div><div class="eyebrow dark">TESTE ASSISTIDO</div><h2>Transferir para o Paxtu 100</h2></div>
+        <div><div class="eyebrow dark">TRANSFERÊNCIA ASSISTIDA</div><h2>Transferir para o Paxtu 100</h2></div>
         <button type="button" class="dialog-close" data-paxtu-close aria-label="Fechar">×</button>
       </div>
       <div class="attendance-paxtu-content">
         <div class="attendance-paxtu-warning"><strong>O Paxtu salva cada marcação imediatamente.</strong><span>Confirme a atividade e a data no Paxtu antes de autorizar.</span></div>
         <p id="attendancePaxtuSummary"></p>
-        <div class="attendance-paxtu-test-row"><select id="attendancePaxtuTestPerson" aria-label="Jovem para o primeiro teste"></select><button id="attendancePaxtuCopyOne" type="button" class="secondary-button">Testar com 1 jovem</button></div>
         <button id="attendancePaxtuCopy" type="button" class="save-button">Copiar todos os presentes</button>
         <hr />
         <h3>Configuração necessária apenas uma vez</h3>
         <p>Mostre a barra de favoritos do Chrome com <strong>Ctrl + Shift + B</strong>. Depois, arraste o botão abaixo para essa barra:</p>
         <a id="attendancePaxtuBookmark" class="attendance-paxtu-bookmark" href="#">GEArPC → Paxtu</a>
-        <h3>Como testar</h3>
+        <h3>Como transferir</h3>
         <ol><li>Copie os presentes.</li><li>Abra a atividade correta no Paxtu 100.</li><li>Clique no favorito <strong>GEArPC → Paxtu</strong>.</li><li>Confira o resumo e confirme.</li></ol>
         <p id="attendancePaxtuMessage" class="members-message" role="status"></p>
       </div>
@@ -138,8 +137,6 @@
       ? `${names.length} jovem(ns) marcado(s) como presente em ${sectionName()}, na data ${date.value.split('-').reverse().join('/')}.`
       : 'Não há jovens marcados como presentes nesta seção e data.';
     $('attendancePaxtuCopy').disabled = names.length === 0;
-    $('attendancePaxtuCopyOne').disabled = names.length === 0;
-    $('attendancePaxtuTestPerson').innerHTML = names.map((name) => `<option>${name.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`).join('');
     transferButton.disabled = !section.value || !date.value || names.length === 0;
   }
 
@@ -168,10 +165,6 @@
   }
   $('attendancePaxtuCopy').addEventListener('click', () => {
     void copyTransfer(selectedPresentNames());
-  });
-  $('attendancePaxtuCopyOne').addEventListener('click', () => {
-    const name = $('attendancePaxtuTestPerson').value;
-    if (name) void copyTransfer([name]);
   });
 
   new MutationObserver(updateSummary).observe(list, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
