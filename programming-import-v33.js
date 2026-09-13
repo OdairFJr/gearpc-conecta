@@ -427,7 +427,7 @@
       const text = await readFile(file);
       const parsed = parseActivityText(text, file.name);
       const openLibrary = $('programNewLibraryButton');
-      if (!openLibrary || openLibrary.classList.contains('hidden')) throw new Error('Você não tem permissão para importar atividades nesta programação.');
+      if (!openLibrary) throw new Error('Você não tem permissão para importar atividades nesta programação.');
       importSession = { filename: file.name, parsed };
       openLibrary.click();
       window.setTimeout(() => populateLibraryForm(parsed, file.name), 60);
@@ -459,7 +459,7 @@
       importButton.addEventListener('click', () => fileInput?.click());
       newLibrary.insertAdjacentElement('afterend', importButton);
     }
-    const unavailable = addManual.classList.contains('hidden') || newLibrary.classList.contains('hidden') || addManual.disabled;
+    const unavailable = addManual.classList.contains('hidden') || addManual.disabled;
     importButton.classList.toggle('hidden', unavailable);
     importButton.disabled = unavailable;
   }

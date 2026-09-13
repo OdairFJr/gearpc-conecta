@@ -578,7 +578,7 @@
     ui.saveNotes.classList.toggle('hidden', !manage);
     ui.deleteProgram.classList.toggle('hidden', !manage);
     ui.actionBar.classList.toggle('hidden', !manage);
-    ui.newLibrary.classList.toggle('hidden', !canCreateLibrary());
+    ui.newLibrary.classList.add('hidden');
   }
 
   async function saveProgramBasic() {
