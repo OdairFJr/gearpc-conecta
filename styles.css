@@ -1124,6 +1124,13 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 .program-empty { border: 1px dashed #cbd8e4; background: #f9fbfd; border-radius: 14px; padding: 18px; text-align: center; color: var(--muted); }
 .program-empty strong, .program-empty span { display: block; }
 .program-empty strong { color: var(--navy); }
+.program-bank-options { margin: 4px 0 14px; padding: 13px; border: 1px solid #cbdceb; border-radius: 14px; background: #f5f9fc; }
+.program-save-bank-check { display: flex !important; flex-direction: row !important; align-items: center; gap: 9px; color: var(--navy); font-weight: 850; }
+.program-save-bank-check input { width: 19px; height: 19px; }
+.program-bank-options fieldset { margin-top: 12px; }
+.idea-ai-fallback { margin-top: 14px; }
+.idea-ai-option { display: grid; gap: 8px; justify-items: start; padding: 16px; border: 1px dashed #b9cbe0; border-radius: 14px; background: #f8fbfe; color: var(--muted); }
+.idea-ai-option strong { color: var(--navy); }
 .program-empty span { margin-top: 4px; font-size: 12px; }
 
 .program-editor-card, .program-timeline-card, .program-notes-card {

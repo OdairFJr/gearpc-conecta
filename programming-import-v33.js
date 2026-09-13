@@ -253,6 +253,15 @@
     });
   }
 
+  function setRamos(values) {
+    const wanted = new Set((values || []).map(normalize));
+    const container = $('libraryActivityRamos');
+    const items = [...(container?.querySelectorAll('input[value]') || [])];
+    items.forEach((input) => { input.checked = wanted.has(normalize(input.value)); });
+    const all = container?.querySelector('[data-all-ramos]');
+    if (all) all.checked = items.length > 0 && items.every((input) => input.checked);
+  }
+
   function setSelectValue(select, value) {
     if (!select || !value) return;
     const option = [...select.options].find((item) => normalize(item.value) === normalize(value) || normalize(item.textContent) === normalize(value));
@@ -319,7 +328,7 @@
       const el = $(id);
       if (el && value != null) el.value = value;
     });
-    if (data.ramo) setSelectValue($('libraryActivityRamo'), data.ramo);
+    if (data.ramo) setRamos([data.ramo]);
     setAreas($('libraryActivityAreas'), data.areas_desenvolvimento || []);
     const title = $('libraryActivityDialogTitle');
     if (title) title.textContent = 'Revisar atividade importada';
@@ -446,7 +455,7 @@
       importButton.type = 'button';
       importButton.id = 'programImportActivityButtonV33';
       importButton.className = 'secondary-action-button program-import-button-v33';
-      importButton.textContent = '📥 Importar ficha';
+      importButton.textContent = '📥 Importar PDF ou Word';
       importButton.addEventListener('click', () => fileInput?.click());
       newLibrary.insertAdjacentElement('afterend', importButton);
     }

@@ -283,7 +283,7 @@
       <section id="programActionBar" class="program-action-bar">
         <button id="programAddManualButton" type="button" class="new-member-button">＋ Criar atividade</button>
         <button id="programSearchIdeasButton" type="button" class="secondary-action-button">🔎 Buscar ideias</button>
-        <button id="programNewLibraryButton" type="button" class="secondary-action-button">☁️ Nova ideia para o banco</button>
+        <button id="programNewLibraryButton" type="button" class="secondary-action-button hidden" aria-hidden="true" tabindex="-1">☁️ Nova ideia para o banco</button>
       </section>
 
       <section class="program-timeline-card">
@@ -890,6 +890,11 @@
       <label class="activity-only">Nome da atividade<input id="programItemName" type="text" maxlength="180" required /></label>
       <label class="activity-only">Objetivo<textarea id="programItemObjective" rows="3"></textarea></label>
 
+      <section id="programItemBankOptions" class="program-bank-options activity-only hidden">
+        <label class="program-save-bank-check"><input id="programItemSaveToBank" type="checkbox" /> <span>Salvar também no Banco de Ideias</span></label>
+        <fieldset id="programItemRamosFieldset" class="multi-fieldset hidden"><legend>Esta atividade pode ser usada nos ramos</legend><div id="programItemRamos" class="development-area-grid"></div></fieldset>
+      </section>
+
       <fieldset class="multi-fieldset activity-only"><legend>Área(s) de desenvolvimento</legend><div id="programItemAreas" class="development-area-grid"></div></fieldset>
 
       <details class="program-form-section activity-only" open><summary>Vinculação ao Programa Educativo</summary><div class="program-form-section-body">
@@ -909,9 +914,9 @@
     <div class="detail-shell">
       <div class="dialog-title-row sticky-dialog-header"><div><div class="eyebrow dark">BANCO DE ATIVIDADES</div><h2>Buscar ideias</h2><p id="ideaSearchRamoLabel" class="dialog-helper"></p></div><button id="closeIdeaSearchDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
       <div class="idea-search-controls">
-        <label class="search-field"><span>🔎</span><input id="ideaSearchText" type="search" placeholder="Buscar por jogo, objetivo, material ou palavra-chave" /></label>
+        <label class="search-field"><span>🔎</span><input id="ideaSearchText" type="search" placeholder="O que você deseja trabalhar nesta atividade?" /></label>
         <div class="idea-filter-grid"><label>Eixo<select id="ideaSearchAxis"><option value="">Todos</option></select></label><label>Bloco<select id="ideaSearchBlock"><option value="">Todos</option></select></label><label>Área<select id="ideaSearchArea"><option value="">Todas</option></select></label></div>
-        <div class="idea-search-meta"><strong id="ideaSearchCount">0</strong><span>ideias encontradas</span><button id="ideaSearchNewLibraryButton" type="button" class="mini-primary">＋ Cadastrar nova ideia</button></div>
+        <div class="idea-search-meta"><strong id="ideaSearchCount">0</strong><span>ideias encontradas</span><button id="ideaSearchNewLibraryButton" type="button" class="mini-primary hidden">＋ Cadastrar nova ideia</button></div>
       </div>
       <div id="ideaSearchResults" class="idea-search-results"></div>
       <p id="ideaSearchMessage" class="members-message" role="status"></p>
@@ -931,7 +936,8 @@
       <div class="dialog-title-row sticky-dialog-header"><div><div class="eyebrow dark">BANCO COMPARTILHADO</div><h2 id="libraryActivityDialogTitle">Nova ideia de atividade</h2></div><button id="closeLibraryActivityDialog" type="button" class="dialog-close" aria-label="Fechar">×</button></div>
       <input id="libraryActivityId" type="hidden" />
       <p class="dialog-helper">Preencha a mesma ficha usada nas sugestões. A atividade ficará salva na nuvem e poderá ser encontrada futuramente.</p>
-      <div class="form-grid"><label>Nome da atividade<input id="libraryActivityName" type="text" maxlength="180" required /></label><label>Ramo<select id="libraryActivityRamo" required></select></label><label>Duração prevista (min)<input id="libraryActivityDuration" type="number" min="1" max="1440" value="30" required /></label><label>Participantes<input id="libraryActivityParticipants" type="text" maxlength="120" placeholder="Ex.: patrulha / tropa" /></label><label>Local sugerido<input id="libraryActivityLocation" type="text" maxlength="180" /></label><label>Compartilhamento<select id="libraryActivityVisibility"><option value="grupo">Compartilhar com o grupo</option><option value="privado">Somente para mim</option></select></label></div>
+      <div class="form-grid"><label>Nome da atividade<input id="libraryActivityName" type="text" maxlength="180" required /></label><label>Duração prevista (min)<input id="libraryActivityDuration" type="number" min="1" max="1440" value="30" required /></label><label>Participantes<input id="libraryActivityParticipants" type="text" maxlength="120" placeholder="Ex.: patrulha / tropa" /></label><label>Local sugerido<input id="libraryActivityLocation" type="text" maxlength="180" /></label><label>Compartilhamento<select id="libraryActivityVisibility"><option value="grupo">Compartilhar com o grupo</option><option value="privado">Somente para mim</option></select></label></div>
+      <fieldset class="multi-fieldset"><legend>Ramo(s) em que a atividade pode ser usada</legend><div id="libraryActivityRamos" class="development-area-grid"></div></fieldset>
       <label>Objetivo<textarea id="libraryActivityObjective" rows="3" required></textarea></label>
       <fieldset class="multi-fieldset"><legend>Área(s) de desenvolvimento</legend><div id="libraryActivityAreas" class="development-area-grid"></div></fieldset>
       <details class="program-form-section" open><summary>Vinculação ao Programa Educativo</summary><div class="program-form-section-body"><div class="form-grid"><label>Eixo<input id="libraryActivityAxis" type="text" maxlength="160" /></label><label>Bloco de Aprendizagem<input id="libraryActivityBlock" type="text" maxlength="200" /></label></div><label>Item ou itens relacionados<textarea id="libraryActivityProgressItems" rows="4" placeholder="Digite um item por linha"></textarea></label></div></details>
@@ -970,8 +976,8 @@
   <script src="config.js"></script>
   <script src="ideas-data.js?v=23.0"></script>
   <script src="app.js?v=23.0"></script>
-  <script src="programacao.js?v=46.0"></script>
-  <script src="programming-import-v33.js?v=46.0"></script>
+  <script src="programacao.js?v=47.0"></script>
+  <script src="programming-import-v33.js?v=47.0"></script>
   <script src="attendance-paxtu-v41.js?v=41.3"></script>
   <script src="programming-transfer-paxtu-v42.js?v=42.1"></script>
   <script>

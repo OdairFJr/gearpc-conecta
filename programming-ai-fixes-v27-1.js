@@ -7,6 +7,7 @@
   const { client, state } = runtime;
   const $ = (id) => document.getElementById(id);
   const AREAS = ['Físico', 'Afetivo', 'Caráter', 'Espiritual', 'Intelectual', 'Social'];
+  const RAMOS = ['Filhotes', 'Lobinho', 'Escoteiro', 'Sênior', 'Pioneiro'];
   let generatedActivity = null;
   let generatedContext = null;
   const ramoCache = new Map();
@@ -102,6 +103,7 @@
               <button id="closeAiResultDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
             </div>
             <div id="aiResultBody"></div>
+            <fieldset class="multi-fieldset"><legend>Salvar para o(s) ramo(s)</legend><div id="aiResultRamos" class="development-area-grid">${RAMOS.map((ramo) => `<label class="development-area-option"><input type="checkbox" value="${ramo}" /><span>${ramo}</span></label>`).join('')}</div></fieldset>
             <p id="aiResultMessage" class="form-message" role="status"></p>
             <div class="ai-result-actions sticky-dialog-actions">
               <div class="ai-save-row">
@@ -220,6 +222,7 @@
     $('aiResultTitle').textContent = activity.nome || 'Atividade gerada por IA';
     $('aiResultBody').innerHTML = `<div class="ai-result-grid">${fields.join('')}</div>`;
     $('aiSaveVisibility').value = 'grupo';
+    $('aiResultRamos')?.querySelectorAll('input[value]').forEach((input) => { input.checked = input.value === activity.ramo; });
     setStatus('aiResultMessage', '');
   }
 
@@ -332,7 +335,9 @@
       button.disabled = true;
       setStatus('aiResultMessage', 'Salvando no banco de atividades...');
       const payload = {
-        nome: generatedActivity.nome || 'Atividade gerada por IA', ramo: generatedActivity.ramo || null,
+        nome: generatedActivity.nome || 'Atividade gerada por IA',
+        ramo: ([...($('aiResultRamos')?.querySelectorAll('input[value]:checked') || [])].map((input) => input.value)[0] || generatedActivity.ramo || null),
+        ramos: [...($('aiResultRamos')?.querySelectorAll('input[value]:checked') || [])].map((input) => input.value),
         objetivo: generatedActivity.objetivo || null, areas_desenvolvimento: generatedActivity.areas_desenvolvimento || [],
         eixo: generatedActivity.eixo || null, bloco: generatedActivity.bloco || null, itens_progressao: generatedActivity.itens_progressao || [],
         materiais: generatedActivity.materiais || null, duracao_min: Number(generatedActivity.duracao_min || 30),

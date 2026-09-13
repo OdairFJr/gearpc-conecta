@@ -5,6 +5,7 @@
   const { client, state: appState, showDashboard } = runtime;
   const $ = (id) => document.getElementById(id);
   const AREAS = ['Físico', 'Afetivo', 'Caráter', 'Espiritual', 'Intelectual', 'Social'];
+  const RAMOS = ['Filhotes', 'Lobinho', 'Escoteiro', 'Sênior', 'Pioneiro'];
 
   const ui = {
     button: $('programmingButton'),
@@ -70,6 +71,10 @@
     itemConductor: $('programItemConductor'),
     itemName: $('programItemName'),
     itemObjective: $('programItemObjective'),
+    itemBankOptions: $('programItemBankOptions'),
+    itemSaveToBank: $('programItemSaveToBank'),
+    itemRamosFieldset: $('programItemRamosFieldset'),
+    itemRamos: $('programItemRamos'),
     itemAreas: $('programItemAreas'),
     itemAxis: $('programItemAxis'),
     itemBlock: $('programItemBlock'),
@@ -109,7 +114,7 @@
     libraryTitle: $('libraryActivityDialogTitle'),
     libraryId: $('libraryActivityId'),
     libraryName: $('libraryActivityName'),
-    libraryRamo: $('libraryActivityRamo'),
+    libraryRamos: $('libraryActivityRamos'),
     libraryDuration: $('libraryActivityDuration'),
     libraryParticipants: $('libraryActivityParticipants'),
     libraryLocation: $('libraryActivityLocation'),
@@ -282,6 +287,27 @@
     return [...(container?.querySelectorAll('input[type="checkbox"]:checked') || [])].map((i) => i.value);
   }
 
+  function renderRamoCheckboxes(container, prefix) {
+    if (!container) return;
+    container.innerHTML = `<label class="development-area-option all-ramos-option"><input type="checkbox" data-all-ramos="true" /><span>Todos os ramos</span></label>${RAMOS.map((ramo, index) => `<label class="development-area-option"><input type="checkbox" name="${prefix}-ramo" value="${escapeHtml(ramo)}" id="${prefix}-ramo-${index}" /><span>${escapeHtml(ramo)}</span></label>`).join('')}`;
+    const all = container.querySelector('[data-all-ramos]');
+    const items = [...container.querySelectorAll('input[value]')];
+    all?.addEventListener('change', () => items.forEach((input) => { input.checked = all.checked; }));
+    items.forEach((input) => input.addEventListener('change', () => { if (all) all.checked = items.every((item) => item.checked); }));
+  }
+
+  function setRamos(container, values = []) {
+    const wanted = new Set(values || []);
+    const items = [...(container?.querySelectorAll('input[value]') || [])];
+    items.forEach((input) => { input.checked = wanted.has(input.value); });
+    const all = container?.querySelector('[data-all-ramos]');
+    if (all) all.checked = items.length > 0 && items.every((input) => input.checked);
+  }
+
+  function getRamos(container) {
+    return [...(container?.querySelectorAll('input[value]:checked') || [])].map((input) => input.value);
+  }
+
   async function loadReferences(force = false) {
     if (moduleState.referencesLoaded && !force) return;
     const profile = appState.profile;
@@ -317,7 +343,6 @@
   }
 
   function fillRamoControl() {
-    ui.libraryRamo.innerHTML = moduleState.ramos.map((r) => `<option value="${escapeHtml(r.nome)}">${escapeHtml(r.nome)}</option>`).join('');
   }
 
   async function openProgrammingList() {
@@ -736,6 +761,11 @@
     ui.itemSafety.value = data.seguranca || '';
     ui.itemPlanB.value = data.plano_b || '';
     setAreas(ui.itemAreas, data.areas_desenvolvimento || []);
+    const newManual = !item && !fixed;
+    ui.itemBankOptions.classList.toggle('hidden', !newManual);
+    ui.itemSaveToBank.checked = false;
+    ui.itemRamosFieldset.classList.add('hidden');
+    setRamos(ui.itemRamos, [ramoNameForSection(moduleState.currentProgram.secao_id)]);
     fillConductorOptions(moduleState.currentProgram.secao_id, data.condutor_chefe_id || '');
     setProgramItemReadOnly(!manage);
     ui.itemDialog.showModal();
@@ -768,6 +798,9 @@
       payload.origem = ui.itemOrigin.value || 'manual';
     }
     if (!payload.hora_inicio || (!fixed && !payload.nome)) return setMessage(ui.itemMessage, 'Informe o horário e o nome da atividade.');
+    const saveToBank = !fixed && !ui.itemId.value && ui.itemSaveToBank.checked;
+    const selectedRamos = saveToBank ? getRamos(ui.itemRamos) : [];
+    if (saveToBank && !selectedRamos.length) return setMessage(ui.itemMessage, 'Marque pelo menos um ramo para salvar no Banco de Ideias.');
     ui.saveItem.disabled = true;
     let result;
     if (ui.itemId.value) {
@@ -782,9 +815,25 @@
     }
     ui.saveItem.disabled = false;
     if (result.error) return setMessage(ui.itemMessage, 'Não foi possível salvar este item.');
+    let bankSaved = false;
+    if (saveToBank) {
+      const { error: libraryError } = await client.from('biblioteca_atividades').insert({
+        nome: payload.nome, ramo: selectedRamos[0], ramos: selectedRamos,
+        objetivo: payload.objetivo, areas_desenvolvimento: payload.areas_desenvolvimento || [],
+        eixo: payload.eixo, bloco: payload.bloco, itens_progressao: payload.itens_progressao || [],
+        materiais: payload.materiais, duracao_min: payload.duracao_min,
+        preparacao: payload.preparacao, desenvolvimento: payload.desenvolvimento,
+        regras: payload.regras, seguranca: payload.seguranca, plano_b: payload.plano_b,
+        tags: [], visibilidade: 'grupo', origem: 'chefia', criado_por: appState.user?.id,
+        criado_por_chefe_id: appState.profile?.chefe_id || null, ativo: true,
+        atualizado_em: new Date().toISOString()
+      });
+      bankSaved = !libraryError;
+      if (libraryError) setMessage(ui.editorMessage, 'A atividade entrou na programação, mas não foi possível salvá-la no Banco de Ideias.');
+    }
     closeDialog(ui.itemDialog);
     await loadProgramItems();
-    setMessage(ui.editorMessage, 'Programação atualizada.', true);
+    if (!saveToBank || bankSaved) setMessage(ui.editorMessage, saveToBank ? 'Atividade adicionada e salva no Banco de Ideias.' : 'Programação atualizada.', true);
   }
 
   async function deleteProgramItem() {
@@ -838,7 +887,7 @@
 
   async function loadLibrary() {
     const { data, error } = await client.from('biblioteca_atividades')
-      .select('id,nome,ramo,objetivo,areas_desenvolvimento,eixo,bloco,itens_progressao,materiais,duracao_min,participantes,local_sugerido,preparacao,desenvolvimento,regras,seguranca,plano_b,tags,visibilidade,origem,criado_por,criado_por_chefe_id,criado_em,atualizado_em')
+      .select('id,nome,ramo,ramos,objetivo,areas_desenvolvimento,eixo,bloco,itens_progressao,materiais,duracao_min,participantes,local_sugerido,preparacao,desenvolvimento,regras,seguranca,plano_b,tags,visibilidade,origem,criado_por,criado_por_chefe_id,criado_em,atualizado_em')
       .eq('ativo', true)
       .order('atualizado_em', { ascending: false });
     if (error) {
@@ -850,7 +899,10 @@
 
   function cloudIdeasForCurrentRamo() {
     const ramo = ramoNameForSection(moduleState.currentProgram?.secao_id);
-    return moduleState.library.filter((a) => !a.ramo || a.ramo === ramo).map((a) => ({
+    return moduleState.library.filter((a) => {
+      const activityRamos = a.ramos?.length ? a.ramos : (a.ramo ? [a.ramo] : []);
+      return !activityRamos.length || activityRamos.includes(ramo);
+    }).map((a) => ({
       source: 'library',
       key: `library:${a.id}`,
       ...a,
@@ -868,7 +920,7 @@
     ui.ideaArea.innerHTML = `<option value="">Todas</option>${AREAS.map((a) => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('')}`;
     buildIdeaFilters();
     renderIdeaResults();
-    ui.ideaNewLibrary.classList.toggle('hidden', !canCreateLibrary());
+    ui.ideaNewLibrary.classList.add('hidden');
     setMessage(ui.ideaMessage, '');
     ui.ideaDialog.showModal();
   }
@@ -903,14 +955,25 @@
       ...(idea.itens_progressao || []), idea.materiais, idea.desenvolvimento,
       ...(idea.tags || []), idea.formato, idea.categoria
     ].join(' '));
-    return hay.includes(q);
+    const terms = q.split(' ').filter((term) => term.length >= 3);
+    return hay.includes(q) || (terms.length > 0 && terms.filter((term) => hay.includes(term)).length >= Math.max(1, Math.ceil(terms.length * 0.45)));
+  }
+
+  function ideaScore(idea) {
+    const q = normalize(ui.ideaText.value);
+    if (!q) return 0;
+    const terms = q.split(' ').filter((term) => term.length >= 3);
+    const objective = normalize(idea.objetivo);
+    const name = normalize(idea.nome);
+    const body = normalize([idea.desenvolvimento, ...(idea.tags || []), ...(idea.itens_progressao || [])].join(' '));
+    return (objective.includes(q) ? 100 : 0) + (name.includes(q) ? 80 : 0) + terms.reduce((score, term) => score + (objective.includes(term) ? 12 : 0) + (name.includes(term) ? 8 : 0) + (body.includes(term) ? 3 : 0), 0);
   }
 
   function renderIdeaResults() {
-    const rows = allSearchIdeas().filter(ideaMatches).slice(0, 120);
+    const rows = allSearchIdeas().filter(ideaMatches).sort((a, b) => ideaScore(b) - ideaScore(a)).slice(0, 120);
     ui.ideaCount.textContent = String(rows.length);
     if (!rows.length) {
-      ui.ideaResults.innerHTML = '<div class="program-empty"><strong>Nenhuma ideia encontrada.</strong><span>Tente outro bloco, eixo ou palavra-chave.</span></div>';
+      ui.ideaResults.innerHTML = '<div class="program-empty"><strong>Nenhuma ideia próxima foi encontrada.</strong><span>Você pode alterar o objetivo ou pedir uma nova opção à IA.</span><button type="button" class="new-member-button idea-ai-fallback" data-generate-from-objective>✨ Criar outra opção com IA</button></div>';
       return;
     }
     ui.ideaResults.innerHTML = rows.map((idea) => {
@@ -923,7 +986,7 @@
         <div class="program-chip-row">${areas}${edu}</div>
         <div class="idea-result-actions"><button type="button" class="secondary-action-button" data-view-idea="${escapeHtml(idea.key)}">Ver ficha</button><button type="button" class="new-member-button" data-use-idea="${escapeHtml(idea.key)}">Usar na programação</button></div>
       </article>`;
-    }).join('');
+    }).join('') + '<div class="idea-ai-option"><strong>Não encontrou a atividade ideal?</strong><span>A IA pode criar outra opção usando o objetivo informado acima.</span><button type="button" class="secondary-action-button" data-generate-from-objective>✨ Criar outra opção com IA</button></div>';
   }
 
   function findIdea(key) {
@@ -937,7 +1000,7 @@
       const display = Array.isArray(value) ? value.join(' • ') : value;
       values.push(`<div class="activity-sheet-field ${wide ? 'wide' : ''}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(display)}</strong></div>`);
     };
-    add('Ramo', idea.ramo);
+    add('Ramos', idea.ramos?.length ? idea.ramos : (idea.ramo ? [idea.ramo] : []));
     add('Tempo previsto', idea.duracao_texto || `${idea.duracao_min || 30} min`);
     add('Participantes', idea.participantes);
     add('Local sugerido', idea.local_sugerido);
@@ -1010,7 +1073,7 @@
     ui.libraryDuration.value = '30';
     ui.libraryVisibility.value = 'grupo';
     const ramo = ramoNameForSection(moduleState.currentProgram?.secao_id);
-    if (ramo) ui.libraryRamo.value = ramo;
+    setRamos(ui.libraryRamos, ramo ? [ramo] : []);
     setAreas(ui.libraryAreas, []);
     setMessage(ui.libraryMessage, '');
     ui.deleteLibrary.classList.add('hidden');
@@ -1021,7 +1084,8 @@
   function libraryPayload() {
     return {
       nome: ui.libraryName.value.trim(),
-      ramo: ui.libraryRamo.value || null,
+      ramo: getRamos(ui.libraryRamos)[0] || null,
+      ramos: getRamos(ui.libraryRamos),
       objetivo: ui.libraryObjective.value.trim() || null,
       areas_desenvolvimento: getAreas(ui.libraryAreas),
       eixo: ui.libraryAxis.value.trim() || null,
@@ -1049,8 +1113,8 @@
   async function saveLibraryActivity(useAfter = false) {
     if (!canCreateLibrary()) return;
     const payload = libraryPayload();
-    if (!payload.nome || !payload.objetivo || !payload.desenvolvimento) {
-      setMessage(ui.libraryMessage, 'Informe nome, objetivo e desenvolvimento da atividade.');
+    if (!payload.nome || !payload.objetivo || !payload.desenvolvimento || !payload.ramos.length) {
+      setMessage(ui.libraryMessage, 'Informe nome, objetivo, desenvolvimento e pelo menos um ramo.');
       return;
     }
     ui.saveLibrary.disabled = true;
@@ -1087,7 +1151,7 @@
     ui.libraryId.value = String(a.id);
     ui.libraryTitle.textContent = 'Editar atividade do banco';
     ui.libraryName.value = a.nome || '';
-    ui.libraryRamo.value = a.ramo || '';
+    setRamos(ui.libraryRamos, a.ramos?.length ? a.ramos : (a.ramo ? [a.ramo] : []));
     ui.libraryDuration.value = Number(a.duracao_min || 30);
     ui.libraryParticipants.value = a.participantes || '';
     ui.libraryLocation.value = a.local_sugerido || '';
@@ -1122,6 +1186,14 @@
   }
 
   function onIdeaResultsClick(event) {
+    const aiButton = event.target.closest('[data-generate-from-objective]');
+    if (aiButton) {
+      const objective = ui.ideaText.value.trim();
+      closeDialog(ui.ideaDialog);
+      $('programGenerateAiButton')?.click();
+      window.setTimeout(() => { const request = $('aiActivityRequest'); if (request) request.value = objective; }, 160);
+      return;
+    }
     const viewButton = event.target.closest('[data-view-idea]');
     if (viewButton) return openIdeaDetail(viewButton.dataset.viewIdea);
     const useButton = event.target.closest('[data-use-idea]');
@@ -1177,6 +1249,7 @@
       tipo: 'atividade', origem: 'manual', hora_inicio: nextAvailableStart(20), duracao_min: 20,
       areas_desenvolvimento: [], itens_progressao: []
     }));
+    ui.itemSaveToBank?.addEventListener('change', () => ui.itemRamosFieldset.classList.toggle('hidden', !ui.itemSaveToBank.checked));
     ui.searchIdeas?.addEventListener('click', openIdeaSearch);
     ui.newLibrary?.addEventListener('click', openLibraryDialog);
     ui.timeline?.addEventListener('click', onTimelineClick);
@@ -1209,5 +1282,7 @@
 
   renderAreaCheckboxes(ui.itemAreas, 'program-item');
   renderAreaCheckboxes(ui.libraryAreas, 'library-activity');
+  renderRamoCheckboxes(ui.itemRamos, 'program-item');
+  renderRamoCheckboxes(ui.libraryRamos, 'library-activity');
   registerEvents();
 })();
