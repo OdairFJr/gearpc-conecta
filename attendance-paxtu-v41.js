@@ -3,6 +3,7 @@
   window.__GEARPC_ATTENDANCE_PAXTU_V41__ = true;
 
   const $ = (id) => document.getElementById(id);
+  const runtime = window.GEARPC_RUNTIME;
   const attendanceView = $('attendanceView');
   const actions = attendanceView?.querySelector('.attendance-admin-actions');
   const list = $('attendanceList');
@@ -95,6 +96,14 @@
   transferButton.textContent = '↗ Transferir para o Paxtu';
   actions.appendChild(transferButton);
 
+  function isAdmin() {
+    return runtime?.state?.profile?.tipo === 'administrador';
+  }
+
+  function updateTransferAccess() {
+    transferButton.classList.toggle('hidden', !isAdmin());
+  }
+
   const dialog = document.createElement('dialog');
   dialog.id = 'attendancePaxtuDialog';
   dialog.className = 'member-dialog attendance-paxtu-dialog';
@@ -141,6 +150,7 @@
   }
 
   transferButton.addEventListener('click', () => {
+    if (!isAdmin()) return;
     updateSummary();
     dialog.showModal();
   });
@@ -168,7 +178,10 @@
   });
 
   new MutationObserver(updateSummary).observe(list, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(updateTransferAccess).observe(attendanceView, { attributes: true, attributeFilter: ['class'] });
+  runtime?.client?.auth?.onAuthStateChange(() => window.setTimeout(updateTransferAccess, 100));
   section.addEventListener('change', updateSummary);
   date.addEventListener('change', updateSummary);
   updateSummary();
+  updateTransferAccess();
 })();
