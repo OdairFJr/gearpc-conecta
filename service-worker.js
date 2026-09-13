@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v43';
+const CACHE_NAME = 'gearpc-conecta-offline-v44';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -17,7 +17,7 @@ const APP_SHELL = [
   './styles.css?v=23.0',
   './ideas-data.js?v=23.0',
   './app.js?v=23.0',
-  './programacao.js?v=43.0',
+  './programacao.js?v=44.0',
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
@@ -25,7 +25,7 @@ const APP_SHELL = [
   './programming-transfer-paxtu-v42.js?v=42.1',
   './programming-permissions-v24.js',
   './programming-ai-fixes-v27-1.js',
-  './programming-review-v28.js',
+  './programming-review-v28.js?v=44.0',
   './programming-deadline-v28-1.js',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
@@ -72,7 +72,7 @@ async function withRuntimeModules(response) {
 
   let html = await response.text();
   const supabaseTag = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>';
-  const programmingTag = '<script src="programacao.js?v=43.0"></script>';
+  const programmingTag = '<script src="programacao.js?v=44.0"></script>';
 
   if (!html.includes('offline-bootstrap-v24.js')) {
     html = html.replace(supabaseTag, `${supabaseTag}\n  <script src="offline-bootstrap-v24.js"></script>`);
@@ -104,7 +104,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-activity-v27.js"></script>\n</body>');
   }
   if (!html.includes('programming-review-v28.js')) {
-    html = html.replace('</body>', '  <script src="programming-review-v28.js"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=44.0"></script>\n</body>');
   }
   if (!html.includes('programming-deadline-v28-1.js')) {
     html = html.replace('</body>', '  <script src="programming-deadline-v28-1.js"></script>\n</body>');

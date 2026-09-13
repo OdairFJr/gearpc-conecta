@@ -5,9 +5,10 @@
   const { client, state } = runtime;
   const $ = (id) => document.getElementById(id);
   const REMINDER_TYPE = 'lembrete_programacao';
+  const FEEDBACK_TYPE = 'retorno_programacao';
   const REVIEW_STATES = {
-    autorizada: { label: 'Atividade conferida e autorizada', cls: 'ok' },
-    nao_autorizada: { label: 'Atividade conferida e não autorizada', cls: 'no' },
+    autorizada: { label: 'Programação revisada — tudo certo', cls: 'ok' },
+    nao_autorizada: { label: 'Programação revisada — sugestões de ajuste', cls: 'no' },
     cancelada_sem_programacao: { label: 'Atividade cancelada por falta de programação', cls: 'cancel' }
   };
 
@@ -70,7 +71,8 @@
     style.textContent = `
       .weekly-program-reminders{margin:14px 0 18px;display:grid;gap:10px}.weekly-program-reminder{background:#fff7d6;border:1px solid #e7c96a;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.05)}.weekly-program-reminder strong{display:block;color:#6d5200;margin-bottom:4px}.weekly-program-reminder p{margin:0;color:#5f532d;line-height:1.4}.weekly-program-reminder button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
       .program-weekly-review{margin:16px 0 20px;background:#fff;border:1px solid #d7e0eb;border-radius:18px;padding:16px;box-shadow:0 5px 18px rgba(10,55,108,.06)}.program-weekly-review h3{margin:0 0 5px;color:#0a376c}.program-weekly-review .review-intro{margin:0 0 14px;color:#546579}.program-weekly-grid{display:grid;gap:12px}.program-review-card{border:1px solid #dfe6ee;border-radius:14px;padding:14px;background:#fbfcfe}.program-review-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}.program-review-card-head strong{font-size:1rem}.program-review-card-head small{display:block;color:#66788b;margin-top:3px}.program-review-state{font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 9px;background:#eef2f6;color:#556575}.program-review-state.ok{background:#e6f6ec;color:#176b38}.program-review-state.no{background:#ffe9e7;color:#9d2c24}.program-review-state.cancel{background:#f4ece7;color:#7a4930}.program-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.program-review-actions button{border:0;border-radius:10px;padding:9px 11px;font-weight:700;cursor:pointer}.review-authorize{background:#1f7a45;color:#fff}.review-deny{background:#a5322a;color:#fff}.review-cancel{background:#6b4b38;color:#fff}.review-clear{background:#e9eef4;color:#31475e}.program-review-note{margin:8px 0 0;color:#77443e;font-size:.9rem}.program-deadline-note{margin:14px 0;padding:12px 14px;border-radius:12px;background:#eef5ff;border:1px solid #c8dcf7;color:#173f70;font-weight:700}.program-editor-review-status{margin:12px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid #d9e1ea;background:#f7f9fb}.program-editor-review-status.ok{border-color:#b8dfc6;background:#edf8f1;color:#176b38}.program-editor-review-status.no{border-color:#f0c3bf;background:#fff0ee;color:#8f2d25}.program-editor-review-status.cancel{border-color:#d9c7bb;background:#f8f1ec;color:#724631}.program-editor-review-status.pending{color:#4f6173}
-      @media(max-width:640px){.weekly-program-reminder{flex-direction:column}.weekly-program-reminder button{width:100%}.program-review-card-head{flex-direction:column}.program-review-actions button{flex:1 1 100%}}
+      .program-feedbacks{margin:14px 0 18px;display:grid;gap:10px}.program-feedback{border:1px solid #b8dfc6;background:#edf8f1;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between}.program-feedback.adjust{border-color:#edcf82;background:#fff9e8}.program-feedback strong{display:block;color:#176b38;margin-bottom:4px}.program-feedback.adjust strong{color:#76570b}.program-feedback p{margin:0;color:#435a4c;line-height:1.4}.program-feedback.adjust p{color:#635522}.program-feedback button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
+      @media(max-width:640px){.weekly-program-reminder,.program-feedback{flex-direction:column}.weekly-program-reminder button,.program-feedback button{width:100%}.program-review-card-head{flex-direction:column}.program-review-actions button{flex:1 1 100%}}
     `;
     document.head.appendChild(style);
   }
@@ -147,6 +149,56 @@
     document.querySelector(`[data-notice-id="${Number(id)}"]`)?.remove();
   }
 
+  function feedbackHost() {
+    const dashboard = $('dashboardView');
+    if (!dashboard) return null;
+    let host = $('programFeedbackNotices');
+    if (!host) {
+      host = document.createElement('section');
+      host.id = 'programFeedbackNotices';
+      host.className = 'program-feedbacks';
+      const reminders = dashboardReminderHost();
+      if (reminders) reminders.insertAdjacentElement('afterend', host);
+      else dashboard.querySelector('.launch-header')?.insertAdjacentElement('afterend', host);
+    }
+    return host;
+  }
+
+  async function loadFeedbackNotices() {
+    const host = feedbackHost();
+    if (!host) return;
+    if (!state.user?.id || !isChief()) { host.innerHTML = ''; return; }
+    const { data, error } = await client.from('notificacoes')
+      .select('id,titulo,mensagem,secao_id,data_referencia,lida,criado_em')
+      .eq('user_id', state.user.id).eq('tipo', FEEDBACK_TYPE).eq('lida', false)
+      .order('criado_em', { ascending: false });
+    if (error || !data?.length) { host.innerHTML = ''; return; }
+    host.innerHTML = data.map((notice) => {
+      const adjust = String(notice.titulo || '').toLowerCase().includes('sugest');
+      return `<article class="program-feedback ${adjust ? 'adjust' : ''}" data-feedback-id="${Number(notice.id)}"><div><strong>📋 ${escapeHtml(notice.titulo || 'Retorno sobre a programação')}</strong><p>${escapeHtml(notice.mensagem || '')}</p></div><button type="button" data-open-program-feedback="${Number(notice.id)}" data-section-id="${Number(notice.secao_id)}" data-date="${escapeHtml(notice.data_referencia || '')}">Ver programação</button></article>`;
+    }).join('');
+  }
+
+  async function notifySectionChiefs(sectionId, date, status, observation) {
+    if (!isAdmin() || !['autorizada', 'nao_autorizada'].includes(status)) return true;
+    const { data: links, error: linksError } = await client.from('chefe_secoes').select('chefe_id').eq('secao_id', Number(sectionId));
+    if (linksError) return false;
+    const chiefIds = [...new Set((links || []).map((row) => Number(row.chefe_id)).filter(Boolean))];
+    if (!chiefIds.length) return true;
+    const { data: profiles, error: profilesError } = await client.from('perfis_usuarios')
+      .select('user_id,chefe_id,tipo,ativo').in('chefe_id', chiefIds).eq('tipo', 'chefia').eq('ativo', true);
+    if (profilesError) return false;
+    if (!profiles?.length) return true;
+    await client.from('notificacoes').delete().eq('tipo', FEEDBACK_TYPE).eq('secao_id', Number(sectionId)).eq('data_referencia', date).eq('lida', false);
+    const adjust = status === 'nao_autorizada';
+    const title = adjust ? 'Retorno sobre a programação — sugestões de ajuste' : 'Retorno sobre a programação — tudo certo';
+    const message = adjust
+      ? `A programação de ${formatDate(date)} foi revisada e possui sugestões para aprimorar seu alinhamento ao Método Escoteiro e ao Programa Educativo.${observation ? ` Observação: ${observation}` : ''}`
+      : `A programação de ${formatDate(date)} foi revisada e está alinhada ao Método Escoteiro e ao Programa Educativo.`;
+    const { error: insertError } = await client.from('notificacoes').insert(profiles.map((profile) => ({ user_id: profile.user_id, tipo: FEEDBACK_TYPE, titulo: title, mensagem: message, secao_id: Number(sectionId), data_referencia: date, lida: false })));
+    return !insertError;
+  }
+
   function ensureProgrammingPanel() {
     const view = $('programmingView');
     if (!view) return null;
@@ -203,8 +255,8 @@
           ? `Programação lançada • ${String(program.horario_inicio || '').slice(0,5)}–${String(program.horario_termino || '').slice(0,5)}`
           : 'Programação ainda não lançada';
         const actions = program
-          ? `<button class="review-authorize" data-review-action="authorize" data-section-id="${section.id}" data-date="${saturday}">✓ Conferida e autorizada</button>
-             <button class="review-deny" data-review-action="deny" data-section-id="${section.id}" data-date="${saturday}">✕ Conferida e não autorizada</button>`
+          ? `<button class="review-authorize" data-review-action="authorize" data-section-id="${section.id}" data-date="${saturday}">✓ Revisada — tudo certo</button>
+             <button class="review-deny" data-review-action="deny" data-section-id="${section.id}" data-date="${saturday}">✎ Revisada — sugerir ajustes</button>`
           : `<button class="review-cancel" data-review-action="cancel" data-section-id="${section.id}" data-date="${saturday}">Cancelar por falta de programação</button>`;
         const clear = review ? `<button class="review-clear" data-review-action="clear" data-section-id="${section.id}" data-date="${saturday}">Desfazer decisão</button>` : '';
         const note = review?.observacao ? `<p class="program-review-note"><strong>Observação:</strong> ${escapeHtml(review.observacao)}</p>` : '';
@@ -238,6 +290,8 @@
       console.error(error);
       return;
     }
+    const notified = await notifySectionChiefs(sectionId, date, status, observation);
+    if (!notified) window.alert('O retorno foi salvo, mas não foi possível criar o aviso para a chefia.');
     await refreshWeeklyPanel();
     await refreshEditorReviewStatus();
   }
@@ -251,6 +305,7 @@
       window.alert('Não foi possível desfazer a decisão.');
       return;
     }
+    await client.from('notificacoes').delete().eq('tipo', FEEDBACK_TYPE).eq('secao_id', Number(sectionId)).eq('data_referencia', date).eq('lida', false);
     await refreshWeeklyPanel();
     await refreshEditorReviewStatus();
   }
@@ -265,10 +320,10 @@
       return;
     }
     if (action === 'deny') {
-      const reason = window.prompt('Informe por que a atividade não foi autorizada:');
+      const reason = window.prompt('Informe suas sugestões para aprimorar o alinhamento da programação ao Método Escoteiro e ao Programa Educativo:');
       if (reason === null) return;
       if (!reason.trim()) {
-        window.alert('A observação é obrigatória quando a atividade não é autorizada.');
+        window.alert('Informe as sugestões de ajuste antes de salvar o retorno.');
         return;
       }
       await saveReview(sectionId, date, 'nao_autorizada', reason.trim());
@@ -337,6 +392,17 @@
         await dismissReminder(dismiss.dataset.dismissNotice);
         return;
       }
+      const feedback = event.target.closest('[data-open-program-feedback]');
+      if (feedback) {
+        const id = Number(feedback.dataset.openProgramFeedback || 0);
+        const sectionId = Number(feedback.dataset.sectionId || 0);
+        const date = feedback.dataset.date || '';
+        await client.from('notificacoes').update({ lida: true }).eq('id', id).eq('user_id', state.user.id);
+        document.querySelector(`[data-feedback-id="${id}"]`)?.remove();
+        const { data: programs } = await client.from('programacoes').select('id').eq('secao_id', sectionId).eq('data_atividade', date).limit(1);
+        if (programs?.[0] && typeof runtime.openProgramPreview === 'function') await runtime.openProgramPreview(programs[0].id);
+        return;
+      }
       const review = event.target.closest('[data-review-action]');
       if (review) {
         review.disabled = true;
@@ -365,6 +431,7 @@
     authTimer = setTimeout(async () => {
       injectStyles();
       await loadReminders();
+      await loadFeedbackNotices();
       scheduleProgrammingRefresh();
     }, 900);
   }
@@ -376,6 +443,8 @@
     else {
       const host = $('weeklyProgrammingReminders');
       if (host) host.innerHTML = '';
+      const feedbacks = $('programFeedbackNotices');
+      if (feedbacks) feedbacks.innerHTML = '';
     }
   });
 

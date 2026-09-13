@@ -140,7 +140,9 @@
     chefes: [],
     chefeSecoes: [],
     programs: [],
+    reviews: [],
     currentProgram: null,
+    currentReviewStatus: null,
     items: [],
     library: [],
     selectedIdea: null,
@@ -231,7 +233,8 @@
   }
 
   function canManageCurrent() {
-    return Boolean(moduleState.currentProgram && canManageSection(moduleState.currentProgram.secao_id));
+    if (!moduleState.currentProgram || !canManageSection(moduleState.currentProgram.secao_id)) return false;
+    return isAdmin() || moduleState.currentReviewStatus !== 'autorizada';
   }
 
   function visibleSections() {
@@ -335,16 +338,18 @@
 
   async function loadPrograms() {
     setMessage(ui.message, 'Carregando programações...');
-    const { data, error } = await client
-      .from('programacoes')
-      .select('id,secao_id,data_atividade,horario_inicio,horario_termino,observacoes_finais,criado_em,atualizado_em')
-      .order('data_atividade', { ascending: false })
-      .order('horario_inicio', { ascending: false });
-    if (error) {
+    const [programsRes, reviewsRes] = await Promise.all([
+      client.from('programacoes')
+        .select('id,secao_id,data_atividade,horario_inicio,horario_termino,observacoes_finais,criado_em,atualizado_em')
+        .order('data_atividade', { ascending: false }).order('horario_inicio', { ascending: false }),
+      client.from('programacao_revisoes').select('secao_id,data_atividade,status,observacao,revisado_em')
+    ]);
+    if (programsRes.error || reviewsRes.error) {
       setMessage(ui.message, 'Não foi possível carregar as programações.');
       return;
     }
-    moduleState.programs = data || [];
+    moduleState.programs = programsRes.data || [];
+    moduleState.reviews = reviewsRes.data || [];
     renderPrograms();
     setMessage(ui.message, '');
   }
@@ -362,9 +367,15 @@
       return;
     }
     ui.list.innerHTML = rows.map((p) => {
+      const review = moduleState.reviews.find((r) => Number(r.secao_id) === Number(p.secao_id) && r.data_atividade === p.data_atividade);
+      const status = review?.status === 'autorizada'
+        ? '<span class="program-list-review ok">● Tudo certo</span>'
+        : review?.status === 'nao_autorizada'
+          ? '<span class="program-list-review adjust">● Sugestões de ajuste</span>'
+          : '<span class="program-list-review pending">● Aguardando revisão</span>';
       return `<button type="button" class="program-list-card" data-program-id="${p.id}">
         <span class="program-list-date"><strong>${escapeHtml(formatDate(p.data_atividade))}</strong><small>${escapeHtml(formatTime(p.horario_inicio))}–${escapeHtml(formatTime(p.horario_termino))}</small></span>
-        <span class="program-list-copy"><strong>${escapeHtml(sectionName(p.secao_id))}</strong><small>Ver e acompanhar programação</small></span>
+        <span class="program-list-copy"><strong>${escapeHtml(sectionName(p.secao_id))}</strong><small>Ver e acompanhar programação</small>${status}</span>
         <span class="program-list-arrow">›</span>
       </button>`;
     }).join('');
@@ -374,6 +385,7 @@
     await loadReferences();
     ui.previewMessage.textContent = 'Carregando programação...';
     ui.previewTimeline.innerHTML = '';
+    ui.previewDialog.querySelector('.program-preview-review')?.remove();
     ui.previewNotes.classList.add('hidden');
     ui.previewEdit.classList.add('hidden');
     ui.previewDialog.showModal();
@@ -391,8 +403,14 @@
       ui.previewMessage.textContent = 'Não foi possível carregar as etapas da programação.';
       return;
     }
+    const { data: review } = await client.from('programacao_revisoes')
+      .select('status,observacao,revisado_em').eq('secao_id', program.secao_id).eq('data_atividade', program.data_atividade).maybeSingle();
     ui.previewTitle.textContent = sectionName(program.secao_id);
     ui.previewMeta.textContent = `${formatDate(program.data_atividade)} • ${formatTime(program.horario_inicio)}–${formatTime(program.horario_termino)}`;
+    const reviewLabel = review?.status === 'autorizada' ? '● Tudo certo'
+      : review?.status === 'nao_autorizada' ? '● Sugestões de ajuste' : '● Aguardando revisão';
+    const reviewClass = review?.status === 'autorizada' ? 'ok' : review?.status === 'nao_autorizada' ? 'adjust' : 'pending';
+    ui.previewMeta.insertAdjacentHTML('afterend', `<div class="program-preview-review ${reviewClass}">${reviewLabel}${review?.observacao ? `<span>${escapeHtml(review.observacao)}</span>` : ''}</div>`);
     const rows = items || [];
     ui.previewTimeline.innerHTML = rows.length ? rows.map((item) => {
       const start = toMinutes(item.hora_inicio);
@@ -415,9 +433,11 @@
       ui.previewNotes.classList.remove('hidden');
     }
     ui.previewEdit.dataset.programId = String(program.id);
-    ui.previewEdit.classList.toggle('hidden', !canManageSection(program.secao_id));
+    const lockedForChief = review?.status === 'autorizada' && !isAdmin();
+    ui.previewEdit.classList.toggle('hidden', !canManageSection(program.secao_id) || lockedForChief);
     ui.previewMessage.textContent = '';
   }
+  runtime.openProgramPreview = openProgramPreview;
 
   function openNewProgrammingDialog() {
     const sections = manageableSections();
@@ -504,6 +524,9 @@
       return;
     }
     moduleState.currentProgram = data;
+    const { data: review } = await client.from('programacao_revisoes')
+      .select('status').eq('secao_id', data.secao_id).eq('data_atividade', data.data_atividade).maybeSingle();
+    moduleState.currentReviewStatus = review?.status || null;
     showOnly(ui.editorView);
     fillEditorHeader();
     await loadProgramItems();
@@ -522,7 +545,9 @@
     ui.editorTitle.textContent = `${sectionName(p.secao_id)} • ${formatDate(p.data_atividade)}`;
     ui.editorPermission.textContent = manage
       ? 'Você pode alterar esta programação.'
-      : 'Modo de consulta: esta programação não pode ser alterada pelo seu perfil.';
+      : moduleState.currentReviewStatus === 'autorizada' && !isAdmin()
+        ? 'Programação revisada — tudo certo. A edição está bloqueada; somente a administração pode reabrir para ajustes.'
+        : 'Modo de consulta: esta programação não pode ser alterada pelo seu perfil.';
     [ui.editorSection, ui.editorDate, ui.editorStart, ui.editorEnd, ui.finalNotes].forEach((el) => { if (el) el.disabled = !manage; });
     ui.saveBasic.classList.toggle('hidden', !manage);
     ui.saveNotes.classList.toggle('hidden', !manage);
