@@ -1,18 +1,31 @@
 (() => {
   const cfg = window.GEARPC_CONFIG || {};
   const SERVICE_TITLE = 'Ramo de serviço do próximo sábado';
-  const CACHE_KEY = 'gearpc_service_branch_notice_v30';
+  const CACHE_KEY = 'gearpc_service_branch_calendar_v50';
   let client = null;
   let currentNotice = null;
+  let noticesByDate = new Map();
   let currentProfile = null;
   let ramos = [];
   let loading = false;
+  let editorDate = null;
 
   function nextSaturdayDate(base = new Date()) {
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
     const days = (6 - d.getDay() + 7) % 7;
     d.setDate(d.getDate() + days);
     return d;
+  }
+
+  function addDays(date, amount) {
+    const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
+    copy.setDate(copy.getDate() + amount);
+    return copy;
+  }
+
+  function calendarSaturdays(total = 26) {
+    const first = nextSaturdayDate();
+    return Array.from({ length: total }, (_, index) => addDays(first, index * 7));
   }
 
   function isSaturday(base = new Date()) {
@@ -83,16 +96,27 @@
     return items.map((item) => item.nome).join(' • ');
   }
 
-  function cacheNotice(notice) {
+  function cacheNotices(notices) {
     try {
-      if (notice) localStorage.setItem(CACHE_KEY, JSON.stringify(notice));
+      if (notices?.length) localStorage.setItem(CACHE_KEY, JSON.stringify(notices));
       else localStorage.removeItem(CACHE_KEY);
     } catch (_) {}
   }
 
-  function cachedNotice() {
-    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); }
-    catch (_) { return null; }
+  function cachedNotices() {
+    try {
+      const value = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    } catch (_) { return []; }
+  }
+
+  function indexNotices(notices = []) {
+    noticesByDate = new Map();
+    notices.forEach((notice) => {
+      const parsed = safeParseMessage(notice?.mensagem);
+      if (parsed?.data && !noticesByDate.has(parsed.data)) noticesByDate.set(parsed.data, notice);
+    });
+    currentNotice = noticesByDate.get(isoDateLocal(nextSaturdayDate())) || null;
   }
 
   function injectStyles() {
@@ -108,6 +132,7 @@
       .service-branch-dialog-body-v30{padding:22px}.service-branch-dialog-body-v30 h2{margin:4px 0 6px;color:#0a376c}.service-branch-dialog-body-v30 p{color:#626b75;margin:0 0 18px}.service-branch-field-v30{display:grid;gap:7px;font-weight:800;color:#26394d;margin-top:14px}.service-branch-field-v30 input{width:100%;box-sizing:border-box;border:1px solid #cbd4df;border-radius:11px;padding:12px;font:inherit;background:#fff}
       .service-branch-choice-list-v30{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:8px}.service-branch-choice-v30{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid #cbd4df;border-radius:12px;background:#fff;font-weight:800;color:#26394d;cursor:pointer}.service-branch-choice-v30:has(input:checked){border-color:#0a376c;background:#edf4fc;color:#0a376c}.service-branch-choice-v30 input{width:18px;height:18px;margin:0;accent-color:#0a376c}
       .service-branch-choice-help-v30{font-size:12px;color:#697888;font-weight:600;margin-top:7px}.service-branch-actions-v30{display:flex;justify-content:space-between;gap:10px;margin-top:22px;flex-wrap:wrap}.service-branch-actions-right-v30{display:flex;gap:8px;margin-left:auto}.service-branch-danger-v30{border:0;border-radius:11px;padding:10px 12px;background:#b3261e;color:#fff;font-weight:800;cursor:pointer}.service-branch-message-v30{min-height:18px;margin-top:10px!important;font-size:13px;font-weight:700}
+      .service-calendar-v50{display:grid;gap:8px;max-height:52vh;overflow:auto;margin-top:14px;padding-right:3px}.service-calendar-row-v50{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid #d5dde7;border-radius:12px;background:#fff}.service-calendar-date-v50{font-weight:900;color:#0a376c;text-transform:capitalize}.service-calendar-name-v50{font-size:13px;color:#616d79;margin-top:3px}.service-calendar-edit-v50{border:0;border-radius:10px;padding:9px 11px;background:#e9eef5;color:#0a376c;font-weight:800;cursor:pointer}.service-calendar-row-v50.current{border-color:#f3b61f;background:#fff8db}
       @media(max-width:540px){.service-branch-card-v30{margin:13px 0 16px;padding:15px}.service-branch-card-v30 h3{font-size:18px}.service-branch-name-v30{font-size:17px}.service-branch-choice-list-v30{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
@@ -125,11 +150,50 @@
     card.innerHTML = `
       <div class="service-branch-top-v30"><div class="service-branch-icon-v30" aria-hidden="true">📣</div><div class="service-branch-copy-v30"><div class="service-branch-kicker-v30">AVISO IMPORTANTE</div><h3 id="serviceBranchTitleV30">Ramo de serviço do próximo sábado</h3><p id="serviceBranchDateV30" class="service-branch-date-v30"></p></div></div>
       <div id="serviceBranchNameV30" class="service-branch-name-v30 service-branch-pending-v30">Aguardando definição</div>
-      <div id="serviceBranchAdminV30" class="service-branch-admin-v30" hidden><button id="serviceBranchEditV30" class="service-branch-button-v30" type="button">Definir responsáveis</button></div>`;
+      <div id="serviceBranchAdminV30" class="service-branch-admin-v30" hidden><button id="serviceBranchEditV30" class="service-branch-button-v30" type="button">Gerenciar calendário</button></div>`;
     const header = dashboard.querySelector('.launch-header');
     if (header) header.insertAdjacentElement('afterend', card); else dashboard.prepend(card);
     card.querySelector('#serviceBranchEditV30')?.addEventListener('click', openEditor);
     return card;
+  }
+
+  function ensureCalendarDialog() {
+    let dialog = document.getElementById('serviceCalendarDialogV50');
+    if (dialog) return dialog;
+    dialog = document.createElement('dialog');
+    dialog.id = 'serviceCalendarDialogV50';
+    dialog.className = 'service-branch-dialog-v30';
+    dialog.innerHTML = `
+      <div class="service-branch-dialog-body-v30">
+        <div class="service-branch-kicker-v30">ADMINISTRADOR</div><h2>Calendário do ramo de serviço</h2>
+        <p>Programe os próximos sábados. O aviso da tela inicial mudará sozinho na data correta.</p>
+        <div id="serviceCalendarListV50" class="service-calendar-v50"></div>
+        <div class="service-branch-actions-v30"><div class="service-branch-actions-right-v30"><button id="serviceCalendarCloseV50" class="service-branch-button-v30 secondary" type="button">Fechar</button></div></div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector('#serviceCalendarCloseV50')?.addEventListener('click', () => dialog.close());
+    return dialog;
+  }
+
+  function renderCalendar() {
+    const wrap = document.getElementById('serviceCalendarListV50');
+    if (!wrap) return;
+    const expectedDate = isoDateLocal(nextSaturdayDate());
+    wrap.innerHTML = '';
+    calendarSaturdays().forEach((saturday) => {
+      const date = isoDateLocal(saturday);
+      const notice = noticesByDate.get(date);
+      const responsaveis = responsaveisFromParsed(safeParseMessage(notice?.mensagem));
+      const row = document.createElement('div');
+      row.className = `service-calendar-row-v50${date === expectedDate ? ' current' : ''}`;
+      row.innerHTML = `<div><div class="service-calendar-date-v50"></div><div class="service-calendar-name-v50"></div></div><button class="service-calendar-edit-v50" type="button"></button>`;
+      row.querySelector('.service-calendar-date-v50').textContent = formatDateBR(date);
+      row.querySelector('.service-calendar-name-v50').textContent = responsaveis.length ? displayResponsaveis(responsaveis) : 'Sem definição';
+      const button = row.querySelector('button');
+      button.textContent = responsaveis.length ? 'Trocar' : 'Definir';
+      button.addEventListener('click', () => openDateEditor(date));
+      wrap.appendChild(row);
+    });
   }
 
   function ensureDialog() {
@@ -174,7 +238,7 @@
     }
     const isAdmin = currentProfile?.tipo === 'administrador';
     if (adminWrap) adminWrap.hidden = !isAdmin;
-    if (editButton) editButton.textContent = valid ? 'Atualizar responsáveis' : 'Definir responsáveis';
+    if (editButton) editButton.textContent = 'Gerenciar calendário';
   }
 
   async function loadProfile() {
@@ -197,15 +261,15 @@
     if (loading) return;
     loading = true;
     try {
-      const { data, error } = await client.from('avisos').select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo').eq('titulo', SERVICE_TITLE).eq('aviso_geral', true).eq('ativo', true).order('id', { ascending: false }).limit(1).maybeSingle();
-      if (error) currentNotice = cachedNotice();
+      const { data, error } = await client.from('avisos').select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo').eq('titulo', SERVICE_TITLE).eq('aviso_geral', true).eq('ativo', true).order('id', { ascending: false }).limit(200);
+      if (error) indexNotices(cachedNotices());
       else {
-        const expired = data?.expira_em && new Date(data.expira_em).getTime() < Date.now();
-        currentNotice = expired ? null : (data || null);
-        cacheNotice(currentNotice);
+        const notices = Array.isArray(data) ? data : [];
+        indexNotices(notices);
+        cacheNotices(notices);
       }
-    } catch (_) { currentNotice = cachedNotice(); }
-    finally { loading = false; render(); }
+    } catch (_) { indexNotices(cachedNotices()); }
+    finally { loading = false; render(); renderCalendar(); }
   }
 
   function renderChoices(selectedKeys = new Set()) {
@@ -236,22 +300,29 @@
 
   async function openEditor() {
     if (currentProfile?.tipo !== 'administrador') return;
-    const dialog = ensureDialog();
     await loadRamos();
-    const expectedDate = isoDateLocal(nextSaturdayDate());
-    const parsed = currentNotice ? safeParseMessage(currentNotice.mensagem) : null;
-    const selected = new Set((parsed?.data === expectedDate ? responsaveisFromParsed(parsed) : []).map(responsibleKey));
+    ensureCalendarDialog();
+    renderCalendar();
+    document.getElementById('serviceCalendarDialogV50')?.showModal();
+  }
+
+  function openDateEditor(date) {
+    editorDate = date;
+    const dialog = ensureDialog();
+    const notice = noticesByDate.get(date) || null;
+    const parsed = safeParseMessage(notice?.mensagem);
+    const selected = new Set(responsaveisFromParsed(parsed).map(responsibleKey));
     renderChoices(selected);
     const dateInput = document.getElementById('serviceBranchDateInputV30');
     const help = document.getElementById('serviceBranchDialogHelpV30');
     const dateLabel = document.getElementById('serviceBranchDateLabelV30');
     const message = document.getElementById('serviceBranchFormMessageV30');
     const deleteButton = document.getElementById('serviceBranchDeleteV30');
-    if (dateInput) dateInput.value = formatDateBR(expectedDate);
-    if (help) help.textContent = isSaturday() ? 'Confira ou atualize quem está responsável pelo serviço de hoje.' : 'Escolha um ou mais ramos e/ou a Diretoria para o serviço do próximo sábado.';
-    if (dateLabel) dateLabel.textContent = isSaturday() ? 'Data de hoje' : 'Data do próximo sábado';
+    if (dateInput) dateInput.value = formatDateBR(date);
+    if (help) help.textContent = 'Escolha um ou mais ramos e/ou a Diretoria para esta data.';
+    if (dateLabel) dateLabel.textContent = 'Sábado selecionado';
     if (message) message.textContent = '';
-    if (deleteButton) deleteButton.hidden = !currentNotice;
+    if (deleteButton) deleteButton.hidden = !notice;
     dialog.showModal();
   }
 
@@ -269,8 +340,7 @@
     const saveButton = document.getElementById('serviceBranchSaveV30');
     const responsaveis = selectedResponsaveis();
     if (!responsaveis.length) { if (message) message.textContent = 'Selecione pelo menos um responsável.'; return; }
-    const saturday = nextSaturdayDate();
-    const data = isoDateLocal(saturday);
+    const data = editorDate || isoDateLocal(nextSaturdayDate());
     const ramosSelecionados = responsaveis.filter((item) => item.tipo === 'ramo');
     const payloadMessage = JSON.stringify({
       tipo: 'ramo_servico_sabado', data, responsaveis,
@@ -283,29 +353,35 @@
     const payload = { titulo: SERVICE_TITLE, mensagem: payloadMessage, aviso_geral: true, destaque: true, publicado_em: new Date().toISOString(), expira_em: saturdayExpiryIso(data), ativo: true };
     if (saveButton) saveButton.disabled = true;
     if (message) message.textContent = 'Salvando...';
-    const response = currentNotice?.id
-      ? await client.from('avisos').update(payload).eq('id', currentNotice.id).select().single()
+    const existingNotice = noticesByDate.get(data);
+    const response = existingNotice?.id
+      ? await client.from('avisos').update(payload).eq('id', existingNotice.id).select().single()
       : await client.from('avisos').insert(payload).select().single();
     if (saveButton) saveButton.disabled = false;
     if (response.error) { if (message) message.textContent = `Não foi possível salvar: ${response.error.message}`; return; }
-    currentNotice = response.data;
-    cacheNotice(currentNotice);
+    noticesByDate.set(data, response.data);
+    currentNotice = noticesByDate.get(isoDateLocal(nextSaturdayDate())) || null;
+    cacheNotices([...noticesByDate.values()]);
     render();
+    renderCalendar();
     document.getElementById('serviceBranchDialogV30')?.close();
   }
 
   async function deleteNotice() {
-    if (currentProfile?.tipo !== 'administrador' || !currentNotice?.id) return;
+    const notice = noticesByDate.get(editorDate);
+    if (currentProfile?.tipo !== 'administrador' || !notice?.id) return;
     const message = document.getElementById('serviceBranchFormMessageV30');
     const button = document.getElementById('serviceBranchDeleteV30');
     if (button) button.disabled = true;
     if (message) message.textContent = 'Apagando...';
-    const { error } = await client.from('avisos').delete().eq('id', currentNotice.id);
+    const { error } = await client.from('avisos').delete().eq('id', notice.id);
     if (button) button.disabled = false;
     if (error) { if (message) message.textContent = `Não foi possível apagar: ${error.message}`; return; }
-    currentNotice = null;
-    cacheNotice(null);
+    noticesByDate.delete(editorDate);
+    currentNotice = noticesByDate.get(isoDateLocal(nextSaturdayDate())) || null;
+    cacheNotices([...noticesByDate.values()]);
     render();
+    renderCalendar();
     document.getElementById('serviceBranchDialogV30')?.close();
   }
 
@@ -330,7 +406,7 @@
 
   async function init() {
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY || !window.supabase) return;
-    injectStyles(); ensureCard(); ensureDialog();
+    injectStyles(); ensureCard(); ensureDialog(); ensureCalendarDialog();
     client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_PUBLISHABLE_KEY);
     observeDashboard();
     client.auth.onAuthStateChange(() => setTimeout(refreshAll, 0));
