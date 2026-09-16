@@ -16,6 +16,15 @@
     document.body.appendChild(script);
   }
 
+  function loadTestDisplayModule() {
+    if (document.getElementById('apfTestDisplayV57Script')) return;
+    const script = document.createElement('script');
+    script.id = 'apfTestDisplayV57Script';
+    script.src = 'apf-test-display-v57.js?v=57.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function isTestProfile(rt) {
     if (!rt?.state?.user?.id) return false;
     const { data, error } = await rt.client
@@ -41,8 +50,10 @@
       }
 
       if (await isTestProfile(rt)) {
-        // Perfil fake vê a aba como um chefe comum, mas não recebe controles administrativos.
+        // Perfil fake vê a aba como um chefe comum, com dados reais de vagas/formação,
+        // mas sem receber controles administrativos.
         document.getElementById('apfManageV52')?.setAttribute('hidden', '');
+        loadTestDisplayModule();
         return;
       }
 
