@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v51';
+const CACHE_NAME = 'gearpc-conecta-offline-v52';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -35,6 +35,7 @@ const APP_SHELL = [
   './first-access-v25.js',
   './mandatory-password-v26.js',
   './admin-password-v51.js',
+  './apf-v52.js',
   './admin-activity-v27.js',
   './service-branch-v30.js?v=50.0',
   './config.js',
@@ -107,6 +108,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('admin-password-v51.js')) {
     html = html.replace('</body>', '  <script src="admin-password-v51.js"></script>\n</body>');
+  }
+  if (!html.includes('apf-v52.js')) {
+    html = html.replace('</body>', '  <script src="apf-v52.js"></script>\n</body>');
   }
   if (!html.includes('admin-activity-v27.js')) {
     html = html.replace('</body>', '  <script src="admin-activity-v27.js"></script>\n</body>');
