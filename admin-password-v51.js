@@ -28,6 +28,15 @@
     return null;
   }
 
+  function loadTestUserModule() {
+    if (document.getElementById('adminTestUserV56Script')) return;
+    const script = document.createElement('script');
+    script.id = 'adminTestUserV56Script';
+    script.src = 'admin-test-user-v56.js?v=56.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   function injectStyles() {
     if ($('adminPasswordStylesV51')) return;
     const style = document.createElement('style');
@@ -171,6 +180,7 @@
     runtime = await waitForAdminRuntime();
     if (!runtime) return;
     injectStyles();
+    loadTestUserModule();
 
     const list = $('accessList');
     if (list) {
