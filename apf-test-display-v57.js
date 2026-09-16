@@ -80,13 +80,18 @@
     document.head.appendChild(style);
   }
 
+  function observeList(list) {
+    if (!observer) observer = new MutationObserver(() => window.setTimeout(decorateCards, 0));
+    observer.observe(list, { childList: true, subtree: true });
+  }
+
   function decorateCards() {
     if (decorating) return;
+    const list = $('apfListV52');
+    if (!list) return;
     decorating = true;
+    observer?.disconnect();
     try {
-      const list = $('apfListV52');
-      if (!list) return;
-
       let availableNow = 0;
       let totalShown = 0;
 
@@ -106,9 +111,10 @@
         if (badge) {
           badge.classList.toggle('full', vacancies === 0);
           badge.classList.toggle('apf-test-lotado-v57', vacancies === 0);
-          badge.textContent = vacancies === 0
+          const badgeText = vacancies === 0
             ? 'Lotado • 0 vagas'
             : `${vacancies} vaga${vacancies === 1 ? '' : 's'}`;
+          if (badge.textContent !== badgeText) badge.textContent = badgeText;
         }
 
         let box = card.querySelector('.apf-test-training-v57');
@@ -127,18 +133,21 @@
         if (escLevel) training.push(`<div><strong>Linha Escotista:</strong> até ${esc(escLevel)}</div>`);
         if (dirLevel) training.push(`<div><strong>Linha Dirigente:</strong> até ${esc(dirLevel)}</div>`);
         if (!training.length) training.push('<div class="none">Formação habilitante ainda não informada.</div>');
-        box.innerHTML = training.join('');
+        const trainingHtml = training.join('');
+        if (box.innerHTML !== trainingHtml) box.innerHTML = trainingHtml;
       });
 
       const summary = $('apfSummaryV52');
       if (summary && totalShown) {
         const lotados = Math.max(0, totalShown - availableNow);
-        summary.textContent = lotados
+        const summaryText = lotados
           ? `${availableNow} APF${availableNow === 1 ? '' : 's'} com vaga no momento • ${lotados} lotado${lotados === 1 ? '' : 's'}.`
           : `${availableNow} APF${availableNow === 1 ? '' : 's'} com vaga no momento.`;
+        if (summary.textContent !== summaryText) summary.textContent = summaryText;
       }
     } finally {
       decorating = false;
+      observeList(list);
     }
   }
 
@@ -153,9 +162,8 @@
 
   function watchList() {
     const list = $('apfListV52');
-    if (!list || observer) return;
-    observer = new MutationObserver(() => window.setTimeout(decorateCards, 0));
-    observer.observe(list, { childList: true, subtree: true });
+    if (!list) return;
+    observeList(list);
   }
 
   async function boot() {
