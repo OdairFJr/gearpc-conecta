@@ -56,14 +56,12 @@
       saveToBank.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    const conductor = $('programItemConductor');
-    if (conductor) conductor.value = '';
     const msg = $('programItemMessage');
     if (msg) {
-      msg.textContent = 'Ideia carregada. Selecione o chefe responsável e confira o Desenvolvimento antes de salvar.';
+      msg.textContent = 'Ideia carregada. Confira o Desenvolvimento e salve a ficha. O responsável será definido na tela geral da programação.';
       msg.classList.remove('success-message');
     }
-    conductor?.focus();
+    $('programItemDevelopment')?.focus();
   }
 
   document.addEventListener('click', (event) => {
