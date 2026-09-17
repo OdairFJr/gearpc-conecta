@@ -159,8 +159,8 @@
     if (!actions || !oldInput) return false;
 
     const oldLabel = oldInput.closest('label');
-    if (oldLabel) oldLabel.style.display = 'none';
-    oldInput.removeAttribute('capture');
+    if (oldLabel && oldLabel.style.display !== 'none') oldLabel.style.display = 'none';
+    if (oldInput.hasAttribute('capture')) oldInput.removeAttribute('capture');
 
     if (!$('safetyInAppCameraButtonV76')) {
       const btn = document.createElement('button');
@@ -173,7 +173,8 @@
     }
 
     const note = $('svPhotosSectionV64')?.querySelector('.safety-note-v63');
-    if (note) note.textContent = 'Até 10 fotos do local. As fotos tiradas pelo botão abaixo usam a câmera dentro do próprio app e são compactadas automaticamente.';
+    const text = 'Até 10 fotos do local. As fotos tiradas pelo botão abaixo usam a câmera dentro do próprio app e são compactadas automaticamente.';
+    if (note && note.textContent !== text) note.textContent = text;
     return true;
   }
 
@@ -183,7 +184,6 @@
       if (installButton()) break;
       await sleep(200);
     }
-    new MutationObserver(() => installButton()).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener('pagehide', stopStream);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && overlay) closeCamera();
