@@ -79,6 +79,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyApprovalModule() {
+    if (document.getElementById('safetyApprovalV67Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyApprovalV67Script';
+    script.src = 'safety-approval-v67.js?v=67.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -97,6 +106,7 @@
         loadSafetyOfflineFixModule();
         loadSafetySectionsModule();
         loadSafetyUnifiedFlowModule();
+        loadSafetyApprovalModule();
         return;
       }
 
@@ -111,6 +121,7 @@
         loadSafetyOfflineFixModule();
         loadSafetySectionsModule();
         loadSafetyUnifiedFlowModule();
+        loadSafetyApprovalModule();
         return;
       }
 
