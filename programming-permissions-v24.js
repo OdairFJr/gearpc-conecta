@@ -47,11 +47,31 @@
     document.body.appendChild(script);
   }
 
+  function loadOkCommentModule() {
+    if (!pilotEnabled || document.getElementById('programmingOkCommentV59Script')) return;
+    const script = document.createElement('script');
+    script.id = 'programmingOkCommentV59Script';
+    script.src = 'programming-ok-comment-v59.js?v=59.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
+  function loadOkCommentDisplayModule() {
+    if (!pilotEnabled || document.getElementById('programmingOkCommentDisplayV591Script')) return;
+    const script = document.createElement('script');
+    script.id = 'programmingOkCommentDisplayV591Script';
+    script.src = 'programming-ok-comment-display-v59-1.js?v=59.1';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   function loadPilotModules() {
     loadHomeReviewModule();
     loadRequiredFieldsModule();
     loadIdeaReviewModule();
     loadPioneerConductorModule();
+    loadOkCommentModule();
+    loadOkCommentDisplayModule();
   }
 
   async function waitForProfile() {
