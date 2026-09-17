@@ -88,6 +88,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyVisitorsFixModule() {
+    if (document.getElementById('safetyVisitorsFixV68Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyVisitorsFixV68Script';
+    script.src = 'safety-visitors-fix-v68.js?v=68.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -107,6 +116,7 @@
         loadSafetySectionsModule();
         loadSafetyUnifiedFlowModule();
         loadSafetyApprovalModule();
+        loadSafetyVisitorsFixModule();
         return;
       }
 
@@ -122,6 +132,7 @@
         loadSafetySectionsModule();
         loadSafetyUnifiedFlowModule();
         loadSafetyApprovalModule();
+        loadSafetyVisitorsFixModule();
         return;
       }
 
