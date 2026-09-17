@@ -74,7 +74,7 @@
     if (document.getElementById('safetyUnifiedFlowV66Script')) return;
     const script = document.createElement('script');
     script.id = 'safetyUnifiedFlowV66Script';
-    script.src = 'safety-unified-flow-v66.js?v=66.1';
+    script.src = 'safety-unified-flow-v66.js?v=66.2';
     script.async = false;
     document.body.appendChild(script);
   }
