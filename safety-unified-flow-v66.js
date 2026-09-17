@@ -1,6 +1,6 @@
 (() => {
-  if (window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_2__) return;
-  window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_2__ = true;
+  if (window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_3__) return;
+  window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_3__ = true;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const $ = (id) => document.getElementById(id);
@@ -42,58 +42,85 @@
   }
 
   function injectStyles() {
-    if ($('safetyUnifiedStylesV662')) return;
+    if ($('safetyUnifiedStylesV663')) return;
     const style = document.createElement('style');
-    style.id = 'safetyUnifiedStylesV662';
+    style.id = 'safetyUnifiedStylesV663';
     style.textContent = `
       .safety-pair-status-v66{display:inline-flex;margin-top:8px}
       #safetyPlansPanelV63,.safety-tabs-v63,#newSafetyPlanV63{display:none!important}
       #safetyPlanDialogV63{visibility:hidden!important;pointer-events:none!important}
       #safetyVisitsListV63 [data-plan-from-visit]{display:none!important}
-      .safety-unified-plan-section-v662{border-left:3px solid #8fb5d4}
-      .safety-unified-plan-intro-v662{padding:10px 12px;border-radius:12px;background:#eef6fb;color:#31526f;font-size:.86rem;line-height:1.45}
+      .safety-unified-plan-section-v663{border-left:3px solid #8fb5d4}
+      .safety-unified-plan-intro-v663{padding:10px 12px;border-radius:12px;background:#eef6fb;color:#31526f;font-size:.86rem;line-height:1.45}
+      .safety-unified-reminder-v663{padding:11px 12px;border-radius:12px;background:#fff8dc;border:1px solid #eadb92;color:#66551b;font-size:.88rem;font-weight:700;line-height:1.4}
+      #spSafetyLeadV63{display:none!important}
     `;
     document.head.appendChild(style);
   }
 
   function movePlanSectionsIntoVisit() {
     const visitForm = $('safetyVisitFormV63');
-    if (!visitForm || visitForm.dataset.unifiedV662 === '1') return;
+    if (!visitForm || visitForm.dataset.unifiedV663 === '1') return;
 
     const actions = visitForm.querySelector('.safety-dialog-actions-v63');
     if (!actions) return;
 
-    const fields = ['spCoordinatorV63', 'spRisksV63', 'spEmergencyV63', 'spKitLocationV63', 'spChecklistV63'];
+    // Se uma versão anterior já tiver movido os blocos 8, 9 e 10 para a visita,
+    // devolve-os ao formulário interno do plano, que permanece oculto.
+    const planForm = $('safetyPlanFormV63');
+    const planActions = planForm?.querySelector('.safety-dialog-actions-v63');
+    ['spEmergencyV63', 'spKitLocationV63', 'spChecklistV63'].forEach((id) => {
+      const section = $(id)?.closest('.safety-section-v63');
+      if (section && planActions && section.closest('#safetyVisitFormV63')) {
+        planActions.insertAdjacentElement('beforebegin', section);
+      }
+    });
+
+    const fields = ['spCoordinatorV63', 'spRisksV63'];
     const sections = [];
     fields.forEach((id) => {
       const section = $(id)?.closest('.safety-section-v63');
       if (section && !sections.includes(section)) sections.push(section);
     });
-    if (sections.length < 5) return;
+    if (sections.length < 2) return;
+
+    const safetyLead = $('spSafetyLeadV63');
+    if (safetyLead) {
+      safetyLead.value = '';
+      const safetyLeadLabel = safetyLead.closest('label');
+      if (safetyLeadLabel) safetyLeadLabel.style.display = 'none';
+    }
+    const responsiblesGrid = $('spCoordinatorV63')?.closest('.safety-grid-v63');
+    responsiblesGrid?.classList.remove('three');
 
     const intro = document.createElement('div');
-    intro.className = 'safety-unified-plan-intro-v662';
+    intro.className = 'safety-unified-plan-intro-v663';
     intro.innerHTML = '<strong>Plano de segurança</strong><br>Continue o mesmo preenchimento abaixo. Ao final, um único botão salva a visita técnica e o plano desta atividade juntos.';
     actions.insertAdjacentElement('beforebegin', intro);
 
     const titles = [
       '6. Responsáveis da atividade',
-      '7. Análise de riscos',
-      '8. Procedimentos de emergência',
-      '9. Primeiros socorros, transporte e comunicação',
-      '10. Checklist final'
+      '7. Análise de riscos'
     ];
 
     sections.forEach((section, index) => {
-      section.classList.add('safety-unified-plan-section-v662');
+      section.classList.add('safety-unified-plan-section-v663');
       const heading = section.querySelector('h3');
       if (heading && titles[index]) heading.textContent = titles[index];
       actions.insertAdjacentElement('beforebegin', section);
     });
 
+    let reminder = visitForm.querySelector('.safety-unified-reminder-v663');
+    if (!reminder) {
+      reminder = document.createElement('div');
+      reminder.className = 'safety-unified-reminder-v663';
+      reminder.textContent = '🩹 Lembrete: confira o kit de primeiros socorros antes da atividade.';
+      actions.insertAdjacentElement('beforebegin', reminder);
+    }
+
     const save = actions.querySelector('button[type="submit"]');
     setTextIfChanged(save, 'Salvar planejamento');
-    visitForm.dataset.unifiedV662 = '1';
+    visitForm.dataset.unifiedV663 = '1';
   }
 
   function refreshUnifiedUi() {
@@ -199,6 +226,16 @@
     if ($('spCellCoverageV63')) $('spCellCoverageV63').value = $('svCellCoverageV63')?.value || 'nao_verificado';
     if ($('spHospitalV63') && !$('spHospitalV63').value) $('spHospitalV63').value = $('svHospitalV63')?.value || '';
     if ($('spMeetingPointV63') && !$('spMeetingPointV63').value) $('spMeetingPointV63').value = $('svMeetingPointV63')?.value || '';
+
+    // Campos removidos do fluxo: mantém vazios também no registro interno.
+    if ($('spSafetyLeadV63')) $('spSafetyLeadV63').value = '';
+    $('spEmergencyV63')?.querySelectorAll('[data-emergency]').forEach((field) => { field.value = ''; });
+    if ($('spKitLocationV63')) $('spKitLocationV63').value = '';
+    if ($('spKitCheckedV63')) $('spKitCheckedV63').value = 'nao';
+    if ($('spTransportV63')) $('spTransportV63').value = '';
+    if ($('spRouteV63')) $('spRouteV63').value = '';
+    if ($('spOtherCommunicationV63')) $('spOtherCommunicationV63').value = '';
+    $('spChecklistV63')?.querySelectorAll('[data-check]').forEach((input) => { input.checked = false; });
   }
 
   function newestVisitId(beforeIds) {
