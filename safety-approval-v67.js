@@ -169,7 +169,7 @@
     const rows = approvals;
     box.innerHTML = rows.length ? rows.map((a) => {
       const [label, cls] = STATUS[a.status] || [a.status, ''];
-      return `<article class="safety-dme-card-v67"><div><strong>${esc(a.activity_name || 'Planejamento')}</strong><span class="safety-pill-v63 ${cls}" style="float:right">${esc(label)}</span></div><div class="safety-dme-meta-v67"><span>Enviado por: ${esc(a.submitted_by_name || '—')}</span><span>${esc(formatDate(a.submitted_at))}</span></div>${a.dme_comment ? `<div class="safety-approval-note-v67"><strong>Parecer:</strong> ${esc(a.dme_comment)}</div>` : ''}<div class="safety-dme-actions-v67"><button type="button" class="safety-mini-btn-v63" data-review-v67="${esc(a.visit_id)}">Analisar</button>${a.status === 'aprovado' ? `<button type="button" class="safety-mini-btn-v63" data-print-v67="${esc(a.visit_id)}">Imprimir / salvar PDF</button>` : ''}</div></article>`;
+      return `<article class="safety-dme-card-v67"><div><strong>${esc(a.activity_name || 'Planejamento')}</strong><span class="safety-pill-v63 ${cls}" style="float:right">${esc(label)}</span></div><div class="safety-dme-meta-v67"><span>Enviado por: ${esc(a.submitted_by_name || '—')}</span><span>${esc(formatDate(a.submitted_at))}</span></div>${a.dme_comment ? `<div class="safety-approval-note-v67"><strong>Parecer:</strong> ${esc(a.dme_comment)}</div>` : ''}<div class="safety-dme-actions-v67"><button type="button" class="safety-mini-btn-v63" data-review-v67="${esc(a.visit_id)}">Analisar</button>${a.status === 'aprovado' ? `<button type="button" class="safety-mini-btn-v63" data-print-v67="${esc(a.visit_id)}">Imprimir / salvar PDF</button>` : ''}<button type="button" class="safety-mini-btn-v63 danger" data-delete-approval-v67="${esc(a.visit_id)}">Apagar</button></div></article>`;
     }).join('') : '<div class="safety-empty-v63">Nenhum planejamento enviado ao DME.</div>';
   }
 
@@ -283,6 +283,29 @@
     await refresh();
   }
 
+  async function deleteApproval(visitId) {
+    if (!visitId) return;
+    const approval = approvalFor(visitId);
+    const name = approval?.activity_name || 'este planejamento';
+    if (!window.confirm(`Apagar definitivamente "${name}" da área de análise do DME? Esta ação não pode ser desfeita.`)) return;
+    if (!navigator.onLine) return alert('Para apagar um envio da área do DME é necessário estar conectado à internet.');
+
+    const { data, error } = await rt.client
+      .from('safety_approval_test_v67')
+      .delete()
+      .eq('visit_id', visitId)
+      .select('visit_id');
+
+    if (error) return alert(`Não foi possível apagar o planejamento: ${error.message}`);
+    if (!Array.isArray(data) || !data.some((row) => row.visit_id === visitId)) {
+      return alert('O registro não foi removido. Atualize a tela e tente novamente.');
+    }
+
+    approvals = approvals.filter((item) => item.visit_id !== visitId);
+    renderDmePanel();
+    decorateCards();
+  }
+
   function printDocument(visitId) {
     const a = approvalFor(visitId);
     if (!a || a.status !== 'aprovado') return alert('A impressão só é liberada depois da aprovação do DME.');
@@ -312,6 +335,8 @@
       if (review) { event.preventDefault(); return openReview(review.dataset.reviewV67); }
       const print = event.target.closest('[data-print-v67]');
       if (print) { event.preventDefault(); return printDocument(print.dataset.printV67); }
+      const delApproval = event.target.closest('[data-delete-approval-v67]');
+      if (delApproval) { event.preventDefault(); return void deleteApproval(delApproval.dataset.deleteApprovalV67); }
       if (event.target.closest('#safetyButtonV63')) window.setTimeout(refresh, 250);
     }, true);
     $('closeSafetyReviewV67')?.addEventListener('click', () => $('safetyReviewDialogV67')?.close());
