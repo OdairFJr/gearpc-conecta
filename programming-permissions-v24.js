@@ -27,6 +27,7 @@
     loadScriptOnce('programmingResponsibleGeneralV60Script', 'programming-responsible-general-v60.js?v=60.0');
     loadScriptOnce('programmingOkCommentV59Script', 'programming-ok-comment-v59.js?v=59.0');
     loadScriptOnce('programmingOkCommentDisplayV591Script', 'programming-ok-comment-display-v59-1.js?v=59.1');
+    loadScriptOnce('birthdayPilotV61Script', 'birthday-pilot-v61.js?v=61.0');
   }
 
   async function waitForProfile() {
