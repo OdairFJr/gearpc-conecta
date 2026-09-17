@@ -25,24 +25,13 @@
     document.body.appendChild(script);
   }
 
-  function loadHeaderContrastTestModule() {
+  function loadHeaderContrastModule() {
     if (document.getElementById('apfHeaderContrastV62Script')) return;
     const script = document.createElement('script');
     script.id = 'apfHeaderContrastV62Script';
-    script.src = 'apf-header-contrast-v62.js?v=62.0';
+    script.src = 'apf-header-contrast-v62.js?v=62.1';
     script.async = false;
     document.body.appendChild(script);
-  }
-
-  async function isTestProfile(rt) {
-    const userId = rt?.state?.user?.id;
-    if (!userId) return false;
-    const { data, error } = await rt.client
-      .from('perfis_usuarios')
-      .select('eh_teste')
-      .eq('user_id', userId)
-      .maybeSingle();
-    return !error && data?.eh_teste === true;
   }
 
   async function enforceRelease() {
@@ -57,7 +46,7 @@
       if (profile.tipo === 'administrador') {
         loadAdminFormationModule();
         loadApprovedDisplayModule();
-        loadHeaderContrastTestModule();
+        loadHeaderContrastModule();
         return;
       }
 
@@ -65,7 +54,7 @@
         // Chefes e dirigentes recebem a consulta aprovada; controles administrativos continuam ocultos.
         document.getElementById('apfManageV52')?.setAttribute('hidden', '');
         loadApprovedDisplayModule();
-        if (await isTestProfile(rt)) loadHeaderContrastTestModule();
+        loadHeaderContrastModule();
         return;
       }
 
