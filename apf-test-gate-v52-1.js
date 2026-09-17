@@ -83,7 +83,7 @@
     if (document.getElementById('safetyApprovalV67Script')) return;
     const script = document.createElement('script');
     script.id = 'safetyApprovalV67Script';
-    script.src = 'safety-approval-v67.js?v=67.0';
+    script.src = 'safety-approval-v67.js?v=67.1';
     script.async = false;
     document.body.appendChild(script);
   }
