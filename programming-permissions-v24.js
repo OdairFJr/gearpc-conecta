@@ -38,10 +38,20 @@
     document.body.appendChild(script);
   }
 
+  function loadPioneerConductorModule() {
+    if (!pilotEnabled || document.getElementById('programmingPioneerConductorV59Script')) return;
+    const script = document.createElement('script');
+    script.id = 'programmingPioneerConductorV59Script';
+    script.src = 'programming-pioneer-conductor-v59.js?v=59.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   function loadPilotModules() {
     loadHomeReviewModule();
     loadRequiredFieldsModule();
     loadIdeaReviewModule();
+    loadPioneerConductorModule();
   }
 
   async function waitForProfile() {
@@ -79,8 +89,6 @@
   function enterProgrammingMode() {
     if (!state.profile || state.profile.tipo === 'administrador') return;
     if (originalGeneralAccess === null) originalGeneralAccess = Boolean(state.profile.acesso_geral_consulta);
-    // Comportamento estável já utilizado: dentro da Programação, um adulto que
-    // também está vinculado a uma seção atua pela chefia daquela seção.
     state.profile.acesso_geral_consulta = false;
   }
 
@@ -111,13 +119,8 @@
   document.addEventListener('click', (event) => {
     const target = event.target;
     const button = target instanceof Element ? target.closest('button') : null;
-
-    // Canal estável: entrar pelo botão Programação mantém o comportamento já publicado.
     if (button === $('programmingButton')) enterProgrammingMode();
-
-    // Canal de teste: também corrige entradas vindas de avisos, cards e prévia.
     if (shouldEnterPilotFromClick(target)) enterProgrammingMode();
-
     if (!button) return;
     if (button === $('programmingBackButton') || button === $('programmingLogoutButton') || button === $('logoutButton')) {
       window.setTimeout(leaveProgrammingMode, 0);
