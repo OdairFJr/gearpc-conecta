@@ -38,7 +38,7 @@
     if (document.getElementById('safetyTestV63Script')) return;
     const script = document.createElement('script');
     script.id = 'safetyTestV63Script';
-    script.src = 'safety-test-v63.js?v=63.1';
+    script.src = 'safety-test-v63.js?v=63.2';
     script.async = false;
     document.body.appendChild(script);
   }
