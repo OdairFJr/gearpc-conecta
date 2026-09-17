@@ -11,67 +11,22 @@
   let pilotEnabled = false;
   let pilotResolved = false;
 
-  function loadHomeReviewModule() {
-    if (!pilotEnabled || document.getElementById('programReviewHomeV55Script')) return;
+  function loadScriptOnce(id, src) {
+    if (!pilotEnabled || document.getElementById(id)) return;
     const script = document.createElement('script');
-    script.id = 'programReviewHomeV55Script';
-    script.src = 'programming-review-home-v55.js?v=55.0';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-
-  function loadRequiredFieldsModule() {
-    if (!pilotEnabled || document.getElementById('programmingRequiredV58Script')) return;
-    const script = document.createElement('script');
-    script.id = 'programmingRequiredV58Script';
-    script.src = 'programming-required-v58.js?v=58.0';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-
-  function loadIdeaReviewModule() {
-    if (!pilotEnabled || document.getElementById('programmingIdeaEditV581Script')) return;
-    const script = document.createElement('script');
-    script.id = 'programmingIdeaEditV581Script';
-    script.src = 'programming-idea-edit-v58-1.js?v=58.1';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-
-  function loadPioneerConductorModule() {
-    if (!pilotEnabled || document.getElementById('programmingPioneerConductorV59Script')) return;
-    const script = document.createElement('script');
-    script.id = 'programmingPioneerConductorV59Script';
-    script.src = 'programming-pioneer-conductor-v59.js?v=59.0';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-
-  function loadOkCommentModule() {
-    if (!pilotEnabled || document.getElementById('programmingOkCommentV59Script')) return;
-    const script = document.createElement('script');
-    script.id = 'programmingOkCommentV59Script';
-    script.src = 'programming-ok-comment-v59.js?v=59.0';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-
-  function loadOkCommentDisplayModule() {
-    if (!pilotEnabled || document.getElementById('programmingOkCommentDisplayV591Script')) return;
-    const script = document.createElement('script');
-    script.id = 'programmingOkCommentDisplayV591Script';
-    script.src = 'programming-ok-comment-display-v59-1.js?v=59.1';
+    script.id = id;
+    script.src = src;
     script.async = false;
     document.body.appendChild(script);
   }
 
   function loadPilotModules() {
-    loadHomeReviewModule();
-    loadRequiredFieldsModule();
-    loadIdeaReviewModule();
-    loadPioneerConductorModule();
-    loadOkCommentModule();
-    loadOkCommentDisplayModule();
+    loadScriptOnce('programReviewHomeV55Script', 'programming-review-home-v55.js?v=55.0');
+    loadScriptOnce('programmingRequiredV58Script', 'programming-required-v58.js?v=58.2');
+    loadScriptOnce('programmingIdeaEditV581Script', 'programming-idea-edit-v58-1.js?v=58.2');
+    loadScriptOnce('programmingResponsibleGeneralV60Script', 'programming-responsible-general-v60.js?v=60.0');
+    loadScriptOnce('programmingOkCommentV59Script', 'programming-ok-comment-v59.js?v=59.0');
+    loadScriptOnce('programmingOkCommentDisplayV591Script', 'programming-ok-comment-display-v59-1.js?v=59.1');
   }
 
   async function waitForProfile() {
