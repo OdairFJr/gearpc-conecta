@@ -124,6 +124,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetySimplifyModule() {
+    if (document.getElementById('safetySimplifyV73Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetySimplifyV73Script';
+    script.src = 'safety-simplify-v73.js?v=73.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -147,6 +156,7 @@
         loadSafetyCoordinatorModule();
         loadSafetyMapsLocationModule();
         loadSafetyAutoSubmitModule();
+        loadSafetySimplifyModule();
         return;
       }
 
@@ -166,6 +176,7 @@
         loadSafetyCoordinatorModule();
         loadSafetyMapsLocationModule();
         loadSafetyAutoSubmitModule();
+        loadSafetySimplifyModule();
         return;
       }
 
