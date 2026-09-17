@@ -35,34 +35,38 @@
     return [...store.visits].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0]?.id || null;
   }
 
+  function setTextIfChanged(element, value) {
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+
   function refreshUnifiedUi() {
     const tabs = document.querySelector('.safety-tabs-v63');
-    if (tabs) tabs.style.display = 'none';
+    if (tabs && tabs.style.display !== 'none') tabs.style.display = 'none';
     $('safetyPlansPanelV63')?.classList.add('hidden');
     $('safetyVisitsPanelV63')?.classList.remove('hidden');
 
     const heroTitle = document.querySelector('#safetyViewV63 .members-hero h2');
     const heroText = document.querySelector('#safetyViewV63 .members-hero p');
-    if (heroTitle) heroTitle.textContent = 'Planejamento de segurança da atividade';
-    if (heroText) heroText.textContent = 'Cada atividade reúne obrigatoriamente a visita técnica do local e o respectivo plano de segurança.';
+    setTextIfChanged(heroTitle, 'Planejamento de segurança da atividade');
+    setTextIfChanged(heroText, 'Cada atividade reúne obrigatoriamente a visita técnica do local e o respectivo plano de segurança.');
 
     const panelTitle = document.querySelector('#safetyVisitsPanelV63 .safety-panel-head-v63 h3');
     const panelText = document.querySelector('#safetyVisitsPanelV63 .safety-panel-head-v63 p');
-    if (panelTitle) panelTitle.textContent = 'Planejamentos de segurança';
-    if (panelText) panelText.textContent = 'A visita técnica é obrigatória e, ao ser salva, o aplicativo segue para o plano de segurança da mesma atividade.';
+    setTextIfChanged(panelTitle, 'Planejamentos de segurança');
+    setTextIfChanged(panelText, 'A visita técnica é obrigatória e, ao ser salva, o aplicativo segue para o plano de segurança da mesma atividade.');
 
     const newVisit = $('newSafetyVisitV63');
-    if (newVisit) newVisit.textContent = '＋ Novo planejamento';
+    setTextIfChanged(newVisit, '＋ Novo planejamento');
 
     const newPlan = $('newSafetyPlanV63');
-    if (newPlan) newPlan.style.display = 'none';
+    if (newPlan && newPlan.style.display !== 'none') newPlan.style.display = 'none';
 
     document.querySelectorAll('[data-plan-from-visit]').forEach((button) => {
-      button.textContent = 'Abrir plano';
+      if (!button.textContent?.trim()) setTextIfChanged(button, 'Abrir plano');
     });
 
     const baseSection = $('spBaseVisitV63')?.closest('.safety-section-v63');
-    if (baseSection) baseSection.style.display = 'none';
+    if (baseSection && baseSection.style.display !== 'none') baseSection.style.display = 'none';
   }
 
   function pairedPlanForVisit(visitId) {
@@ -108,10 +112,10 @@
       }
       badge.classList.toggle('ok', Boolean(paired));
       badge.classList.toggle('warn', !paired);
-      badge.textContent = paired ? 'Plano vinculado' : 'Plano pendente';
+      setTextIfChanged(badge, paired ? 'Plano vinculado' : 'Plano pendente');
 
       const planButton = card.querySelector('[data-plan-from-visit]');
-      if (planButton) planButton.textContent = paired ? 'Abrir plano' : 'Completar plano';
+      setTextIfChanged(planButton, paired ? 'Abrir plano' : 'Completar plano');
     });
   }
 
@@ -122,7 +126,9 @@
       refreshUnifiedUi();
       decorateCards();
     });
-    observer.observe(list, { childList: true, subtree: true });
+    // Observa apenas quando a lista é reconstruída. Alterações internas nos cartões
+    // (badges e textos adicionados pelos próprios módulos) não devem disparar novo ciclo.
+    observer.observe(list, { childList: true, subtree: false });
   }
 
   function wire() {
