@@ -55,20 +55,7 @@
 
   async function allowedForTest(current) {
     const profile = current?.state?.profile;
-    if (!profile || !['administrador', 'chefia', 'dirigente'].includes(profile.tipo)) return false;
-    if (profile.tipo === 'administrador') return true;
-    const userId = current?.state?.user?.id;
-    if (!userId) return false;
-    try {
-      const { data, error } = await current.client
-        .from('perfis_usuarios')
-        .select('eh_teste')
-        .eq('user_id', userId)
-        .maybeSingle();
-      return !error && data?.eh_teste === true;
-    } catch (_) {
-      return false;
-    }
+    return Boolean(profile && ['administrador', 'chefia', 'dirigente'].includes(profile.tipo));
   }
 
   function storageKey() {
@@ -159,8 +146,8 @@
     style.id = 'safetyStylesV63';
     style.textContent = `
       #safetyViewV63{padding-bottom:40px}
-      .safety-test-banner-v63{margin:16px 18px 0;padding:12px 14px;border:1px solid #f1cf78;background:#fff8df;border-radius:14px;color:#76540b;font-size:.88rem;line-height:1.45}
-      .safety-test-banner-v63 strong{display:block;color:#5f4305;margin-bottom:3px}
+      .safety-test-banner-v63{margin:16px 18px 0;padding:12px 14px;border:1px solid #cfe0ec;background:#f4f9fc;border-radius:14px;color:#31526f;font-size:.88rem;line-height:1.45}
+      .safety-test-banner-v63 strong{display:block;color:#17324d;margin-bottom:3px}
       .safety-hero-actions-v63{display:flex;gap:8px;flex-wrap:wrap}
       .safety-tabs-v63{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 18px}
       .safety-tab-v63{border:1px solid #cad8e5;background:#fff;color:#17324d;border-radius:12px;padding:12px;font-weight:700;cursor:pointer}
@@ -247,7 +234,7 @@
       <section class="members-hero">
         <div><div class="eyebrow dark">PLANEJAMENTO SEGURO</div><h2>Visitas técnicas e planos de segurança</h2><p>Registre a avaliação do local e transforme o levantamento em um plano prático para a atividade.</p></div>
       </section>
-      <div class="safety-test-banner-v63"><strong>🧪 Versão de teste</strong>Este protótipo salva os registros somente neste aparelho. Nada é gravado ainda no banco oficial do grupo.</div>
+      <div class="safety-test-banner-v63"><strong>🛡️ Segurança de Atividades</strong>O preenchimento pode ser feito offline. Para enviar ao DME ou receber o retorno da análise, conecte-se à internet.</div>
       <div class="safety-tabs-v63"><button id="safetyTabVisitsV63" class="safety-tab-v63 active" type="button">📍 Visitas técnicas</button><button id="safetyTabPlansV63" class="safety-tab-v63" type="button">🛡️ Planos de segurança</button></div>
       <section id="safetyVisitsPanelV63" class="safety-panel-v63">
         <div class="safety-panel-head-v63"><div><h3>Relatórios de visita técnica</h3><p>Avalie o local antes da atividade e registre providências necessárias.</p></div><button id="newSafetyVisitV63" class="new-member-button" type="button">＋ Nova visita</button></div>
@@ -343,13 +330,13 @@
         const cls = v.conclusion === 'apto' ? 'ok' : v.conclusion === 'condicional' ? 'warn' : 'bad';
         const label = v.conclusion === 'apto' ? 'Adequado' : v.conclusion === 'condicional' ? 'Com providências' : 'Não recomendado';
         return `<article class="safety-card-v63"><div class="safety-card-top-v63"><div><h4>${esc(v.activityName || 'Visita técnica')}</h4><div class="meta"><span>📍 ${esc(v.location || 'Local não informado')}</span><span>📅 ${formatDate(v.visitDate)}</span>${v.sections?.length ? `<span>⚜ ${esc(v.sections.join(', '))}</span>` : ''}</div></div><span class="safety-pill-v63 ${cls}">${label}</span></div><div class="safety-card-actions-v63"><button class="safety-mini-btn-v63" type="button" data-edit-visit="${esc(v.id)}">Ver / editar</button><button class="safety-mini-btn-v63" type="button" data-plan-from-visit="${esc(v.id)}">Criar plano</button><button class="safety-mini-btn-v63 danger" type="button" data-delete-visit="${esc(v.id)}">Apagar</button></div></article>`;
-      }).join('') : '<div class="safety-empty-v63">Nenhuma visita técnica cadastrada nesta versão de teste.</div>';
+      }).join('') : '<div class="safety-empty-v63">Nenhuma visita técnica cadastrada.</div>';
     }
     if (planList) {
       planList.innerHTML = store.plans.length ? [...store.plans].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).map((p) => {
         const ready = p.status === 'pronto';
         return `<article class="safety-card-v63"><div class="safety-card-top-v63"><div><h4>${esc(p.activityName || 'Plano de segurança')}</h4><div class="meta"><span>📍 ${esc(p.location || 'Local não informado')}</span><span>📅 ${formatDate(p.date)}</span>${p.sections?.length ? `<span>⚜ ${esc(p.sections.join(', '))}</span>` : ''}</div><div class="safety-counts-v63"><span class="safety-pill-v63">${p.risks?.length || 0} risco(s)</span><span class="safety-pill-v63">${p.checklist?.filter(Boolean).length || 0}/11 itens conferidos</span></div></div><span class="safety-pill-v63 ${ready ? 'ok' : 'warn'}">${ready ? 'Pronto' : 'Rascunho'}</span></div><div class="safety-card-actions-v63"><button class="safety-mini-btn-v63" type="button" data-edit-plan="${esc(p.id)}">Ver / editar</button><button class="safety-mini-btn-v63 danger" type="button" data-delete-plan="${esc(p.id)}">Apagar</button></div></article>`;
-      }).join('') : '<div class="safety-empty-v63">Nenhum plano de segurança cadastrado nesta versão de teste.</div>';
+      }).join('') : '<div class="safety-empty-v63">Nenhum plano de segurança cadastrado.</div>';
     }
     refreshBaseVisits();
   }
@@ -573,7 +560,7 @@
       const create = event.target.closest('[data-plan-from-visit]');
       if (create) { switchTab('plans'); return openPlan(null, create.dataset.planFromVisit); }
       const del = event.target.closest('[data-delete-visit]');
-      if (del && window.confirm('Apagar esta visita técnica da versão de teste?')) {
+      if (del && window.confirm('Apagar esta visita técnica?')) {
         store.visits = store.visits.filter((v) => v.id !== del.dataset.deleteVisit);
         saveStore(); renderLists();
       }
@@ -583,7 +570,7 @@
       const edit = event.target.closest('[data-edit-plan]');
       if (edit) return openPlan(edit.dataset.editPlan);
       const del = event.target.closest('[data-delete-plan]');
-      if (del && window.confirm('Apagar este plano de segurança da versão de teste?')) {
+      if (del && window.confirm('Apagar este plano de segurança?')) {
         store.plans = store.plans.filter((p) => p.id !== del.dataset.deletePlan);
         saveStore(); renderLists();
       }
