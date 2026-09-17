@@ -106,6 +106,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyMapsLocationModule() {
+    if (document.getElementById('safetyMapsLocationV70Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyMapsLocationV70Script';
+    script.src = 'safety-maps-location-v70.js?v=70.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -127,6 +136,7 @@
         loadSafetyApprovalModule();
         loadSafetyVisitorsFixModule();
         loadSafetyCoordinatorModule();
+        loadSafetyMapsLocationModule();
         return;
       }
 
@@ -144,6 +154,7 @@
         loadSafetyApprovalModule();
         loadSafetyVisitorsFixModule();
         loadSafetyCoordinatorModule();
+        loadSafetyMapsLocationModule();
         return;
       }
 
