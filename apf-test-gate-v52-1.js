@@ -115,6 +115,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyAutoSubmitModule() {
+    if (document.getElementById('safetyAutoSubmitV71Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyAutoSubmitV71Script';
+    script.src = 'safety-auto-submit-v71.js?v=71.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -137,6 +146,7 @@
         loadSafetyVisitorsFixModule();
         loadSafetyCoordinatorModule();
         loadSafetyMapsLocationModule();
+        loadSafetyAutoSubmitModule();
         return;
       }
 
@@ -155,6 +165,7 @@
         loadSafetyVisitorsFixModule();
         loadSafetyCoordinatorModule();
         loadSafetyMapsLocationModule();
+        loadSafetyAutoSubmitModule();
         return;
       }
 
