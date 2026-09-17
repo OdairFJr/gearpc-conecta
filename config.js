@@ -16,8 +16,9 @@ window.GEARPC_CONFIG = {
     document.head.appendChild(script);
   }
 
-  // Carregado cedo para interceptar e compactar as fotos antes dos módulos antigos de segurança.
+  // Carregados cedo para manter as fotos leves e usar a câmera sem sair do PWA.
   loadModule('safety-photo-memory-v75', 'safety-photo-memory-v75.js?v=75.1');
+  loadModule('safety-inapp-camera-v76', 'safety-inapp-camera-v76.js?v=76.0');
   loadModule('compras-v37', 'compras-v37.js?v=37.0');
   loadModule('compras-fixes-v39', 'compras-fixes-v39.js?v=39.0');
   loadModule('compras-labels-v40', 'compras-labels-v40.js?v=40.0');
