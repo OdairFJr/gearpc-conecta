@@ -70,6 +70,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyUnifiedFlowModule() {
+    if (document.getElementById('safetyUnifiedFlowV66Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyUnifiedFlowV66Script';
+    script.src = 'safety-unified-flow-v66.js?v=66.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -87,6 +96,7 @@
         loadSafetyAdjustmentsModule();
         loadSafetyOfflineFixModule();
         loadSafetySectionsModule();
+        loadSafetyUnifiedFlowModule();
         return;
       }
 
@@ -100,6 +110,7 @@
         loadSafetyAdjustmentsModule();
         loadSafetyOfflineFixModule();
         loadSafetySectionsModule();
+        loadSafetyUnifiedFlowModule();
         return;
       }
 
