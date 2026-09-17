@@ -1,10 +1,11 @@
 (() => {
-  if (window.__GEARPC_SAFETY_UNIFIED_FLOW_V66__) return;
-  window.__GEARPC_SAFETY_UNIFIED_FLOW_V66__ = true;
+  if (window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_2__) return;
+  window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_2__ = true;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const $ = (id) => document.getElementById(id);
-  let pendingNewPlanning = false;
+  let currentVisitId = null;
+  let savingUnified = false;
 
   async function waitReady() {
     for (let i = 0; i < 160; i += 1) {
@@ -14,11 +15,14 @@
     return false;
   }
 
-  function readStore() {
+  function storageKey() {
     const rt = window.GEARPC_RUNTIME;
-    const key = `gearpc-safety-test-v63:${rt?.state?.user?.id || 'local'}`;
+    return `gearpc-safety-test-v63:${rt?.state?.user?.id || 'local'}`;
+  }
+
+  function readStore() {
     try {
-      const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+      const parsed = JSON.parse(localStorage.getItem(storageKey()) || '{}');
       return {
         visits: Array.isArray(parsed.visits) ? parsed.visits : [],
         plans: Array.isArray(parsed.plans) ? parsed.plans : []
@@ -28,95 +32,235 @@
     }
   }
 
-  function newestVisitId(previousIds) {
-    const store = readStore();
-    const added = store.visits.filter((visit) => !previousIds.has(visit.id));
-    if (added.length) return [...added].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0]?.id || null;
-    return [...store.visits].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0]?.id || null;
+  function pairedPlanForVisit(visitId) {
+    if (!visitId) return null;
+    return readStore().plans.find((plan) => plan.baseVisitId === visitId) || null;
   }
 
   function setTextIfChanged(element, value) {
     if (element && element.textContent !== value) element.textContent = value;
   }
 
+  function injectStyles() {
+    if ($('safetyUnifiedStylesV662')) return;
+    const style = document.createElement('style');
+    style.id = 'safetyUnifiedStylesV662';
+    style.textContent = `
+      .safety-pair-status-v66{display:inline-flex;margin-top:8px}
+      #safetyPlansPanelV63,.safety-tabs-v63,#newSafetyPlanV63{display:none!important}
+      #safetyPlanDialogV63{visibility:hidden!important;pointer-events:none!important}
+      #safetyVisitsListV63 [data-plan-from-visit]{display:none!important}
+      .safety-unified-plan-section-v662{border-left:3px solid #8fb5d4}
+      .safety-unified-plan-intro-v662{padding:10px 12px;border-radius:12px;background:#eef6fb;color:#31526f;font-size:.86rem;line-height:1.45}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function movePlanSectionsIntoVisit() {
+    const visitForm = $('safetyVisitFormV63');
+    if (!visitForm || visitForm.dataset.unifiedV662 === '1') return;
+
+    const actions = visitForm.querySelector('.safety-dialog-actions-v63');
+    if (!actions) return;
+
+    const fields = ['spCoordinatorV63', 'spRisksV63', 'spEmergencyV63', 'spKitLocationV63', 'spChecklistV63'];
+    const sections = [];
+    fields.forEach((id) => {
+      const section = $(id)?.closest('.safety-section-v63');
+      if (section && !sections.includes(section)) sections.push(section);
+    });
+    if (sections.length < 5) return;
+
+    const intro = document.createElement('div');
+    intro.className = 'safety-unified-plan-intro-v662';
+    intro.innerHTML = '<strong>Plano de segurança</strong><br>Continue o mesmo preenchimento abaixo. Ao final, um único botão salva a visita técnica e o plano desta atividade juntos.';
+    actions.insertAdjacentElement('beforebegin', intro);
+
+    const titles = [
+      '6. Responsáveis da atividade',
+      '7. Análise de riscos',
+      '8. Procedimentos de emergência',
+      '9. Primeiros socorros, transporte e comunicação',
+      '10. Checklist final'
+    ];
+
+    sections.forEach((section, index) => {
+      section.classList.add('safety-unified-plan-section-v662');
+      const heading = section.querySelector('h3');
+      if (heading && titles[index]) heading.textContent = titles[index];
+      actions.insertAdjacentElement('beforebegin', section);
+    });
+
+    const save = actions.querySelector('button[type="submit"]');
+    setTextIfChanged(save, 'Salvar planejamento');
+    visitForm.dataset.unifiedV662 = '1';
+  }
+
   function refreshUnifiedUi() {
-    const tabs = document.querySelector('.safety-tabs-v63');
-    if (tabs && tabs.style.display !== 'none') tabs.style.display = 'none';
     $('safetyPlansPanelV63')?.classList.add('hidden');
     $('safetyVisitsPanelV63')?.classList.remove('hidden');
 
     const heroTitle = document.querySelector('#safetyViewV63 .members-hero h2');
     const heroText = document.querySelector('#safetyViewV63 .members-hero p');
     setTextIfChanged(heroTitle, 'Planejamento de segurança da atividade');
-    setTextIfChanged(heroText, 'Cada atividade reúne obrigatoriamente a visita técnica do local e o respectivo plano de segurança.');
+    setTextIfChanged(heroText, 'Visita técnica e plano de segurança são preenchidos juntos, em uma única etapa.');
 
     const panelTitle = document.querySelector('#safetyVisitsPanelV63 .safety-panel-head-v63 h3');
     const panelText = document.querySelector('#safetyVisitsPanelV63 .safety-panel-head-v63 p');
     setTextIfChanged(panelTitle, 'Planejamentos de segurança');
-    setTextIfChanged(panelText, 'A visita técnica é obrigatória e, ao ser salva, o aplicativo segue para o plano de segurança da mesma atividade.');
+    setTextIfChanged(panelText, 'Abra um planejamento, preencha visita e plano na mesma tela e salve uma única vez.');
 
-    const newVisit = $('newSafetyVisitV63');
-    setTextIfChanged(newVisit, '＋ Novo planejamento');
+    setTextIfChanged($('newSafetyVisitV63'), '＋ Novo planejamento');
 
-    const newPlan = $('newSafetyPlanV63');
-    if (newPlan && newPlan.style.display !== 'none') newPlan.style.display = 'none';
+    const visitEyebrow = document.querySelector('#safetyVisitDialogV63 .safety-dialog-head-v63 .eyebrow');
+    const visitTitle = $('safetyVisitTitleV63');
+    const visitHelp = document.querySelector('#safetyVisitDialogV63 .safety-dialog-head-v63 p');
+    setTextIfChanged(visitEyebrow, 'SEGURANÇA DA ATIVIDADE');
+    if (visitTitle && !visitTitle.textContent.toLowerCase().includes('editar')) setTextIfChanged(visitTitle, 'Novo planejamento de segurança');
+    setTextIfChanged(visitHelp, 'Preencha a visita técnica e o plano de segurança abaixo. O salvamento é único.');
 
-    document.querySelectorAll('[data-plan-from-visit]').forEach((button) => {
-      if (!button.textContent?.trim()) setTextIfChanged(button, 'Abrir plano');
-    });
-
-    const baseSection = $('spBaseVisitV63')?.closest('.safety-section-v63');
-    if (baseSection && baseSection.style.display !== 'none') baseSection.style.display = 'none';
-  }
-
-  function pairedPlanForVisit(visitId) {
-    return readStore().plans.find((plan) => plan.baseVisitId === visitId) || null;
-  }
-
-  function openPlanForVisit(visitId) {
-    if (!visitId) return;
-    const paired = pairedPlanForVisit(visitId);
-    const createButton = document.querySelector(`[data-plan-from-visit="${CSS.escape(visitId)}"]`);
-    if (paired) {
-      const planEdit = document.querySelector(`[data-edit-plan="${CSS.escape(paired.id)}"]`);
-      if (planEdit) return planEdit.click();
-    }
-    if (createButton) return createButton.click();
-
-    const select = $('spBaseVisitV63');
-    const planButton = $('newSafetyPlanV63');
-    if (select && planButton) {
-      planButton.click();
-      window.setTimeout(() => {
-        select.value = visitId;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      }, 30);
-    }
+    movePlanSectionsIntoVisit();
+    const save = $('safetyVisitFormV63')?.querySelector('.safety-dialog-actions-v63 button[type="submit"]');
+    setTextIfChanged(save, 'Salvar planejamento');
   }
 
   function decorateCards() {
-    const cards = [...document.querySelectorAll('#safetyVisitsListV63 .safety-card-v63')];
-    cards.forEach((card) => {
+    document.querySelectorAll('#safetyVisitsListV63 .safety-card-v63').forEach((card) => {
       const edit = card.querySelector('[data-edit-visit]');
       if (!edit) return;
       const visitId = edit.dataset.editVisit;
       const paired = pairedPlanForVisit(visitId);
+      setTextIfChanged(edit, 'Ver / editar planejamento');
+
       let badge = card.querySelector('.safety-pair-status-v66');
       if (!badge) {
         badge = document.createElement('span');
         badge.className = 'safety-pill-v63 safety-pair-status-v66';
-        card.querySelector('.safety-counts-v63')?.appendChild(badge);
-        if (!badge.parentElement || !badge.parentElement.classList.contains('safety-counts-v63')) {
-          card.querySelector('.meta')?.insertAdjacentElement('afterend', badge);
-        }
+        const counts = card.querySelector('.safety-counts-v63');
+        if (counts) counts.appendChild(badge);
+        else card.querySelector('.meta')?.insertAdjacentElement('afterend', badge);
       }
       badge.classList.toggle('ok', Boolean(paired));
       badge.classList.toggle('warn', !paired);
-      setTextIfChanged(badge, paired ? 'Plano vinculado' : 'Plano pendente');
-
-      const planButton = card.querySelector('[data-plan-from-visit]');
-      setTextIfChanged(planButton, paired ? 'Abrir plano' : 'Completar plano');
+      setTextIfChanged(badge, paired ? 'Planejamento completo' : 'Salvar para completar');
     });
+  }
+
+  function closeHiddenPlanDialog() {
+    const dialog = $('safetyPlanDialogV63');
+    try { if (dialog?.open) dialog.close(); } catch (_) {}
+    refreshUnifiedUi();
+  }
+
+  function primePlanFormForVisit(visitId = null) {
+    const paired = pairedPlanForVisit(visitId);
+    if (paired) {
+      const editButton = document.querySelector(`#safetyPlansListV63 [data-edit-plan="${CSS.escape(paired.id)}"]`);
+      if (editButton) {
+        editButton.click();
+        closeHiddenPlanDialog();
+        return;
+      }
+    }
+
+    const newPlan = $('newSafetyPlanV63');
+    if (newPlan) {
+      newPlan.click();
+      closeHiddenPlanDialog();
+    }
+  }
+
+  function selectedVisitSections() {
+    return [...($('svSectionsV63')?.querySelectorAll('input[type="checkbox"]:checked') || [])].map((input) => input.value);
+  }
+
+  function syncPlanIdentification(visitId = '') {
+    if ($('spBaseVisitV63')) $('spBaseVisitV63').value = visitId || '';
+    if ($('spActivityNameV63')) $('spActivityNameV63').value = $('svActivityNameV63')?.value || '';
+    if ($('spActivityTypeV63')) $('spActivityTypeV63').value = $('svActivityTypeV63')?.value || 'Acampamento';
+    if ($('spLocationV63')) $('spLocationV63').value = $('svLocationV63')?.value || '';
+    if ($('spAddressV63')) $('spAddressV63').value = $('svAddressV63')?.value || '';
+
+    const startDate = $('svStartDateV64')?.value || $('svActivityDateV63')?.value || '';
+    if ($('spDateV63')) $('spDateV63').value = startDate;
+    if ($('spStatusV63')) $('spStatusV63').value = 'pronto';
+
+    const selected = new Set(selectedVisitSections());
+    $('spSectionsV63')?.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      input.checked = selected.has(input.value);
+    });
+
+    if ($('spStartDateV64')) $('spStartDateV64').value = $('svStartDateV64')?.value || startDate;
+    if ($('spStartTimeV64')) $('spStartTimeV64').value = $('svStartTimeV64')?.value || '';
+    if ($('spEndDateV64')) $('spEndDateV64').value = $('svEndDateV64')?.value || startDate;
+    if ($('spEndTimeV64')) $('spEndTimeV64').value = $('svEndTimeV64')?.value || '';
+    if ($('spMapsLinkV64')) $('spMapsLinkV64').value = $('svMapsLinkV64')?.value || '';
+
+    if ($('spCellCoverageV63')) $('spCellCoverageV63').value = $('svCellCoverageV63')?.value || 'nao_verificado';
+    if ($('spHospitalV63') && !$('spHospitalV63').value) $('spHospitalV63').value = $('svHospitalV63')?.value || '';
+    if ($('spMeetingPointV63') && !$('spMeetingPointV63').value) $('spMeetingPointV63').value = $('svMeetingPointV63')?.value || '';
+  }
+
+  function newestVisitId(beforeIds) {
+    const visits = readStore().visits;
+    const added = visits.filter((visit) => !beforeIds.has(visit.id));
+    if (added.length) return [...added].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0]?.id || null;
+    return [...visits].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0]?.id || null;
+  }
+
+  function submitHiddenPlan(visitId) {
+    syncPlanIdentification(visitId);
+    const planForm = $('safetyPlanFormV63');
+    if (!planForm) return;
+    planForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    closeHiddenPlanDialog();
+    window.setTimeout(() => {
+      refreshUnifiedUi();
+      decorateCards();
+      savingUnified = false;
+    }, 160);
+  }
+
+  function wire() {
+    document.addEventListener('click', (event) => {
+      const newPlanning = event.target.closest('#newSafetyVisitV63');
+      if (newPlanning) {
+        currentVisitId = null;
+        window.setTimeout(() => {
+          primePlanFormForVisit(null);
+          refreshUnifiedUi();
+        }, 60);
+        return;
+      }
+
+      const editPlanning = event.target.closest('[data-edit-visit]');
+      if (editPlanning) {
+        currentVisitId = editPlanning.dataset.editVisit || null;
+        window.setTimeout(() => {
+          primePlanFormForVisit(currentVisitId);
+          const title = $('safetyVisitTitleV63');
+          setTextIfChanged(title, 'Editar planejamento de segurança');
+          refreshUnifiedUi();
+        }, 80);
+      }
+    }, true);
+
+    $('safetyVisitFormV63')?.addEventListener('submit', () => {
+      if (savingUnified) return;
+      savingUnified = true;
+      const beforeIds = new Set(readStore().visits.map((visit) => visit.id));
+      syncPlanIdentification(currentVisitId || '');
+
+      window.setTimeout(() => {
+        const visitId = currentVisitId || newestVisitId(beforeIds);
+        if (!visitId) {
+          savingUnified = false;
+          return;
+        }
+        currentVisitId = visitId;
+        submitHiddenPlan(visitId);
+      }, 420);
+    }, true);
   }
 
   function installObserver() {
@@ -126,55 +270,7 @@
       refreshUnifiedUi();
       decorateCards();
     });
-    // Observa apenas quando a lista é reconstruída. Alterações internas nos cartões
-    // (badges e textos adicionados pelos próprios módulos) não devem disparar novo ciclo.
     observer.observe(list, { childList: true, subtree: false });
-  }
-
-  function wire() {
-    document.addEventListener('click', (event) => {
-      const newPlanning = event.target.closest('#newSafetyVisitV63');
-      if (newPlanning) pendingNewPlanning = true;
-
-      const openPaired = event.target.closest('[data-plan-from-visit]');
-      if (openPaired) {
-        const visitId = openPaired.dataset.planFromVisit;
-        const paired = pairedPlanForVisit(visitId);
-        if (paired) {
-          event.preventDefault();
-          event.stopImmediatePropagation();
-          const editButton = document.querySelector(`[data-edit-plan="${CSS.escape(paired.id)}"]`);
-          if (editButton) editButton.click();
-        }
-      }
-    }, true);
-
-    $('safetyVisitFormV63')?.addEventListener('submit', () => {
-      if (!pendingNewPlanning) return;
-      const before = new Set(readStore().visits.map((visit) => visit.id));
-      window.setTimeout(() => {
-        const visitId = newestVisitId(before);
-        pendingNewPlanning = false;
-        if (visitId) openPlanForVisit(visitId);
-      }, 80);
-    }, true);
-
-    $('safetyPlanFormV63')?.addEventListener('submit', () => {
-      window.setTimeout(() => {
-        refreshUnifiedUi();
-        decorateCards();
-      }, 100);
-    }, true);
-  }
-
-  function injectStyles() {
-    if ($('safetyUnifiedStylesV66')) return;
-    const style = document.createElement('style');
-    style.id = 'safetyUnifiedStylesV66';
-    style.textContent = `
-      .safety-pair-status-v66{display:inline-flex;margin-top:8px}
-    `;
-    document.head.appendChild(style);
   }
 
   async function boot() {
