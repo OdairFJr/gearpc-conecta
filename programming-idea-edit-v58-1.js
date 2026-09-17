@@ -50,6 +50,12 @@
     const duration = Number(String(durationText).match(/\d+/)?.[0] || 0);
     if (duration > 0) setValue('programItemDuration', String(duration));
 
+    const saveToBank = $('programItemSaveToBank');
+    if (saveToBank) {
+      saveToBank.checked = false;
+      saveToBank.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
     const conductor = $('programItemConductor');
     if (conductor) conductor.value = '';
     const msg = $('programItemMessage');
