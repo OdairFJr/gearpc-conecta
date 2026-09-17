@@ -34,6 +34,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyTestModule() {
+    if (document.getElementById('safetyTestV63Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyTestV63Script';
+    script.src = 'safety-test-v63.js?v=63.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -47,6 +56,7 @@
         loadAdminFormationModule();
         loadApprovedDisplayModule();
         loadHeaderContrastModule();
+        loadSafetyTestModule();
         return;
       }
 
@@ -55,6 +65,8 @@
         document.getElementById('apfManageV52')?.setAttribute('hidden', '');
         loadApprovedDisplayModule();
         loadHeaderContrastModule();
+        // O próprio módulo de segurança só se exibe para perfis marcados como teste.
+        loadSafetyTestModule();
         return;
       }
 
