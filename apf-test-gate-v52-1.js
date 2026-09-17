@@ -61,6 +61,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetySectionsModule() {
+    if (document.getElementById('safetySectionsV65Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetySectionsV65Script';
+    script.src = 'safety-sections-v65.js?v=65.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -77,6 +86,7 @@
         loadSafetyTestModule();
         loadSafetyAdjustmentsModule();
         loadSafetyOfflineFixModule();
+        loadSafetySectionsModule();
         return;
       }
 
@@ -89,6 +99,7 @@
         loadSafetyTestModule();
         loadSafetyAdjustmentsModule();
         loadSafetyOfflineFixModule();
+        loadSafetySectionsModule();
         return;
       }
 
