@@ -43,6 +43,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyAdjustmentsModule() {
+    if (document.getElementById('safetyAdjustmentsV64Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyAdjustmentsV64Script';
+    script.src = 'safety-test-adjustments-v64.js?v=64.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -57,6 +66,7 @@
         loadApprovedDisplayModule();
         loadHeaderContrastModule();
         loadSafetyTestModule();
+        loadSafetyAdjustmentsModule();
         return;
       }
 
@@ -67,6 +77,7 @@
         loadHeaderContrastModule();
         // O próprio módulo de segurança só se exibe para perfis marcados como teste.
         loadSafetyTestModule();
+        loadSafetyAdjustmentsModule();
         return;
       }
 
