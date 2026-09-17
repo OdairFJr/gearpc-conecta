@@ -52,6 +52,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyOfflineFixModule() {
+    if (document.getElementById('safetyOfflineFixV65Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyOfflineFixV65Script';
+    script.src = 'safety-test-offline-fix-v65.js?v=65.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -67,6 +76,7 @@
         loadHeaderContrastModule();
         loadSafetyTestModule();
         loadSafetyAdjustmentsModule();
+        loadSafetyOfflineFixModule();
         return;
       }
 
@@ -78,6 +88,7 @@
         // O próprio módulo de segurança só se exibe para perfis marcados como teste.
         loadSafetyTestModule();
         loadSafetyAdjustmentsModule();
+        loadSafetyOfflineFixModule();
         return;
       }
 
