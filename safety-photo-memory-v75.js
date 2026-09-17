@@ -5,6 +5,7 @@
   const MAX_PHOTOS = 10;
   const MAX_SIDE = 800;
   const JPEG_QUALITY = 0.58;
+  const MAX_TARGET_BYTES = 220 * 1024;
   let rt = null;
   let currentVisitId = null;
   let pendingPhotos = [];
@@ -127,15 +128,52 @@
     });
   }
 
+  async function readSourceDimensions(file) {
+    const buffer = await file.slice(0, 262144).arrayBuffer();
+    const view = new DataView(buffer);
+    if (view.byteLength >= 24 &&
+        view.getUint8(0) === 0x89 && view.getUint8(1) === 0x50 &&
+        view.getUint8(2) === 0x4e && view.getUint8(3) === 0x47) {
+      return { width: view.getUint32(16, false), height: view.getUint32(20, false) };
+    }
+    if (view.byteLength >= 10 && view.getUint8(0) === 0xff && view.getUint8(1) === 0xd8) {
+      const sof = new Set([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf]);
+      let offset = 2;
+      while (offset + 9 < view.byteLength) {
+        if (view.getUint8(offset) !== 0xff) { offset += 1; continue; }
+        const marker = view.getUint8(offset + 1);
+        if (sof.has(marker)) {
+          return { width: view.getUint16(offset + 7, false), height: view.getUint16(offset + 5, false) };
+        }
+        if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) {
+          offset += 2;
+          continue;
+        }
+        if (offset + 3 >= view.byteLength) break;
+        const length = view.getUint16(offset + 2, false);
+        if (length < 2) break;
+        offset += 2 + length;
+      }
+    }
+    throw new Error('Dimensões não identificadas');
+  }
+
+  async function encodeCanvas(canvas) {
+    let blob = await canvasToBlob(canvas, 'image/jpeg', JPEG_QUALITY);
+    if (blob.size > MAX_TARGET_BYTES) blob = await canvasToBlob(canvas, 'image/jpeg', 0.46);
+    if (blob.size > MAX_TARGET_BYTES * 1.25) blob = await canvasToBlob(canvas, 'image/jpeg', 0.36);
+    return blob;
+  }
+
   async function compressWithBitmap(file) {
     if (!('createImageBitmap' in window)) throw new Error('createImageBitmap indisponível');
-
+    const source = await readSourceDimensions(file);
+    const wanted = targetSize(source.width, source.height);
     let bitmap;
     try {
-      // Primeiro tenta pedir ao decodificador uma imagem já reduzida, evitando manter a foto original inteira em memória.
       bitmap = await createImageBitmap(file, {
-        resizeWidth: MAX_SIDE,
-        resizeHeight: MAX_SIDE,
+        resizeWidth: wanted.width,
+        resizeHeight: wanted.height,
         resizeQuality: 'medium',
         imageOrientation: 'from-image'
       });
@@ -151,7 +189,7 @@
       const ctx = canvas.getContext('2d', { alpha: false });
       if (!ctx) throw new Error('Canvas indisponível');
       ctx.drawImage(bitmap, 0, 0, size.width, size.height);
-      const blob = await canvasToBlob(canvas, 'image/jpeg', JPEG_QUALITY);
+      const blob = await encodeCanvas(canvas);
       const dataUrl = await blobToDataUrl(blob);
       canvas.width = 1;
       canvas.height = 1;
@@ -177,7 +215,7 @@
       const ctx = canvas.getContext('2d', { alpha: false });
       if (!ctx) throw new Error('Canvas indisponível');
       ctx.drawImage(image, 0, 0, size.width, size.height);
-      const blob = await canvasToBlob(canvas, 'image/jpeg', JPEG_QUALITY);
+      const blob = await encodeCanvas(canvas);
       const dataUrl = await blobToDataUrl(blob);
       canvas.width = 1;
       canvas.height = 1;
