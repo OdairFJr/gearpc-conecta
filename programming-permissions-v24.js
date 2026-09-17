@@ -20,6 +20,20 @@
     document.body.appendChild(script);
   }
 
+  function loadRequiredFieldsModule() {
+    if (!pilotEnabled || document.getElementById('programmingRequiredV58Script')) return;
+    const script = document.createElement('script');
+    script.id = 'programmingRequiredV58Script';
+    script.src = 'programming-required-v58.js?v=58.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
+  function loadPilotModules() {
+    loadHomeReviewModule();
+    loadRequiredFieldsModule();
+  }
+
   async function waitForProfile() {
     for (let i = 0; i < 100; i += 1) {
       if (state.profile && state.user?.id) return state.profile;
@@ -38,7 +52,7 @@
     if (profile.tipo === 'administrador') {
       pilotResolved = true;
       pilotEnabled = true;
-      loadHomeReviewModule();
+      loadPilotModules();
       return true;
     }
     const { data, error } = await client
@@ -48,7 +62,7 @@
       .maybeSingle();
     pilotResolved = true;
     pilotEnabled = !error && data?.eh_teste === true;
-    if (pilotEnabled) loadHomeReviewModule();
+    if (pilotEnabled) loadPilotModules();
     return pilotEnabled;
   }
 
