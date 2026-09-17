@@ -38,7 +38,7 @@
     if (document.getElementById('safetyTestV63Script')) return;
     const script = document.createElement('script');
     script.id = 'safetyTestV63Script';
-    script.src = 'safety-test-v63.js?v=63.0';
+    script.src = 'safety-test-v63.js?v=63.1';
     script.async = false;
     document.body.appendChild(script);
   }
@@ -133,6 +133,15 @@
     document.body.appendChild(script);
   }
 
+  function loadSafetyReleaseModule() {
+    if (document.getElementById('safetyReleaseV74Script')) return;
+    const script = document.createElement('script');
+    script.id = 'safetyReleaseV74Script';
+    script.src = 'safety-release-v74.js?v=74.0';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
@@ -157,15 +166,14 @@
         loadSafetyMapsLocationModule();
         loadSafetyAutoSubmitModule();
         loadSafetySimplifyModule();
+        loadSafetyReleaseModule();
         return;
       }
 
       if (profile.tipo === 'chefia' || profile.tipo === 'dirigente') {
-        // Chefes e dirigentes recebem a consulta aprovada; controles administrativos continuam ocultos.
         document.getElementById('apfManageV52')?.setAttribute('hidden', '');
         loadApprovedDisplayModule();
         loadHeaderContrastModule();
-        // O próprio módulo de segurança só se exibe para perfis marcados como teste.
         loadSafetyTestModule();
         loadSafetyAdjustmentsModule();
         loadSafetyOfflineFixModule();
@@ -177,10 +185,11 @@
         loadSafetyMapsLocationModule();
         loadSafetyAutoSubmitModule();
         loadSafetySimplifyModule();
+        loadSafetyReleaseModule();
         return;
       }
 
-      // Responsáveis e demais perfis não recebem a área de APFs.
+      // Responsáveis e demais perfis não recebem as áreas administrativas/operacionais.
       document.getElementById('apfButtonV52')?.remove();
       document.getElementById('apfViewV52')?.remove();
       document.getElementById('apfManagerDialogV52')?.remove();
