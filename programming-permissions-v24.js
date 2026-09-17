@@ -29,9 +29,19 @@
     document.body.appendChild(script);
   }
 
+  function loadIdeaReviewModule() {
+    if (!pilotEnabled || document.getElementById('programmingIdeaEditV581Script')) return;
+    const script = document.createElement('script');
+    script.id = 'programmingIdeaEditV581Script';
+    script.src = 'programming-idea-edit-v58-1.js?v=58.1';
+    script.async = false;
+    document.body.appendChild(script);
+  }
+
   function loadPilotModules() {
     loadHomeReviewModule();
     loadRequiredFieldsModule();
+    loadIdeaReviewModule();
   }
 
   async function waitForProfile() {
