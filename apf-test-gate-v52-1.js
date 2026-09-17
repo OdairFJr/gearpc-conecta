@@ -2,7 +2,7 @@
   if (window.__GEARPC_APF_TEST_GATE_V52_1__) return;
   window.__GEARPC_APF_TEST_GATE_V52_1__ = true;
 
-  // Impede a versão anterior de formação/APF de iniciar automaticamente.
+  // Mantém a versão anterior de formação/APF desativada; a versão aprovada é carregada abaixo.
   window.__GEARPC_APF_FORMACAO_V53__ = true;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -16,26 +16,16 @@
     document.body.appendChild(script);
   }
 
-  function loadTestDisplayModule() {
+  function loadApprovedDisplayModule() {
     if (document.getElementById('apfTestDisplayV57Script')) return;
     const script = document.createElement('script');
     script.id = 'apfTestDisplayV57Script';
-    script.src = 'apf-test-display-v57.js?v=57.0';
+    script.src = 'apf-test-display-v57.js?v=57.1';
     script.async = false;
     document.body.appendChild(script);
   }
 
-  async function isTestProfile(rt) {
-    if (!rt?.state?.user?.id) return false;
-    const { data, error } = await rt.client
-      .from('perfis_usuarios')
-      .select('eh_teste')
-      .eq('user_id', rt.state.user.id)
-      .maybeSingle();
-    return !error && data?.eh_teste === true;
-  }
-
-  async function enforceTestGate() {
+  async function enforceRelease() {
     for (let i = 0; i < 120; i += 1) {
       const rt = window.GEARPC_RUNTIME;
       const profile = rt?.state?.profile;
@@ -46,18 +36,18 @@
 
       if (profile.tipo === 'administrador') {
         loadAdminFormationModule();
+        loadApprovedDisplayModule();
         return;
       }
 
-      if (await isTestProfile(rt)) {
-        // Perfil fake vê a aba como um chefe comum, com dados reais de vagas/formação,
-        // mas sem receber controles administrativos.
+      if (profile.tipo === 'chefia' || profile.tipo === 'dirigente') {
+        // Chefes e dirigentes recebem a consulta aprovada; controles administrativos continuam ocultos.
         document.getElementById('apfManageV52')?.setAttribute('hidden', '');
-        loadTestDisplayModule();
+        loadApprovedDisplayModule();
         return;
       }
 
-      // Demais chefes ainda não recebem a função enquanto estiver em testes.
+      // Responsáveis e demais perfis não recebem a área de APFs.
       document.getElementById('apfButtonV52')?.remove();
       document.getElementById('apfViewV52')?.remove();
       document.getElementById('apfManagerDialogV52')?.remove();
@@ -66,5 +56,5 @@
     }
   }
 
-  void enforceTestGate();
+  void enforceRelease();
 })();
