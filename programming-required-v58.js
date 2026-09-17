@@ -10,10 +10,6 @@
   let decorateTimer = null;
   let decorating = false;
 
-  const esc = (value) => String(value ?? '')
-    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-    .replaceAll('"','&quot;').replaceAll("'",'&#039;');
-
   async function waitRuntime() {
     for (let i = 0; i < 120; i += 1) {
       const x = window.GEARPC_RUNTIME;
@@ -35,8 +31,8 @@
     style.id = 'programmingRequiredStylesV58';
     style.textContent = `
       .program-required-v58{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:.72rem;font-weight:900;color:#a22520}
-      .program-required-missing-v58{color:#a22520!important;background:#fff2f1;border:1px solid #f2c7c4;border-radius:8px;padding:6px 8px;width:max-content;max-width:100%}
       .program-timeline-item.program-incomplete-v58{border-color:#d88983!important;box-shadow:0 0 0 2px rgba(162,37,32,.08)}
+      #programTimeline .program-conductor{display:none!important}
     `;
     document.head.appendChild(style);
   }
@@ -63,16 +59,19 @@
     control.closest('label')?.querySelector(`[data-required-v58="${key}"]`)?.remove();
   }
 
-  function refreshRequiredUi() {
+  function hideConductorFromActivitySheet() {
     const conductor = $('programItemConductor');
+    if (!conductor) return;
+    clearFieldRequired(conductor, 'responsavel');
+    const label = conductor.closest('label');
+    if (label) label.style.display = 'none';
+  }
+
+  function refreshRequiredUi() {
+    hideConductorFromActivitySheet();
     const development = $('programItemDevelopment');
-    if (isActivityForm()) {
-      markFieldRequired(conductor, 'responsavel');
-      markFieldRequired(development, 'desenvolvimento');
-    } else {
-      clearFieldRequired(conductor, 'responsavel');
-      clearFieldRequired(development, 'desenvolvimento');
-    }
+    if (isActivityForm()) markFieldRequired(development, 'desenvolvimento');
+    else clearFieldRequired(development, 'desenvolvimento');
   }
 
   function showItemError(text, focusEl) {
@@ -86,12 +85,7 @@
 
   function validateItemForm() {
     if (!isActivityForm()) return true;
-    const conductor = $('programItemConductor');
     const development = $('programItemDevelopment');
-    if (!String(conductor?.value || '').trim()) {
-      showItemError('Selecione o responsável pela condução antes de salvar a atividade.', conductor);
-      return false;
-    }
     if (!String(development?.value || '').trim()) {
       showItemError('Preencha o Desenvolvimento da atividade antes de salvar.', development);
       return false;
@@ -141,7 +135,7 @@
     if (!String(first.desenvolvimento || '').trim()) missing.push('desenvolvimento');
     const msg = $('programEditorMessage');
     if (msg) {
-      msg.textContent = `Não é possível salvar a programação: “${first.nome || 'atividade'}” está sem ${missing.join(' e ')}.`;
+      msg.textContent = `Não é possível concluir a programação: “${first.nome || 'atividade'}” está sem ${missing.join(' e ')}.`;
       msg.classList.remove('success-message');
     }
     document.querySelector(`#programTimeline [data-edit-program-item="${first.id}"]`)?.closest('.program-timeline-item')?.scrollIntoView?.({ behavior:'smooth', block:'center' });
@@ -165,40 +159,12 @@
         .select('id,tipo,condutor_chefe_id,condutor_jovem_id,desenvolvimento')
         .in('id', ids);
       if (error) return;
-
-      const chiefIds = [...new Set((items || []).map((i) => Number(i.condutor_chefe_id || 0)).filter(Boolean))];
-      const youthIds = [...new Set((items || []).map((i) => Number(i.condutor_jovem_id || 0)).filter(Boolean))];
-      const [chiefRes, youthRes] = await Promise.all([
-        chiefIds.length ? rt.client.from('chefes').select('id,nome_completo').in('id', chiefIds) : Promise.resolve({data:[]}),
-        youthIds.length ? rt.client.from('jovens').select('id,nome_completo').in('id', youthIds) : Promise.resolve({data:[]})
-      ]);
-      const chiefMap = new Map((chiefRes.data || []).map((c) => [Number(c.id), c.nome_completo]));
-      const youthMap = new Map((youthRes.data || []).map((j) => [Number(j.id), j.nome_completo]));
       const itemMap = new Map((items || []).map((i) => [Number(i.id), i]));
-
       buttons.forEach((button) => {
         const item = itemMap.get(Number(button.dataset.editProgramItem || 0));
         if (!item || item.tipo !== 'atividade') return;
         const card = button.closest('.program-timeline-item');
         if (!card) return;
-        const chiefName = chiefMap.get(Number(item.condutor_chefe_id || 0)) || '';
-        const youthName = youthMap.get(Number(item.condutor_jovem_id || 0)) || '';
-        let p = card.querySelector('.program-conductor');
-        if (!p) {
-          p = document.createElement('p');
-          p.className = 'program-conductor';
-          card.querySelector('.program-item-heading')?.insertAdjacentElement('afterend', p);
-        }
-        if (youthName) {
-          p.classList.remove('program-required-missing-v58');
-          p.innerHTML = `Responsável: <strong>${esc(youthName)}</strong> <small>(Pioneiro)</small>`;
-        } else if (chiefName) {
-          p.classList.remove('program-required-missing-v58');
-          p.innerHTML = `Responsável: <strong>${esc(chiefName)}</strong>`;
-        } else {
-          p.classList.add('program-required-missing-v58');
-          p.innerHTML = 'Responsável: <strong>Não informado</strong>';
-        }
         const incomplete = (!item.condutor_chefe_id && !item.condutor_jovem_id) || !String(item.desenvolvimento || '').trim();
         card.classList.toggle('program-incomplete-v58', incomplete);
       });
@@ -241,6 +207,7 @@
     if (dialog) new MutationObserver(() => { if (dialog.open) setTimeout(refreshRequiredUi, 0); }).observe(dialog, {attributes:true, attributeFilter:['open']});
     const timeline = $('programTimeline');
     if (timeline) new MutationObserver(scheduleDecorate).observe(timeline, {childList:true, subtree:true});
+    window.addEventListener('gearpc:program-responsible-updated', scheduleDecorate);
   }
 
   async function boot() {
