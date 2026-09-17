@@ -7,9 +7,8 @@
   let rt = null;
   let pilot = false;
   let bypassButton = null;
-  let timelineObserver = null;
-  let previewObserver = null;
   let decorateTimer = null;
+  let decorating = false;
 
   const esc = (value) => String(value ?? '')
     .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
@@ -26,11 +25,7 @@
 
   async function resolvePilot() {
     if (rt.state.profile?.tipo === 'administrador') return true;
-    const { data, error } = await rt.client
-      .from('perfis_usuarios')
-      .select('eh_teste')
-      .eq('user_id', rt.state.user.id)
-      .maybeSingle();
+    const { data, error } = await rt.client.from('perfis_usuarios').select('eh_teste').eq('user_id', rt.state.user.id).maybeSingle();
     return !error && data?.eh_teste === true;
   }
 
@@ -42,7 +37,6 @@
       .program-required-v58{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:.72rem;font-weight:900;color:#a22520}
       .program-required-missing-v58{color:#a22520!important;background:#fff2f1;border:1px solid #f2c7c4;border-radius:8px;padding:6px 8px;width:max-content;max-width:100%}
       .program-timeline-item.program-incomplete-v58{border-color:#d88983!important;box-shadow:0 0 0 2px rgba(162,37,32,.08)}
-      .program-required-hint-v58{margin:6px 0 0;color:#8d332e;font-size:.78rem;font-weight:800}
     `;
     document.head.appendChild(style);
   }
@@ -51,29 +45,28 @@
     return String($('programItemType')?.value || '') === 'atividade';
   }
 
-  function markFieldRequired(control, labelText) {
+  function markFieldRequired(control, key) {
     if (!control) return;
     control.required = true;
     const label = control.closest('label');
-    if (!label || label.querySelector(`[data-required-v58="${labelText}"]`)) return;
+    if (!label || label.querySelector(`[data-required-v58="${key}"]`)) return;
     const badge = document.createElement('span');
     badge.className = 'program-required-v58';
-    badge.dataset.requiredV58 = labelText;
+    badge.dataset.requiredV58 = key;
     badge.textContent = '• obrigatório';
     label.insertBefore(badge, control);
   }
 
-  function clearFieldRequired(control, labelText) {
+  function clearFieldRequired(control, key) {
     if (!control) return;
     control.required = false;
-    control.closest('label')?.querySelector(`[data-required-v58="${labelText}"]`)?.remove();
+    control.closest('label')?.querySelector(`[data-required-v58="${key}"]`)?.remove();
   }
 
   function refreshRequiredUi() {
     const conductor = $('programItemConductor');
     const development = $('programItemDevelopment');
-    const activity = isActivityForm();
-    if (activity) {
+    if (isActivityForm()) {
       markFieldRequired(conductor, 'responsavel');
       markFieldRequired(development, 'desenvolvimento');
     } else {
@@ -96,7 +89,7 @@
     const conductor = $('programItemConductor');
     const development = $('programItemDevelopment');
     if (!String(conductor?.value || '').trim()) {
-      showItemError('Selecione o chefe responsável antes de salvar a atividade.', conductor);
+      showItemError('Selecione o responsável pela condução antes de salvar a atividade.', conductor);
       return false;
     }
     if (!String(development?.value || '').trim()) {
@@ -109,14 +102,15 @@
   async function currentProgramIdFromScreen() {
     const itemButton = document.querySelector('#programTimeline [data-edit-program-item]');
     const itemId = Number(itemButton?.dataset?.editProgramItem || 0);
-    if (!itemId) return null;
-    const { data, error } = await rt.client
-      .from('programacao_itens')
-      .select('programacao_id')
-      .eq('id', itemId)
-      .maybeSingle();
-    if (error) return null;
-    return Number(data?.programacao_id || 0) || null;
+    if (itemId) {
+      const { data, error } = await rt.client.from('programacao_itens').select('programacao_id').eq('id', itemId).maybeSingle();
+      if (!error && data?.programacao_id) return Number(data.programacao_id);
+    }
+    const sectionId = Number($('programEditorSection')?.value || 0);
+    const date = $('programEditorDate')?.value || '';
+    if (!sectionId || !date) return null;
+    const { data, error } = await rt.client.from('programacoes').select('id').eq('secao_id', sectionId).eq('data_atividade', date).maybeSingle();
+    return error ? null : Number(data?.id || 0) || null;
   }
 
   async function incompleteItemsForCurrentProgram() {
@@ -124,118 +118,92 @@
     if (!programId) return [];
     const { data, error } = await rt.client
       .from('programacao_itens')
-      .select('id,nome,condutor_chefe_id,desenvolvimento,tipo')
+      .select('id,nome,condutor_chefe_id,condutor_jovem_id,desenvolvimento,tipo')
       .eq('programacao_id', programId)
       .eq('tipo', 'atividade');
     if (error) return [];
-    return (data || []).filter((item) => !item.condutor_chefe_id || !String(item.desenvolvimento || '').trim());
-  }
-
-  function markIncompleteCards(items) {
-    const ids = new Set((items || []).map((i) => Number(i.id)));
-    document.querySelectorAll('#programTimeline .program-timeline-item').forEach((card) => {
-      const id = Number(card.querySelector('[data-edit-program-item]')?.dataset?.editProgramItem || 0);
-      card.classList.toggle('program-incomplete-v58', ids.has(id));
-    });
+    return (data || []).filter((item) =>
+      (!item.condutor_chefe_id && !item.condutor_jovem_id) || !String(item.desenvolvimento || '').trim()
+    );
   }
 
   async function validateProgrammingBeforeSave() {
     const incomplete = await incompleteItemsForCurrentProgram();
-    markIncompleteCards(incomplete);
+    const ids = new Set(incomplete.map((i) => Number(i.id)));
+    document.querySelectorAll('#programTimeline .program-timeline-item').forEach((card) => {
+      const id = Number(card.querySelector('[data-edit-program-item]')?.dataset?.editProgramItem || 0);
+      card.classList.toggle('program-incomplete-v58', ids.has(id));
+    });
     if (!incomplete.length) return true;
     const first = incomplete[0];
     const missing = [];
-    if (!first.condutor_chefe_id) missing.push('chefe responsável');
+    if (!first.condutor_chefe_id && !first.condutor_jovem_id) missing.push('responsável pela condução');
     if (!String(first.desenvolvimento || '').trim()) missing.push('desenvolvimento');
     const msg = $('programEditorMessage');
     if (msg) {
       msg.textContent = `Não é possível salvar a programação: “${first.nome || 'atividade'}” está sem ${missing.join(' e ')}.`;
       msg.classList.remove('success-message');
     }
-    const card = document.querySelector(`#programTimeline [data-edit-program-item="${first.id}"]`)?.closest('.program-timeline-item');
-    card?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    document.querySelector(`#programTimeline [data-edit-program-item="${first.id}"]`)?.closest('.program-timeline-item')?.scrollIntoView?.({ behavior:'smooth', block:'center' });
     return false;
   }
 
   function scheduleDecorate() {
     clearTimeout(decorateTimer);
-    decorateTimer = setTimeout(() => { void decorateTimeline(); decoratePreview(); }, 40);
+    decorateTimer = setTimeout(() => { void decorateTimeline(); }, 80);
   }
 
   async function decorateTimeline() {
-    const timeline = $('programTimeline');
-    if (!timeline) return;
-    const buttons = [...timeline.querySelectorAll('[data-edit-program-item]')];
-    const ids = buttons.map((b) => Number(b.dataset.editProgramItem || 0)).filter(Boolean);
-    if (!ids.length) return;
+    if (decorating) return;
+    decorating = true;
+    try {
+      const buttons = [...document.querySelectorAll('#programTimeline [data-edit-program-item]')];
+      const ids = buttons.map((b) => Number(b.dataset.editProgramItem || 0)).filter(Boolean);
+      if (!ids.length) return;
+      const { data: items, error } = await rt.client
+        .from('programacao_itens')
+        .select('id,tipo,condutor_chefe_id,condutor_jovem_id,desenvolvimento')
+        .in('id', ids);
+      if (error) return;
 
-    const { data: items, error } = await rt.client
-      .from('programacao_itens')
-      .select('id,tipo,nome,condutor_chefe_id,desenvolvimento')
-      .in('id', ids);
-    if (error) return;
-    const chiefIds = [...new Set((items || []).map((i) => Number(i.condutor_chefe_id || 0)).filter(Boolean))];
-    let chiefMap = new Map();
-    if (chiefIds.length) {
-      const { data: chiefs } = await rt.client.from('chefes').select('id,nome_completo').in('id', chiefIds);
-      chiefMap = new Map((chiefs || []).map((c) => [Number(c.id), c.nome_completo]));
-    }
-    const itemMap = new Map((items || []).map((i) => [Number(i.id), i]));
+      const chiefIds = [...new Set((items || []).map((i) => Number(i.condutor_chefe_id || 0)).filter(Boolean))];
+      const youthIds = [...new Set((items || []).map((i) => Number(i.condutor_jovem_id || 0)).filter(Boolean))];
+      const [chiefRes, youthRes] = await Promise.all([
+        chiefIds.length ? rt.client.from('chefes').select('id,nome_completo').in('id', chiefIds) : Promise.resolve({data:[]}),
+        youthIds.length ? rt.client.from('jovens').select('id,nome_completo').in('id', youthIds) : Promise.resolve({data:[]})
+      ]);
+      const chiefMap = new Map((chiefRes.data || []).map((c) => [Number(c.id), c.nome_completo]));
+      const youthMap = new Map((youthRes.data || []).map((j) => [Number(j.id), j.nome_completo]));
+      const itemMap = new Map((items || []).map((i) => [Number(i.id), i]));
 
-    buttons.forEach((button) => {
-      const id = Number(button.dataset.editProgramItem || 0);
-      const item = itemMap.get(id);
-      if (!item || item.tipo !== 'atividade') return;
-      const card = button.closest('.program-timeline-item');
-      if (!card) return;
-      const main = card.querySelector('.program-item-main');
-      const name = chiefMap.get(Number(item.condutor_chefe_id || 0)) || '';
-      let p = card.querySelector('.program-conductor');
-      if (!p) {
-        p = document.createElement('p');
-        p.className = 'program-conductor';
-        const heading = card.querySelector('.program-item-heading');
-        if (heading) heading.insertAdjacentElement('afterend', p); else main?.prepend(p);
-      }
-      if (name) {
-        p.classList.remove('program-required-missing-v58');
-        p.innerHTML = `Responsável: <strong>${esc(name)}</strong>`;
-      } else {
-        p.classList.add('program-required-missing-v58');
-        p.innerHTML = 'Responsável: <strong>Não informado</strong>';
-      }
-      const incomplete = !item.condutor_chefe_id || !String(item.desenvolvimento || '').trim();
-      card.classList.toggle('program-incomplete-v58', incomplete);
-    });
-  }
-
-  function decoratePreview() {
-    const preview = $('programPreviewTimeline');
-    if (!preview) return;
-    preview.querySelectorAll('.program-preview-item').forEach((card) => {
-      const main = card.querySelector('.program-preview-main');
-      if (!main) return;
-      const ps = [...main.querySelectorAll(':scope > p')];
-      const responsible = ps.find((p) => String(p.textContent || '').trim().startsWith('Responsável:'));
-      if (!responsible) {
-        const p = document.createElement('p');
-        p.className = 'program-required-missing-v58';
-        p.innerHTML = 'Responsável: <strong>Não informado</strong>';
-        main.querySelector('h3')?.insertAdjacentElement('afterend', p);
-      }
-    });
-  }
-
-  function installObservers() {
-    const timeline = $('programTimeline');
-    if (timeline && !timelineObserver) {
-      timelineObserver = new MutationObserver(scheduleDecorate);
-      timelineObserver.observe(timeline, { childList: true, subtree: true });
-    }
-    const preview = $('programPreviewTimeline');
-    if (preview && !previewObserver) {
-      previewObserver = new MutationObserver(scheduleDecorate);
-      previewObserver.observe(preview, { childList: true, subtree: true });
+      buttons.forEach((button) => {
+        const item = itemMap.get(Number(button.dataset.editProgramItem || 0));
+        if (!item || item.tipo !== 'atividade') return;
+        const card = button.closest('.program-timeline-item');
+        if (!card) return;
+        const chiefName = chiefMap.get(Number(item.condutor_chefe_id || 0)) || '';
+        const youthName = youthMap.get(Number(item.condutor_jovem_id || 0)) || '';
+        let p = card.querySelector('.program-conductor');
+        if (!p) {
+          p = document.createElement('p');
+          p.className = 'program-conductor';
+          card.querySelector('.program-item-heading')?.insertAdjacentElement('afterend', p);
+        }
+        if (youthName) {
+          p.classList.remove('program-required-missing-v58');
+          p.innerHTML = `Responsável: <strong>${esc(youthName)}</strong> <small>(Pioneiro)</small>`;
+        } else if (chiefName) {
+          p.classList.remove('program-required-missing-v58');
+          p.innerHTML = `Responsável: <strong>${esc(chiefName)}</strong>`;
+        } else {
+          p.classList.add('program-required-missing-v58');
+          p.innerHTML = 'Responsável: <strong>Não informado</strong>';
+        }
+        const incomplete = (!item.condutor_chefe_id && !item.condutor_jovem_id) || !String(item.desenvolvimento || '').trim();
+        card.classList.toggle('program-incomplete-v58', incomplete);
+      });
+    } finally {
+      decorating = false;
     }
   }
 
@@ -252,12 +220,10 @@
       if (!pilot || !(event.target instanceof Element)) return;
       const button = event.target.closest('button');
       if (!button) return;
-
       if (button.id === 'programAddManualButton' || button.matches('[data-edit-program-item]')) {
         setTimeout(refreshRequiredUi, 80);
-        setTimeout(scheduleDecorate, 120);
+        setTimeout(scheduleDecorate, 140);
       }
-
       if (!['programSaveBasicButton','programSaveNotesButton'].includes(button.id)) return;
       if (bypassButton === button) return;
       event.preventDefault();
@@ -272,10 +238,9 @@
 
     $('programItemType')?.addEventListener('change', refreshRequiredUi);
     const dialog = $('programItemDialog');
-    if (dialog) {
-      const obs = new MutationObserver(() => { if (dialog.open) setTimeout(refreshRequiredUi, 0); });
-      obs.observe(dialog, { attributes: true, attributeFilter: ['open'] });
-    }
+    if (dialog) new MutationObserver(() => { if (dialog.open) setTimeout(refreshRequiredUi, 0); }).observe(dialog, {attributes:true, attributeFilter:['open']});
+    const timeline = $('programTimeline');
+    if (timeline) new MutationObserver(scheduleDecorate).observe(timeline, {childList:true, subtree:true});
   }
 
   async function boot() {
@@ -284,7 +249,6 @@
     pilot = await resolvePilot();
     if (!pilot) return;
     injectStyles();
-    installObservers();
     installValidation();
     refreshRequiredUi();
     scheduleDecorate();
