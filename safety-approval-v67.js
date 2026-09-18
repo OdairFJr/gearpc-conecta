@@ -9,6 +9,8 @@
   let isDme = false;
   let decorating = false;
   let observer = null;
+  let refreshing = false;
+  let refreshTimer = null;
 
   const STATUS = {
     aguardando_dme: ['Aguardando DME', 'warn'],
@@ -323,9 +325,43 @@
   }
 
   async function refresh() {
-    try { await loadApprovals(); } catch (e) { console.warn('GEArPC safety approval v67', e); }
-    decorateCards();
-    renderDmePanel();
+    if (refreshing || !navigator.onLine) return;
+    refreshing = true;
+    try {
+      await loadApprovals();
+      decorateCards();
+      renderDmePanel();
+    } catch (e) {
+      console.warn('GEArPC safety approval v67', e);
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  function safetyVisible() {
+    const view = $('safetyViewV63');
+    return Boolean(view && !view.classList.contains('hidden') && document.visibilityState === 'visible');
+  }
+
+  function startReturnSync() {
+    if (refreshTimer) window.clearInterval(refreshTimer);
+    refreshTimer = window.setInterval(() => {
+      if (navigator.onLine && safetyVisible()) void refresh();
+    }, 20000);
+
+    window.addEventListener('focus', () => {
+      if (navigator.onLine) window.setTimeout(() => void refresh(), 120);
+    });
+
+    window.addEventListener('pageshow', () => {
+      if (navigator.onLine) window.setTimeout(() => void refresh(), 120);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        window.setTimeout(() => void refresh(), 120);
+      }
+    });
   }
 
   function wire() {
@@ -344,7 +380,8 @@
     $('safetyAskAdjustV67')?.addEventListener('click', () => reviewDecision('ajustes_solicitados'));
     $('safetyRejectV67')?.addEventListener('click', () => reviewDecision('reprovado'));
     $('safetyApproveV67')?.addEventListener('click', () => reviewDecision('aprovado'));
-    window.addEventListener('online', refresh);
+    window.addEventListener('online', () => void refresh());
+    startReturnSync();
   }
 
   function installObserver() {
