@@ -110,6 +110,9 @@
       .safety-dme-list-v67{display:grid;gap:9px}.safety-dme-card-v67{background:#fff;border:1px solid #dbe5ed;border-radius:12px;padding:12px}
       .safety-dme-card-v67 strong{color:#17324d}.safety-dme-meta-v67{margin-top:5px;font-size:.8rem;color:#61788c;display:flex;gap:8px;flex-wrap:wrap}
       .safety-dme-actions-v67{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+      .safety-section-return-panel-v67{margin:16px 18px;padding:14px;border:1px solid #cad9e5;border-radius:15px;background:#f8fbfd}
+      .safety-section-return-panel-v67 h3{margin:0;color:#17324d}.safety-section-return-panel-v67 p{margin:4px 0 12px;color:#637a8e;font-size:.88rem}
+      .safety-section-return-list-v67{display:grid;gap:9px}.safety-section-return-card-v67{background:#fff;border:1px solid #dbe5ed;border-radius:12px;padding:12px}
       .safety-review-dialog-v67{width:min(960px,calc(100vw - 18px));max-height:94vh;border:0;border-radius:18px;padding:0;box-shadow:0 22px 70px rgba(5,25,45,.28)}
       .safety-review-dialog-v67::backdrop{background:rgba(5,23,38,.58)}.safety-review-shell-v67{padding:18px;background:#fff}
       .safety-review-body-v67{display:grid;gap:12px;max-height:62vh;overflow:auto;padding:12px 0}.safety-review-section-v67{border:1px solid #dfe7ee;border-radius:12px;padding:12px;background:#fbfdff}
@@ -174,6 +177,42 @@
       const [label, cls] = STATUS[a.status] || [a.status, ''];
       return `<article class="safety-dme-card-v67"><div><strong>${esc(a.activity_name || 'Planejamento')}</strong><span class="safety-pill-v63 ${cls}" style="float:right">${esc(label)}</span></div><div class="safety-dme-meta-v67"><span>Enviado por: ${esc(a.submitted_by_name || '—')}</span><span>${esc(formatDate(a.submitted_at))}</span></div>${a.dme_comment ? `<div class="safety-approval-note-v67"><strong>Parecer:</strong> ${esc(a.dme_comment)}</div>` : ''}<div class="safety-dme-actions-v67"><button type="button" class="safety-mini-btn-v63" data-review-v67="${esc(a.visit_id)}">Analisar</button>${a.status === 'aprovado' ? `<button type="button" class="safety-mini-btn-v63" data-print-v67="${esc(a.visit_id)}">Imprimir / salvar PDF</button>` : ''}<button type="button" class="safety-mini-btn-v63 danger" data-delete-approval-v67="${esc(a.visit_id)}">Apagar</button></div></article>`;
     }).join('') : '<div class="safety-empty-v63">Nenhum planejamento enviado ao DME.</div>';
+  }
+
+  function injectSectionReturnPanel() {
+    if (isDme || $('safetySectionReturnPanelV67')) return;
+    const panel = document.createElement('section');
+    panel.id = 'safetySectionReturnPanelV67';
+    panel.className = 'safety-section-return-panel-v67';
+    panel.innerHTML = '<h3>📬 Retornos do DME da seção</h3><p>Todos os chefes vinculados à seção acompanham aqui a análise dos planejamentos enviados.</p><div id="safetySectionReturnListV67" class="safety-section-return-list-v67"></div>';
+    $('safetyVisitsPanelV63')?.insertAdjacentElement('beforebegin', panel);
+  }
+
+  function renderSectionReturnPanel() {
+    if (isDme) return;
+    injectSectionReturnPanel();
+    const box = $('safetySectionReturnListV67');
+    const panel = $('safetySectionReturnPanelV67');
+    if (!box || !panel) return;
+
+    const rows = approvals;
+    panel.classList.toggle('hidden', rows.length === 0);
+    if (!rows.length) {
+      box.innerHTML = '';
+      return;
+    }
+
+    box.innerHTML = rows.map((a) => {
+      const [label, cls] = STATUS[a.status] || [a.status, ''];
+      const sections = a.document_payload?.visit?.sections || a.document_payload?.plan?.sections || [];
+      const comment = a.dme_comment
+        ? `<div class="safety-approval-note-v67"><strong>Retorno do DME:</strong> ${esc(a.dme_comment)}</div>`
+        : '';
+      const approvedAction = a.status === 'aprovado'
+        ? `<div class="safety-dme-actions-v67"><button type="button" class="safety-mini-btn-v63" data-print-v67="${esc(a.visit_id)}">Imprimir / salvar PDF</button></div>`
+        : '';
+      return `<article class="safety-section-return-card-v67"><div><strong>${esc(a.activity_name || 'Planejamento')}</strong><span class="safety-pill-v63 ${cls}" style="float:right">${esc(label)}</span></div><div class="safety-dme-meta-v67"><span>Seção: ${esc(sections.join(', ') || '—')}</span><span>Enviado por: ${esc(a.submitted_by_name || '—')}</span><span>Atualizado: ${esc(formatDate(a.updated_at))}</span></div>${comment}${approvedAction}</article>`;
+    }).join('');
   }
 
   function setCardApproval(card, visitId) {
@@ -331,6 +370,7 @@
       await loadApprovals();
       decorateCards();
       renderDmePanel();
+      renderSectionReturnPanel();
     } catch (e) {
       console.warn('GEArPC safety approval v67', e);
     } finally {
@@ -398,6 +438,7 @@
     injectStyles();
     injectReviewDialog();
     injectDmePanel();
+    injectSectionReturnPanel();
     wire();
     installObserver();
     const banner = document.querySelector('.safety-test-banner-v63');
