@@ -8,11 +8,11 @@
   const $ = (id) => document.getElementById(id);
 
   let originalGeneralAccess = null;
-  let pilotEnabled = false;
-  let pilotResolved = false;
+  let enhancedProgrammingEnabled = false;
+  let isPilotProfile = false;
 
   function loadScriptOnce(id, src) {
-    if (!pilotEnabled || document.getElementById(id)) return;
+    if (document.getElementById(id)) return;
     const script = document.createElement('script');
     script.id = id;
     script.src = src;
@@ -20,13 +20,17 @@
     document.body.appendChild(script);
   }
 
-  function loadPilotModules() {
+  function loadApprovedProgrammingModules() {
     loadScriptOnce('programReviewHomeV55Script', 'programming-review-home-v55.js?v=55.0');
     loadScriptOnce('programmingRequiredV58Script', 'programming-required-v58.js?v=58.2');
     loadScriptOnce('programmingIdeaEditV581Script', 'programming-idea-edit-v58-1.js?v=58.2');
     loadScriptOnce('programmingResponsibleGeneralV60Script', 'programming-responsible-general-v60.js?v=60.0');
     loadScriptOnce('programmingOkCommentV59Script', 'programming-ok-comment-v59.js?v=59.0');
     loadScriptOnce('programmingOkCommentDisplayV591Script', 'programming-ok-comment-display-v59-1.js?v=59.1');
+  }
+
+  function loadPilotOnlyModules() {
+    if (!isPilotProfile) return;
     loadScriptOnce('birthdayPilotV61Script', 'birthday-pilot-v61.js?v=61.0');
   }
 
@@ -38,28 +42,32 @@
     return null;
   }
 
-  async function resolvePilot() {
+  async function resolveRelease() {
     const profile = await waitForProfile();
     if (!profile || !state.user?.id) {
-      pilotResolved = true;
-      pilotEnabled = false;
+      enhancedProgrammingEnabled = false;
+      isPilotProfile = false;
       return false;
     }
+
+    const isAdultAuthorized = profile.tipo === 'administrador' || profile.tipo === 'chefia' || profile.tipo === 'dirigente';
+    enhancedProgrammingEnabled = isAdultAuthorized;
+    if (enhancedProgrammingEnabled) loadApprovedProgrammingModules();
+
     if (profile.tipo === 'administrador') {
-      pilotResolved = true;
-      pilotEnabled = true;
-      loadPilotModules();
+      isPilotProfile = true;
+      loadPilotOnlyModules();
       return true;
     }
+
     const { data, error } = await client
       .from('perfis_usuarios')
       .select('eh_teste')
       .eq('user_id', state.user.id)
       .maybeSingle();
-    pilotResolved = true;
-    pilotEnabled = !error && data?.eh_teste === true;
-    if (pilotEnabled) loadPilotModules();
-    return pilotEnabled;
+    isPilotProfile = !error && data?.eh_teste === true;
+    loadPilotOnlyModules();
+    return enhancedProgrammingEnabled;
   }
 
   function enterProgrammingMode() {
@@ -85,8 +93,8 @@
     );
   }
 
-  function shouldEnterPilotFromClick(target) {
-    if (!(target instanceof Element) || !pilotEnabled) return false;
+  function shouldEnterEnhancedFromClick(target) {
+    if (!(target instanceof Element) || !enhancedProgrammingEnabled) return false;
     return Boolean(target.closest(
       '.program-list-card, #editProgramFromPreviewButton, [data-open-program-feedback], [data-review-home-open]'
     ));
@@ -96,7 +104,7 @@
     const target = event.target;
     const button = target instanceof Element ? target.closest('button') : null;
     if (button === $('programmingButton')) enterProgrammingMode();
-    if (shouldEnterPilotFromClick(target)) enterProgrammingMode();
+    if (shouldEnterEnhancedFromClick(target)) enterProgrammingMode();
     if (!button) return;
     if (button === $('programmingBackButton') || button === $('programmingLogoutButton') || button === $('logoutButton')) {
       window.setTimeout(leaveProgrammingMode, 0);
@@ -105,7 +113,7 @@
 
   const preview = $('programPreviewDialog');
   preview?.addEventListener('close', () => {
-    if (!pilotEnabled) return;
+    if (!enhancedProgrammingEnabled) return;
     window.setTimeout(() => {
       if (!programmingSurfaceActive()) leaveProgrammingMode();
     }, 0);
@@ -114,27 +122,27 @@
   const list = $('programmingView');
   const editor = $('programEditorView');
   const observer = new MutationObserver(() => {
-    if (pilotEnabled && programmingSurfaceActive()) enterProgrammingMode();
+    if (enhancedProgrammingEnabled && programmingSurfaceActive()) enterProgrammingMode();
   });
   if (list) observer.observe(list, { attributes: true, attributeFilter: ['class'] });
   if (editor) observer.observe(editor, { attributes: true, attributeFilter: ['class'] });
 
   client.auth.onAuthStateChange((_event, session) => {
     if (session) {
-      pilotResolved = false;
-      pilotEnabled = false;
-      window.setTimeout(() => { void resolvePilot(); }, 450);
+      enhancedProgrammingEnabled = false;
+      isPilotProfile = false;
+      window.setTimeout(() => { void resolveRelease(); }, 450);
     } else {
       leaveProgrammingMode();
-      pilotResolved = false;
-      pilotEnabled = false;
+      enhancedProgrammingEnabled = false;
+      isPilotProfile = false;
     }
   });
 
   client.auth.getSession().then(({ data }) => {
-    if (data?.session) window.setTimeout(() => { void resolvePilot(); }, 450);
+    if (data?.session) window.setTimeout(() => { void resolveRelease(); }, 450);
   }).catch(() => {});
 
   window.addEventListener('pagehide', leaveProgrammingMode);
-  void resolvePilot();
+  void resolveRelease();
 })();
