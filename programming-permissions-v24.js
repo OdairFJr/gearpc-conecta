@@ -32,6 +32,7 @@
   function loadPilotOnlyModules() {
     if (!isPilotProfile) return;
     loadScriptOnce('birthdayPilotV61Script', 'birthday-pilot-v61.js?v=61.0');
+    loadScriptOnce('activityMaterialsPilotV63Script', 'activity-materials-pilot-v63.js?v=63.0');
   }
 
   async function waitForProfile() {
