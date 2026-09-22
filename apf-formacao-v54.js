@@ -9,6 +9,7 @@
   let configs = [];
   let assessoramentos = [];
   let chiefs = [];
+  let pioneers = [];
   let currentApfId = null;
 
   const esc = (value) => String(value ?? '')
@@ -25,6 +26,7 @@
     return y && m && d ? new Date(y,m-1,d,12).toLocaleDateString('pt-BR') : value;
   }
   const chief = (id) => chiefs.find((c) => Number(c.id) === Number(id)) || null;
+  const pioneer = (id) => pioneers.find((p) => Number(p.id) === Number(id)) || null;
   const cfg = (id) => configs.find((c) => Number(c.chefe_id) === Number(id)) || null;
   const activeFor = (id) => assessoramentos.filter((a) => Number(a.apf_chefe_id) === Number(id) && a.status === 'ativo');
 
@@ -72,13 +74,23 @@
   }
 
   async function loadAll() {
-    const [c,a,h] = await Promise.all([
+    const [c,a,h,r] = await Promise.all([
       rt.client.from('apfs_disponiveis').select('id,chefe_id,disponivel,observacoes,preliminar_concluido,nivel_escotista,nivel_dirigente').order('chefe_id'),
-      rt.client.from('apf_assessoramentos').select('id,apf_chefe_id,assessorado_chefe_id,formacao,linha,data_inicio,status,data_fim,observacoes,criado_em').order('criado_em',{ascending:false}),
-      rt.client.from('chefes').select('id,nome_completo,ativo').eq('ativo',true).order('nome_completo')
+      rt.client.from('apf_assessoramentos').select('id,apf_chefe_id,assessorado_chefe_id,assessorado_jovem_id,formacao,linha,data_inicio,status,data_fim,observacoes,criado_em').order('criado_em',{ascending:false}),
+      rt.client.from('chefes').select('id,nome_completo,ativo').eq('ativo',true).order('nome_completo'),
+      rt.client.from('ramos').select('id,nome,ativo').eq('ativo',true)
     ]);
-    if (c.error) throw c.error; if (a.error) throw a.error; if (h.error) throw h.error;
-    configs = c.data || []; assessoramentos = a.data || []; chiefs = h.data || [];
+    if (c.error) throw c.error; if (a.error) throw a.error; if (h.error) throw h.error; if (r.error) throw r.error;
+    const pioneerRamo = (r.data || []).find((x) => /pioneir/i.test(String(x.nome || '')));
+    let youthRes = { data: [], error: null };
+    if (pioneerRamo?.id) {
+      youthRes = await rt.client.from('jovens').select('id,nome_completo,ramo_id,ativo').eq('ramo_id',pioneerRamo.id).eq('ativo',true).order('nome_completo');
+      if (youthRes.error) throw youthRes.error;
+    }
+    configs = c.data || [];
+    assessoramentos = a.data || [];
+    chiefs = h.data || [];
+    pioneers = youthRes.data || [];
   }
 
   async function refreshCards() {
@@ -102,7 +114,7 @@
       training.innerHTML = `<div><strong>Preliminar:</strong> ${config?.preliminar_concluido?'Concluído':'Não informado'}</div><div><strong>Linha Escotista:</strong> ${levelLabel(config?.nivel_escotista)}</div><div><strong>Linha Dirigente:</strong> ${levelLabel(config?.nivel_dirigente)}</div><div class="apf-cap-v54 ${active.length>=4?'full':''}">Capacidade: ${active.length} de 4 assessorados ativos</div>`;
       let block = card.querySelector('.apf-assignees-v54');
       if (!block) { block=document.createElement('div'); block.className='apf-assignees-v54'; card.appendChild(block); }
-      const items = active.map((a)=>{const p=chief(a.assessorado_chefe_id);return p?`<li>${esc(p.nome_completo)} — ${esc(formationLabel(a))}</li>`:'';}).filter(Boolean).join('');
+      const items = active.map((a)=>{const isPioneer=Boolean(a.assessorado_jovem_id);const p=isPioneer?pioneer(a.assessorado_jovem_id):chief(a.assessorado_chefe_id);return p?`<li>${esc(p.nome_completo)}${isPioneer?' — Pioneiro':''} — ${esc(formationLabel(a))}</li>`:'';}).filter(Boolean).join('');
       block.innerHTML = `<h4>Assessorados atuais</h4>${items?`<ul>${items}</ul>`:'<div style="font-size:.81rem;color:#718292">Nenhum assessorado ativo.</div>'}<button class="apf-assignees-btn-v54" type="button">${active.length>=4?'👥 Gerenciar assessorados (lotado)':'＋ Registrar / gerenciar assessorados'}</button>`;
       block.querySelector('button').addEventListener('click',()=>openAssessments(c.id));
     });
@@ -143,7 +155,7 @@
   function ensureDialog(){
     let d=$('apfAssessDialogV54'); if(d) return d;
     d=document.createElement('dialog');d.id='apfAssessDialogV54';d.className='apf-assess-dialog-v54';
-    d.innerHTML=`<div class="apf-assess-body-v54"><div class="eyebrow dark">ASSESSORIA PESSOAL DE FORMAÇÃO</div><h2 id="apfAssessTitleV54">Assessorados</h2><p class="apf-assess-sub-v54">Selecione os nomes dos adultos cadastrados no grupo.</p><div id="apfAssessSummaryV54" class="apf-assess-summary-v54"></div><form id="apfAssessFormV54" class="apf-assess-form-v54"><label>Assessorado<select id="apfAssessPersonV54" required></select></label><div class="apf-assess-grid-v54"><label>Formação / linha<select id="apfAssessFormationV54" required></select></label><label>Data de início<input id="apfAssessStartV54" type="date" required></label></div><label>Observação<textarea id="apfAssessObsV54" rows="2" placeholder="Opcional"></textarea></label><button id="apfAssessAddV54" class="apf-assess-add-v54" type="submit">＋ Registrar assessorado</button><p id="apfAssessMsgV54" class="apf-msg-v54"></p></form><div id="apfAssessListV54" class="apf-assess-list-v54"></div><button id="apfAssessCloseV54" class="apf-close-v54" type="button">Fechar</button></div>`;
+    d.innerHTML=`<div class="apf-assess-body-v54"><div class="eyebrow dark">ASSESSORIA PESSOAL DE FORMAÇÃO</div><h2 id="apfAssessTitleV54">Assessorados</h2><p class="apf-assess-sub-v54">Selecione os adultos ou Pioneiros cadastrados no grupo.</p><div id="apfAssessSummaryV54" class="apf-assess-summary-v54"></div><form id="apfAssessFormV54" class="apf-assess-form-v54"><label>Assessorado<select id="apfAssessPersonV54" required></select></label><div class="apf-assess-grid-v54"><label>Formação / linha<select id="apfAssessFormationV54" required></select></label><label>Data de início<input id="apfAssessStartV54" type="date" required></label></div><label>Observação<textarea id="apfAssessObsV54" rows="2" placeholder="Opcional"></textarea></label><button id="apfAssessAddV54" class="apf-assess-add-v54" type="submit">＋ Registrar assessorado</button><p id="apfAssessMsgV54" class="apf-msg-v54"></p></form><div id="apfAssessListV54" class="apf-assess-list-v54"></div><button id="apfAssessCloseV54" class="apf-close-v54" type="button">Fechar</button></div>`;
     document.body.appendChild(d);$('apfAssessCloseV54').addEventListener('click',()=>d.close());$('apfAssessFormV54').addEventListener('submit',addAssessment);return d;
   }
 
@@ -152,7 +164,7 @@
   function renderDialog(){
     const config=cfg(currentApfId), active=activeFor(currentApfId), rem=Math.max(0,4-active.length);
     $('apfAssessSummaryV54').innerHTML=`<strong>${active.length} de 4 assessorados ativos</strong><span>${rem?`${rem} vaga${rem===1?'':'s'} disponível${rem===1?'':'is'}`:'Lotado'}</span>`;
-    $('apfAssessPersonV54').innerHTML='<option value="">Selecione o adulto</option>'+chiefs.filter((c)=>Number(c.id)!==currentApfId).map((c)=>`<option value="${c.id}">${esc(c.nome_completo)}</option>`).join('');
+    $('apfAssessPersonV54').innerHTML='<option value="">Selecione o assessorado</option><optgroup label="Adultos">'+chiefs.filter((c)=>Number(c.id)!==currentApfId).map((c)=>`<option value="chefe:${c.id}">${esc(c.nome_completo)}</option>`).join('')+'</optgroup><optgroup label="Pioneiros">'+pioneers.map((p)=>`<option value="jovem:${p.id}">${esc(p.nome_completo)} — Pioneiro</option>`).join('')+'</optgroup>';
     const opts=allowedOptions(config);$('apfAssessFormationV54').innerHTML=opts.length?'<option value="">Selecione</option>'+opts.map(([v,l])=>`<option value="${v}">${esc(l)}</option>`).join(''):'<option value="">Cadastre primeiro a formação deste APF</option>';
     const add=$('apfAssessAddV54');add.disabled=active.length>=4||!opts.length;add.textContent=active.length>=4?'Limite de 4 assessorados atingido':'＋ Registrar assessorado';
     const list=$('apfAssessListV54');const all=assessoramentos.filter((a)=>Number(a.apf_chefe_id)===currentApfId), act=all.filter((a)=>a.status==='ativo'), hist=all.filter((a)=>a.status!=='ativo');list.innerHTML='';
@@ -160,13 +172,14 @@
   }
 
   function rowForAssessment(a,active){
-    const p=chief(a.assessorado_chefe_id),row=document.createElement('div');row.className='apf-assess-row-v54';row.innerHTML=`<strong>${esc(p?.nome_completo||'Adulto')}</strong><div class="apf-assess-meta-v54">${esc(formationLabel(a))} • início ${esc(dateBR(a.data_inicio))}${a.data_fim?` • fim ${esc(dateBR(a.data_fim))}`:''}${a.status!=='ativo'?` • ${a.status==='concluido'?'Concluído':'Encerrado'}`:''}</div>${a.observacoes?`<div class="apf-assess-meta-v54">${esc(a.observacoes)}</div>`:''}<div class="apf-assess-actions-v54">${active?'<button class="apf-done-v54" type="button">✓ Concluir</button><button class="apf-end-v54" type="button">Encerrar</button>':''}<button class="apf-delete-v54" type="button">Apagar</button></div>`;
+    const isPioneer=Boolean(a.assessorado_jovem_id),p=isPioneer?pioneer(a.assessorado_jovem_id):chief(a.assessorado_chefe_id),row=document.createElement('div');row.className='apf-assess-row-v54';row.innerHTML=`<strong>${esc(p?.nome_completo||(isPioneer?'Pioneiro':'Adulto'))}</strong>${isPioneer?'<div class="apf-assess-meta-v54">Pioneiro</div>':''}<div class="apf-assess-meta-v54">${esc(formationLabel(a))} • início ${esc(dateBR(a.data_inicio))}${a.data_fim?` • fim ${esc(dateBR(a.data_fim))}`:''}${a.status!=='ativo'?` • ${a.status==='concluido'?'Concluído':'Encerrado'}`:''}</div>${a.observacoes?`<div class="apf-assess-meta-v54">${esc(a.observacoes)}</div>`:''}<div class="apf-assess-actions-v54">${active?'<button class="apf-done-v54" type="button">✓ Concluir</button><button class="apf-end-v54" type="button">Encerrar</button>':''}<button class="apf-delete-v54" type="button">Apagar</button></div>`;
     if(active){row.querySelector('.apf-done-v54').addEventListener('click',()=>finish(a.id,'concluido'));row.querySelector('.apf-end-v54').addEventListener('click',()=>finish(a.id,'encerrado'));}row.querySelector('.apf-delete-v54').addEventListener('click',()=>removeAssessment(a.id,p?.nome_completo||'este assessorado'));return row;
   }
 
   async function addAssessment(e){
-    e.preventDefault();const msg=$('apfAssessMsgV54');msg.style.color='#9b2c2c';msg.textContent='';const assessorado=Number($('apfAssessPersonV54').value||0),[formacao,linhaRaw]=String($('apfAssessFormationV54').value||'').split(':');if(!assessorado||!formacao){msg.textContent='Selecione o assessorado e a formação.';return;}const b=$('apfAssessAddV54');b.disabled=true;b.textContent='Salvando...';
-    const {error}=await rt.client.from('apf_assessoramentos').insert({apf_chefe_id:currentApfId,assessorado_chefe_id:assessorado,formacao,linha:linhaRaw||null,data_inicio:$('apfAssessStartV54').value||today(),status:'ativo',observacoes:String($('apfAssessObsV54').value||'').trim()||null});
+    e.preventDefault();const msg=$('apfAssessMsgV54');msg.style.color='#9b2c2c';msg.textContent='';const person=String($('apfAssessPersonV54').value||''),[personType,personIdRaw]=person.split(':'),assessorado=Number(personIdRaw||0),[formacao,linhaRaw]=String($('apfAssessFormationV54').value||'').split(':');if(!assessorado||!['chefe','jovem'].includes(personType)||!formacao){msg.textContent='Selecione o assessorado e a formação.';return;}const b=$('apfAssessAddV54');b.disabled=true;b.textContent='Salvando...';
+    const payload={apf_chefe_id:currentApfId,assessorado_chefe_id:personType==='chefe'?assessorado:null,assessorado_jovem_id:personType==='jovem'?assessorado:null,formacao,linha:linhaRaw||null,data_inicio:$('apfAssessStartV54').value||today(),status:'ativo',observacoes:String($('apfAssessObsV54').value||'').trim()||null};
+    const {error}=await rt.client.from('apf_assessoramentos').insert(payload);
     if(error){msg.textContent=error.message||'Não foi possível registrar.';b.disabled=false;b.textContent='＋ Registrar assessorado';return;}msg.style.color='#177245';msg.textContent='✓ Assessorado registrado.';$('apfAssessPersonV54').value='';$('apfAssessFormationV54').value='';$('apfAssessObsV54').value='';await loadAll();renderDialog();decorateCards();
   }
 
