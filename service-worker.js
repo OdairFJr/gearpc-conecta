@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v64-service-exceptions';
+const CACHE_NAME = 'gearpc-conecta-offline-v65-service-branch-unified';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -40,7 +40,7 @@ const APP_SHELL = [
   './apf-formacao-v53.js',
   './admin-activity-v27.js',
   './service-branch-v30.js?v=50.0',
-  './service-branch-exceptions-pilot-v64.js?v=64.0',
+  './service-branch-exceptions-pilot-v64.js?v=65.0',
   './activity-materials-pilot-v63.js?v=63.1',
   './config.js',
   './logo-grupo.jpeg',
@@ -144,7 +144,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="service-branch-v30.js?v=50.0"></script>\n</body>');
   }
   if (!html.includes('service-branch-exceptions-pilot-v64.js')) {
-    html = html.replace('</body>', '  <script src="service-branch-exceptions-pilot-v64.js?v=64.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="service-branch-exceptions-pilot-v64.js?v=65.0"></script>\n</body>');
   }
   if (!html.includes('activity-materials-pilot-v63.js')) {
     html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.1"></script>\n</body>');
