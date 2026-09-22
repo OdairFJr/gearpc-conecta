@@ -2,12 +2,12 @@
   if (window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V80__) return;
   window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V80__ = true;
 
-  function loadImportModule() {
-    if (document.querySelector('script[data-gearpc-module="cycle-program-import-v81"]')) return;
+  function loadModule(id, src) {
+    if (document.querySelector(`script[data-gearpc-module="${id}"]`)) return;
     const script = document.createElement('script');
-    script.src = 'cycle-program-import-v81.js?v=81.0';
+    script.src = src;
     script.async = false;
-    script.dataset.gearpcModule = 'cycle-program-import-v81';
+    script.dataset.gearpcModule = id;
     document.head.appendChild(script);
   }
 
@@ -24,7 +24,8 @@
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
       const source = new TextDecoder('utf-8').decode(bytes);
       new Function(source)();
-      loadImportModule();
+      loadModule('cycle-program-import-v81', 'cycle-program-import-v81.js?v=81.0');
+      loadModule('programming-responsible-flex-v82', 'programming-responsible-flex-v82.js?v=82.0');
     } catch (error) {
       console.error('Falha ao carregar Ciclo de Programa (piloto v80):', error);
     }
