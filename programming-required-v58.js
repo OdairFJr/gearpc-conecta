@@ -112,12 +112,12 @@
     if (!programId) return [];
     const { data, error } = await rt.client
       .from('programacao_itens')
-      .select('id,nome,condutor_chefe_id,condutor_jovem_id,desenvolvimento,tipo')
+      .select('id,nome,condutor_chefe_id,condutor_jovem_id,condutor_externo_nome,desenvolvimento,tipo')
       .eq('programacao_id', programId)
       .eq('tipo', 'atividade');
     if (error) return [];
     return (data || []).filter((item) =>
-      (!item.condutor_chefe_id && !item.condutor_jovem_id) || !String(item.desenvolvimento || '').trim()
+      (!item.condutor_chefe_id && !item.condutor_jovem_id && !String(item.condutor_externo_nome || '').trim()) || !String(item.desenvolvimento || '').trim()
     );
   }
 
@@ -131,7 +131,7 @@
     if (!incomplete.length) return true;
     const first = incomplete[0];
     const missing = [];
-    if (!first.condutor_chefe_id && !first.condutor_jovem_id) missing.push('responsável pela condução');
+    if (!first.condutor_chefe_id && !first.condutor_jovem_id && !String(first.condutor_externo_nome || '').trim()) missing.push('responsável pela condução');
     if (!String(first.desenvolvimento || '').trim()) missing.push('desenvolvimento');
     const msg = $('programEditorMessage');
     if (msg) {
@@ -165,7 +165,7 @@
         if (!item || item.tipo !== 'atividade') return;
         const card = button.closest('.program-timeline-item');
         if (!card) return;
-        const incomplete = (!item.condutor_chefe_id && !item.condutor_jovem_id) || !String(item.desenvolvimento || '').trim();
+        const incomplete = (!item.condutor_chefe_id && !item.condutor_jovem_id && !String(item.condutor_externo_nome || '').trim()) || !String(item.desenvolvimento || '').trim();
         card.classList.toggle('program-incomplete-v58', incomplete);
       });
     } finally {
