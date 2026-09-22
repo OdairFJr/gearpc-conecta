@@ -11,7 +11,7 @@
     if (document.getElementById('apfFormationV54Script')) return;
     const script = document.createElement('script');
     script.id = 'apfFormationV54Script';
-    script.src = 'apf-formacao-v54.js?v=54.0';
+    script.src = 'apf-formacao-v54.js?v=54.1';
     script.async = false;
     document.body.appendChild(script);
   }
