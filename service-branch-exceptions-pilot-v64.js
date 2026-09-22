@@ -1,18 +1,14 @@
 (() => {
-  if (window.__GEARPC_SERVICE_BRANCH_UNIFIED_V65__) return;
-  window.__GEARPC_SERVICE_BRANCH_UNIFIED_V65__ = true;
+  if (window.__GEARPC_SERVICE_BRANCH_PILOT_V66__) return;
+  window.__GEARPC_SERVICE_BRANCH_PILOT_V66__ = true;
 
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const SERVICE_TITLE = 'Ramo de serviço do próximo sábado';
-  const EXCEPTION_CACHE = 'gearpc_service_branch_exceptions_v65';
-  const BASE_CACHE = 'gearpc_service_branch_calendar_v50';
-
+  const CACHE_KEY = 'gearpc_service_branch_exceptions_v66';
   let rt = null;
   let isAdmin = false;
-  let activeDate = '';
   let exceptions = new Map();
-  let saving = false;
+  let savingSpecial = false;
 
   function nextSaturdayDate(base = new Date()) {
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
@@ -28,49 +24,9 @@
     return `${y}-${m}-${d}`;
   }
 
-  function dateFromBR(text) {
+  function dateFromText(text) {
     const match = String(text || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
     return match ? `${match[3]}-${match[2]}-${match[1]}` : '';
-  }
-
-  function saturdayExpiryIso(isoDate) {
-    const [y,m,d] = String(isoDate).split('-').map(Number);
-    return new Date(y, m - 1, d, 23, 59, 59, 999).toISOString();
-  }
-
-  function safeParse(value) {
-    try {
-      const parsed = JSON.parse(value || '{}');
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (_) { return null; }
-  }
-
-  function responsaveisFromParsed(parsed) {
-    if (!parsed) return [];
-    if (Array.isArray(parsed.responsaveis) && parsed.responsaveis.length) {
-      return parsed.responsaveis.filter((x) => x?.nome).map((x) => ({
-        tipo: x.tipo === 'diretoria' ? 'diretoria' : 'ramo',
-        id: x.tipo === 'diretoria' ? 'diretoria' : Number(x.id),
-        nome: String(x.nome)
-      }));
-    }
-    if (Array.isArray(parsed.ramo_nomes) && parsed.ramo_nomes.length) {
-      return parsed.ramo_nomes.map((nome, index) => ({
-        tipo:'ramo', id:Number(parsed.ramo_ids?.[index] || 0), nome:String(nome)
-      }));
-    }
-    if (parsed.ramo_nome) {
-      return [{ tipo:'ramo', id:Number(parsed.ramo_id || 0), nome:String(parsed.ramo_nome) }];
-    }
-    return [];
-  }
-
-  function keyOf(item) {
-    return item.tipo === 'diretoria' ? 'diretoria' : `ramo:${Number(item.id)}`;
-  }
-
-  function displayResponsaveis(items) {
-    return (items || []).map((x) => x.nome).filter(Boolean).join(' • ');
   }
 
   async function waitRuntime() {
@@ -82,7 +38,7 @@
     return null;
   }
 
-  async function pilotProfile() {
+  async function isPilotProfile() {
     if (rt.state.profile?.tipo === 'administrador') return true;
     const { data, error } = await rt.client.from('perfis_usuarios')
       .select('eh_teste').eq('user_id', rt.state.user.id).maybeSingle();
@@ -90,74 +46,27 @@
   }
 
   function injectStyles() {
-    if ($('serviceBranchUnifiedStylesV65')) return;
+    if ($('serviceBranchPilotStylesV66')) return;
     const style = document.createElement('style');
-    style.id = 'serviceBranchUnifiedStylesV65';
+    style.id = 'serviceBranchPilotStylesV66';
     style.textContent = `
-      .service-branch-mode-v65{display:grid;gap:8px;margin-top:14px}
-      .service-branch-mode-v65>span{font-weight:800;color:#26394d}
-      .service-branch-mode-options-v65{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-      .service-branch-mode-option-v65{display:flex;align-items:center;gap:9px;border:1px solid #cbd4df;border-radius:12px;padding:11px;background:#fff;font-weight:800;color:#26394d;cursor:pointer}
-      .service-branch-mode-option-v65:has(input:checked){border-color:#0a376c;background:#edf4fc;color:#0a376c}
-      .service-branch-mode-option-v65 input{width:18px;height:18px;margin:0;accent-color:#0a376c}
-      .service-branch-field-hidden-v65{display:none!important}
-      .service-branch-special-v65{background:linear-gradient(135deg,#f3f5f7 0%,#fff 78%)!important;border-color:#8b98a6!important}
-      .service-branch-special-v65 #serviceBranchNameV30{background:#44556a!important;color:#fff!important}
-      @media(max-width:540px){.service-branch-mode-options-v65{grid-template-columns:1fr}}
+      .service-branch-no-section-v66{grid-column:1/-1;border-color:#9aa9b8!important;background:#f5f7f9!important}
+      .service-branch-no-section-v66:has(input:checked){border-color:#44556a!important;background:#e9edf1!important;color:#253647!important}
+      .service-branch-no-section-note-v66{display:block;font-size:11px;font-weight:600;color:#687887;margin-top:2px}
+      .service-branch-card-v66-special #serviceBranchNameV30{background:#44556a!important;color:#fff!important}
     `;
     document.head.appendChild(style);
   }
 
-  function removeOldExceptionUi() {
-    $('serviceBranchExceptionsButtonV64')?.remove();
-    $('serviceBranchExceptionsDialogV64')?.remove();
-  }
-
-  function ensureModeUi() {
-    const form = $('serviceBranchFormV30');
-    const choices = $('serviceBranchChoicesV30');
-    if (!form || !choices) return;
-    if (!$('serviceBranchModeV65')) {
-      const wrap = document.createElement('div');
-      wrap.id = 'serviceBranchModeV65';
-      wrap.className = 'service-branch-mode-v65';
-      wrap.innerHTML = `
-        <span>Situação deste sábado</span>
-        <div class="service-branch-mode-options-v65">
-          <label class="service-branch-mode-option-v65"><input type="radio" name="serviceBranchModeV65" value="normal" checked><span>Ramo de serviço</span></label>
-          <label class="service-branch-mode-option-v65"><input type="radio" name="serviceBranchModeV65" value="nenhuma_secao_sede"><span>Nenhuma seção na sede</span></label>
-        </div>`;
-      choices.closest('.service-branch-field-v30')?.insertAdjacentElement('beforebegin', wrap);
-      wrap.addEventListener('change', applyModeVisibility);
-    }
-    applyModeVisibility();
-  }
-
-  function mode() {
-    return document.querySelector('input[name="serviceBranchModeV65"]:checked')?.value || 'normal';
-  }
-
-  function applyModeVisibility() {
-    const special = mode() === 'nenhuma_secao_sede';
-    const field = $('serviceBranchChoicesV30')?.closest('.service-branch-field-v30');
-    field?.classList.toggle('service-branch-field-hidden-v65', special);
-    const help = $('serviceBranchDialogHelpV30');
-    if (help) {
-      help.textContent = special
-        ? 'Neste sábado não haverá nenhuma seção na sede.'
-        : 'Escolha um ou mais ramos e/ou a Diretoria para esta data.';
-    }
-  }
-
-  function readExceptionCache() {
+  function readCache() {
     try {
-      const rows = JSON.parse(localStorage.getItem(EXCEPTION_CACHE) || '[]');
-      if (Array.isArray(rows)) exceptions = new Map(rows.map((x) => [x.data, x]));
+      const rows = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+      if (Array.isArray(rows)) exceptions = new Map(rows.map((r) => [r.data, r]));
     } catch (_) {}
   }
 
-  function writeExceptionCache() {
-    try { localStorage.setItem(EXCEPTION_CACHE, JSON.stringify([...exceptions.values()])); } catch (_) {}
+  function writeCache() {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...exceptions.values()])); } catch (_) {}
   }
 
   async function loadExceptions() {
@@ -166,257 +75,206 @@
       .gte('data', isoDateLocal(nextSaturdayDate()))
       .order('data');
     if (!error) {
-      exceptions = new Map((data || []).map((x) => [x.data, x]));
-      writeExceptionCache();
+      exceptions = new Map((data || []).map((r) => [r.data, r]));
+      writeCache();
     } else {
-      readExceptionCache();
+      readCache();
     }
+    ensureSpecialChoice();
     decorateCalendar();
-    await refreshCard();
+    applyCard();
   }
 
-  async function findNotice(date) {
-    const { data, error } = await rt.client.from('avisos')
-      .select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo')
-      .eq('titulo', SERVICE_TITLE)
-      .eq('aviso_geral', true)
-      .eq('ativo', true)
-      .order('id', { ascending:false })
-      .limit(200);
-    if (error) throw error;
-    return (data || []).find((n) => safeParse(n.mensagem)?.data === date) || null;
+  function removeOldSeparateUi() {
+    $('serviceBranchExceptionsButtonV64')?.remove();
+    $('serviceBranchExceptionsDialogV64')?.remove();
   }
 
-  function setSelectedResponsaveis(responsaveis) {
-    const keys = new Set((responsaveis || []).map(keyOf));
-    document.querySelectorAll('#serviceBranchChoicesV30 input[type="checkbox"]').forEach((input) => {
-      input.checked = keys.has(input.value);
+  function currentEditorDate() {
+    return dateFromText($('serviceBranchDateInputV30')?.value || '');
+  }
+
+  function ensureSpecialChoice() {
+    const wrap = $('serviceBranchChoicesV30');
+    if (!wrap || !isAdmin) return;
+    let label = $('serviceBranchNoSectionV66');
+    if (!label) {
+      label = document.createElement('label');
+      label.id = 'serviceBranchNoSectionV66';
+      label.className = 'service-branch-choice-v30 service-branch-no-section-v66';
+      label.innerHTML = `
+        <input id="serviceBranchNoSectionInputV66" type="checkbox">
+        <span><strong>Nenhuma seção na sede</strong><small class="service-branch-no-section-note-v66">Neste sábado não haverá ramo de serviço.</small></span>`;
+      wrap.prepend(label);
+      label.querySelector('input')?.addEventListener('change', toggleNormalChoices);
+    }
+
+    const date = currentEditorDate();
+    const checked = date && exceptions.get(date)?.situacao === 'nenhuma_secao_sede';
+    const input = $('serviceBranchNoSectionInputV66');
+    if (input) input.checked = Boolean(checked);
+    toggleNormalChoices();
+  }
+
+  function toggleNormalChoices() {
+    const wrap = $('serviceBranchChoicesV30');
+    const special = $('serviceBranchNoSectionInputV66')?.checked === true;
+    if (!wrap) return;
+    [...wrap.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      if (input.id === 'serviceBranchNoSectionInputV66') return;
+      input.disabled = special;
     });
+    const help = wrap.parentElement?.querySelector('.service-branch-choice-help-v30');
+    if (help) {
+      help.textContent = special
+        ? 'Nenhum ramo precisa ser escolhido para este sábado.'
+        : 'Você pode marcar um ou mais ramos e também a Diretoria.';
+    }
   }
 
-  async function syncEditor(date) {
-    if (!date) return;
-    activeDate = date;
-    ensureModeUi();
-    const special = exceptions.get(date)?.situacao === 'nenhuma_secao_sede';
-    const radio = document.querySelector(`input[name="serviceBranchModeV65"][value="${special ? 'nenhuma_secao_sede' : 'normal'}"]`);
-    if (radio) radio.checked = true;
-
-    try {
-      const notice = await findNotice(date);
-      setSelectedResponsaveis(responsaveisFromParsed(safeParse(notice?.mensagem)));
-    } catch (_) {}
-    applyModeVisibility();
-    const msg = $('serviceBranchFormMessageV30');
-    if (msg) msg.textContent = '';
-  }
-
-  function selectedResponsaveis() {
-    return [...document.querySelectorAll('#serviceBranchChoicesV30 input[type="checkbox"]:checked')]
-      .map((input) => ({
-        tipo: input.dataset.tipo === 'diretoria' ? 'diretoria' : 'ramo',
-        id: input.dataset.tipo === 'diretoria' ? 'diretoria' : Number(input.dataset.id),
-        nome: input.dataset.nome || ''
-      })).filter((x) => x.nome);
-  }
-
-  function updateBaseCache(notice) {
-    if (!notice) return;
-    try {
-      const rows = JSON.parse(localStorage.getItem(BASE_CACHE) || '[]');
-      const list = Array.isArray(rows) ? rows : [];
-      const date = safeParse(notice.mensagem)?.data;
-      const filtered = list.filter((n) => safeParse(n?.mensagem)?.data !== date);
-      filtered.unshift(notice);
-      localStorage.setItem(BASE_CACHE, JSON.stringify(filtered));
-    } catch (_) {}
-  }
-
-  function calendarRowDate(row) {
-    return dateFromBR(row?.querySelector('.service-calendar-date-v50')?.textContent || '');
-  }
-
-  function setCalendarRow(date, text) {
-    document.querySelectorAll('#serviceCalendarListV50 .service-calendar-row-v50').forEach((row) => {
-      if (calendarRowDate(row) !== date) return;
-      const name = row.querySelector('.service-calendar-name-v50');
-      const button = row.querySelector('.service-calendar-edit-v50');
-      if (name) name.textContent = text;
-      if (button) button.textContent = 'Trocar';
-    });
+  function calendarDate(row) {
+    return dateFromText(row?.querySelector('.service-calendar-date-v50')?.textContent || '');
   }
 
   function decorateCalendar() {
     document.querySelectorAll('#serviceCalendarListV50 .service-calendar-row-v50').forEach((row) => {
-      const date = calendarRowDate(row);
-      if (!date || !exceptions.has(date)) return;
+      const date = calendarDate(row);
+      if (!date || exceptions.get(date)?.situacao !== 'nenhuma_secao_sede') return;
       const name = row.querySelector('.service-calendar-name-v50');
       const button = row.querySelector('.service-calendar-edit-v50');
-      if (name) name.textContent = 'Nenhuma seção na sede';
-      if (button) button.textContent = 'Alterar';
+      if (name && name.textContent !== 'Nenhuma seção na sede') name.textContent = 'Nenhuma seção na sede';
+      if (button && button.textContent !== 'Alterar') button.textContent = 'Alterar';
     });
   }
 
-  async function refreshCard(normalOverride = '') {
+  function applyCard() {
+    const date = isoDateLocal(nextSaturdayDate());
+    const special = exceptions.get(date)?.situacao === 'nenhuma_secao_sede';
     const card = $('serviceBranchCardV30');
     const name = $('serviceBranchNameV30');
     const icon = card?.querySelector('.service-branch-icon-v30');
     if (!card || !name || !icon) return;
-    const date = isoDateLocal(nextSaturdayDate());
 
-    if (exceptions.get(date)?.situacao === 'nenhuma_secao_sede') {
-      if (!card.classList.contains('service-branch-special-v65')) card.classList.add('service-branch-special-v65');
-      if (name.classList.contains('service-branch-pending-v30')) name.classList.remove('service-branch-pending-v30');
+    if (special) {
+      if (!card.classList.contains('service-branch-card-v66-special')) card.classList.add('service-branch-card-v66-special');
       if (name.textContent !== 'Nenhuma seção na sede — não haverá ramo de serviço') name.textContent = 'Nenhuma seção na sede — não haverá ramo de serviço';
-      if (icon.textContent !== '🏕️') icon.textContent = '🏕️';
-      return;
-    }
-
-    if (card.classList.contains('service-branch-special-v65')) card.classList.remove('service-branch-special-v65');
-    if (icon.textContent !== '📣') icon.textContent = '📣';
-    if (normalOverride) {
-      if (name.textContent !== normalOverride) name.textContent = normalOverride;
       if (name.classList.contains('service-branch-pending-v30')) name.classList.remove('service-branch-pending-v30');
-      return;
+      if (icon.textContent !== '🏕️') icon.textContent = '🏕️';
+    } else {
+      if (card.classList.contains('service-branch-card-v66-special')) card.classList.remove('service-branch-card-v66-special');
+      if (icon.textContent === '🏕️') icon.textContent = '📣';
     }
-    try {
-      const notice = await findNotice(date);
-      const resp = responsaveisFromParsed(safeParse(notice?.mensagem));
-      const nextText = resp.length ? displayResponsaveis(resp) : 'Aguardando definição';
-      if (name.textContent !== nextText) name.textContent = nextText;
-      name.classList.toggle('service-branch-pending-v30', !resp.length);
-    } catch (_) {}
   }
 
-  async function saveUnified(event) {
-    if (!isAdmin || saving) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
+  async function saveSpecial(event) {
+    if (!isAdmin || savingSpecial) return;
+    const form = $('serviceBranchFormV30');
+    if (!form) return;
 
-    const message = $('serviceBranchFormMessageV30');
-    const button = $('serviceBranchSaveV30');
-    const date = activeDate || dateFromBR($('serviceBranchDateInputV30')?.value || '');
-    if (!date) {
-      if (message) message.textContent = 'Não foi possível identificar o sábado selecionado.';
+    if (form.dataset.serviceBranchV66Bypass === '1') {
+      delete form.dataset.serviceBranchV66Bypass;
       return;
     }
 
-    saving = true;
-    if (button) button.disabled = true;
+    const date = currentEditorDate();
+    if (!date) return;
+    const special = $('serviceBranchNoSectionInputV66')?.checked === true;
+    const hasExistingSpecial = exceptions.get(date)?.situacao === 'nenhuma_secao_sede';
+
+    if (!special && !hasExistingSpecial) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const message = $('serviceBranchFormMessageV30');
+    const saveButton = $('serviceBranchSaveV30');
+    savingSpecial = true;
+    if (saveButton) saveButton.disabled = true;
     if (message) message.textContent = 'Salvando...';
 
     try {
-      if (mode() === 'nenhuma_secao_sede') {
-        const { data, error } = await rt.client.from('ramo_servico_excecoes').upsert({
-          data:date,
-          situacao:'nenhuma_secao_sede',
-          criado_por:rt.state.user.id,
-          atualizado_em:new Date().toISOString()
-        }, { onConflict:'data' }).select('data,situacao,atualizado_em').single();
+      if (special) {
+        const { error } = await rt.client.from('ramo_servico_excecoes').upsert({
+          data: date,
+          situacao: 'nenhuma_secao_sede',
+          criado_por: rt.state.user.id,
+          atualizado_em: new Date().toISOString()
+        }, { onConflict:'data' });
         if (error) throw error;
-        exceptions.set(date, data);
-        writeExceptionCache();
-        setCalendarRow(date, 'Nenhuma seção na sede');
-        await refreshCard();
+
+        exceptions.set(date, { data:date, situacao:'nenhuma_secao_sede', atualizado_em:new Date().toISOString() });
+        writeCache();
         if (message) message.textContent = 'Salvo.';
+        decorateCalendar();
+        applyCard();
         $('serviceBranchDialogV30')?.close();
         return;
       }
 
-      const responsaveis = selectedResponsaveis();
-      if (!responsaveis.length) {
-        if (message) message.textContent = 'Selecione pelo menos um ramo ou a Diretoria.';
-        return;
-      }
-
-      const { error:deleteError } = await rt.client.from('ramo_servico_excecoes').delete().eq('data', date);
-      if (deleteError) throw deleteError;
+      const { error } = await rt.client.from('ramo_servico_excecoes').delete().eq('data', date);
+      if (error) throw error;
       exceptions.delete(date);
-      writeExceptionCache();
+      writeCache();
+      if (message) message.textContent = 'Salvando ramo de serviço...';
 
-      const ramos = responsaveis.filter((x) => x.tipo === 'ramo');
-      const payloadMessage = JSON.stringify({
-        tipo:'ramo_servico_sabado',
-        data,
-        responsaveis,
-        ramo_ids:ramos.map((x) => x.id),
-        ramo_nomes:ramos.map((x) => x.nome),
-        inclui_diretoria:responsaveis.some((x) => x.tipo === 'diretoria'),
-        ramo_id:ramos[0]?.id || null,
-        ramo_nome:displayResponsaveis(responsaveis)
-      });
-      const payload = {
-        titulo:SERVICE_TITLE,
-        mensagem:payloadMessage,
-        aviso_geral:true,
-        destaque:true,
-        publicado_em:new Date().toISOString(),
-        expira_em:saturdayExpiryIso(date),
-        ativo:true
-      };
-
-      const existing = await findNotice(date);
-      const response = existing?.id
-        ? await rt.client.from('avisos').update(payload).eq('id', existing.id)
-            .select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo').single()
-        : await rt.client.from('avisos').insert(payload)
-            .select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo').single();
-
-      if (response.error) throw response.error;
-      updateBaseCache(response.data);
-      const label = displayResponsaveis(responsaveis);
-      setCalendarRow(date, label);
-      if (date === isoDateLocal(nextSaturdayDate())) await refreshCard(label);
-      else await refreshCard();
-
-      if (message) message.textContent = 'Ramo de serviço salvo.';
-      $('serviceBranchDialogV30')?.close();
+      form.dataset.serviceBranchV66Bypass = '1';
+      if (saveButton) saveButton.disabled = false;
+      savingSpecial = false;
+      form.requestSubmit();
+      return;
     } catch (error) {
-      console.error('GEArPC ramo de serviço:', error);
+      console.error('Ramo de serviço:', error);
       if (message) message.textContent = `Não foi possível salvar: ${error?.message || 'erro inesperado'}`;
     } finally {
-      saving = false;
-      if (button) button.disabled = false;
+      if (savingSpecial) {
+        savingSpecial = false;
+        if (saveButton) saveButton.disabled = false;
+      }
     }
   }
 
-  function bind() {
-    const form = $('serviceBranchFormV30');
-    form?.addEventListener('submit', (event) => { void saveUnified(event); }, true);
-
-    document.addEventListener('click', (event) => {
-      if (!(event.target instanceof Element)) return;
-      const button = event.target.closest('.service-calendar-edit-v50');
-      if (!button) return;
-      const row = button.closest('.service-calendar-row-v50');
-      activeDate = calendarRowDate(row);
-      setTimeout(() => { void syncEditor(activeDate); }, 50);
-    }, true);
-
+  function observeDialog() {
     const dialog = $('serviceBranchDialogV30');
-    if (dialog) new MutationObserver(() => {
+    if (!dialog) return;
+    new MutationObserver(() => {
       if (!dialog.open) return;
-      const date = activeDate || dateFromBR($('serviceBranchDateInputV30')?.value || '');
-      if (date) setTimeout(() => { void syncEditor(date); }, 20);
+      setTimeout(() => ensureSpecialChoice(), 20);
     }).observe(dialog, { attributes:true, attributeFilter:['open'] });
+  }
 
-    const calendar = $('serviceCalendarListV50');
-    if (calendar) new MutationObserver(() => decorateCalendar()).observe(calendar, { childList:true, subtree:true });
+  function observeCalendar() {
+    const wrap = $('serviceCalendarListV50');
+    if (!wrap) return;
+    let timer = null;
+    new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(decorateCalendar, 30);
+    }).observe(wrap, { childList:true, subtree:true });
+  }
 
-    const card = $('serviceBranchCardV30');
-    if (card) new MutationObserver(() => setTimeout(() => { void refreshCard(); }, 30))
-      .observe(card, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['class'] });
+  function observeCard() {
+    const name = $('serviceBranchNameV30');
+    if (!name) return;
+    let timer = null;
+    new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(applyCard, 30);
+    }).observe(name, { childList:true, characterData:true, subtree:true });
   }
 
   async function boot() {
     rt = await waitRuntime();
-    if (!rt || !(await pilotProfile())) return;
+    if (!rt || !(await isPilotProfile())) return;
     isAdmin = rt.state.profile?.tipo === 'administrador';
     injectStyles();
-    removeOldExceptionUi();
-    ensureModeUi();
-    readExceptionCache();
-    bind();
+    removeOldSeparateUi();
+    readCache();
+
+    const form = $('serviceBranchFormV30');
+    form?.addEventListener('submit', (event) => { void saveSpecial(event); }, true);
+
+    observeDialog();
+    observeCalendar();
+    observeCard();
     await loadExceptions();
   }
 
