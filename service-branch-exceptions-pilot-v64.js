@@ -1,36 +1,24 @@
 (() => {
-  if (window.__GEARPC_SERVICE_BRANCH_EXCEPTIONS_V64__) return;
-  window.__GEARPC_SERVICE_BRANCH_EXCEPTIONS_V64__ = true;
+  if (window.__GEARPC_SERVICE_BRANCH_UNIFIED_V65__) return;
+  window.__GEARPC_SERVICE_BRANCH_UNIFIED_V65__ = true;
 
-  const CACHE_KEY = 'gearpc_service_branch_exceptions_v64';
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const SERVICE_TITLE = 'Ramo de serviço do próximo sábado';
+  const EXCEPTION_CACHE = 'gearpc_service_branch_exceptions_v65';
+  const BASE_CACHE = 'gearpc_service_branch_calendar_v50';
+
   let rt = null;
   let isAdmin = false;
+  let activeDate = '';
   let exceptions = new Map();
-  let cardSnapshot = null;
-
-  const LABELS = {
-    sede_indisponivel: 'Sede indisponível — não haverá ramo de serviço',
-    nenhuma_secao_sede: 'Nenhuma seção em sede — não haverá ramo de serviço'
-  };
-
-  const ICONS = {
-    sede_indisponivel: '🚫',
-    nenhuma_secao_sede: '🏕️'
-  };
+  let saving = false;
 
   function nextSaturdayDate(base = new Date()) {
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
     const days = (6 - d.getDay() + 7) % 7;
     d.setDate(d.getDate() + days);
     return d;
-  }
-
-  function addDays(date, amount) {
-    const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0, 0);
-    copy.setDate(copy.getDate() + amount);
-    return copy;
   }
 
   function isoDateLocal(date) {
@@ -40,11 +28,49 @@
     return `${y}-${m}-${d}`;
   }
 
-  function formatDateBR(isoDate) {
+  function dateFromBR(text) {
+    const match = String(text || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    return match ? `${match[3]}-${match[2]}-${match[1]}` : '';
+  }
+
+  function saturdayExpiryIso(isoDate) {
     const [y,m,d] = String(isoDate).split('-').map(Number);
-    return new Date(y,m-1,d,12,0,0).toLocaleDateString('pt-BR', {
-      weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'
-    });
+    return new Date(y, m - 1, d, 23, 59, 59, 999).toISOString();
+  }
+
+  function safeParse(value) {
+    try {
+      const parsed = JSON.parse(value || '{}');
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (_) { return null; }
+  }
+
+  function responsaveisFromParsed(parsed) {
+    if (!parsed) return [];
+    if (Array.isArray(parsed.responsaveis) && parsed.responsaveis.length) {
+      return parsed.responsaveis.filter((x) => x?.nome).map((x) => ({
+        tipo: x.tipo === 'diretoria' ? 'diretoria' : 'ramo',
+        id: x.tipo === 'diretoria' ? 'diretoria' : Number(x.id),
+        nome: String(x.nome)
+      }));
+    }
+    if (Array.isArray(parsed.ramo_nomes) && parsed.ramo_nomes.length) {
+      return parsed.ramo_nomes.map((nome, index) => ({
+        tipo:'ramo', id:Number(parsed.ramo_ids?.[index] || 0), nome:String(nome)
+      }));
+    }
+    if (parsed.ramo_nome) {
+      return [{ tipo:'ramo', id:Number(parsed.ramo_id || 0), nome:String(parsed.ramo_nome) }];
+    }
+    return [];
+  }
+
+  function keyOf(item) {
+    return item.tipo === 'diretoria' ? 'diretoria' : `ramo:${Number(item.id)}`;
+  }
+
+  function displayResponsaveis(items) {
+    return (items || []).map((x) => x.nome).filter(Boolean).join(' • ');
   }
 
   async function waitRuntime() {
@@ -56,243 +82,340 @@
     return null;
   }
 
-  async function isPilotProfile() {
+  async function pilotProfile() {
     if (rt.state.profile?.tipo === 'administrador') return true;
-    const { data, error } = await rt.client
-      .from('perfis_usuarios')
-      .select('eh_teste')
-      .eq('user_id', rt.state.user.id)
-      .maybeSingle();
+    const { data, error } = await rt.client.from('perfis_usuarios')
+      .select('eh_teste').eq('user_id', rt.state.user.id).maybeSingle();
     return !error && data?.eh_teste === true;
   }
 
   function injectStyles() {
-    if ($('serviceBranchExceptionsStylesV64')) return;
+    if ($('serviceBranchUnifiedStylesV65')) return;
     const style = document.createElement('style');
-    style.id = 'serviceBranchExceptionsStylesV64';
+    style.id = 'serviceBranchUnifiedStylesV65';
     style.textContent = `
-      .service-branch-special-v64{background:linear-gradient(135deg,#f3f5f7 0%,#fff 78%)!important;border-color:#8b98a6!important}
-      .service-branch-special-v64 #serviceBranchNameV30{background:#44556a!important;color:#fff!important}
-      .service-exceptions-dialog-v64{border:0;border-radius:20px;padding:0;width:min(94vw,620px);max-height:88vh;box-shadow:0 22px 60px rgba(0,0,0,.28)}
-      .service-exceptions-dialog-v64::backdrop{background:rgba(4,20,38,.62)}
-      .service-exceptions-body-v64{padding:22px}
-      .service-exceptions-body-v64 h2{margin:4px 0 6px;color:#0a376c}
-      .service-exceptions-body-v64>p{margin:0 0 15px;color:#626b75;line-height:1.45}
-      .service-exceptions-list-v64{display:grid;gap:9px;max-height:58vh;overflow:auto;padding-right:3px}
-      .service-exception-row-v64{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,1fr) auto;gap:9px;align-items:center;padding:11px;border:1px solid #d5dde7;border-radius:12px;background:#fff}
-      .service-exception-date-v64{font-weight:900;color:#0a376c;text-transform:capitalize}
-      .service-exception-row-v64 select{width:100%;border:1px solid #cbd4df;border-radius:10px;padding:9px;font:inherit;background:#fff;color:#26394d}
-      .service-exception-save-v64{border:0;border-radius:10px;padding:9px 11px;background:#0a376c;color:#fff;font-weight:800}
-      .service-exception-saved-v64{font-size:12px;color:#2f6f45;margin-top:4px;min-height:16px}
-      .service-exceptions-actions-v64{display:flex;justify-content:flex-end;margin-top:16px}
-      @media(max-width:560px){.service-exception-row-v64{grid-template-columns:1fr}.service-exception-save-v64{width:100%}}
+      .service-branch-mode-v65{display:grid;gap:8px;margin-top:14px}
+      .service-branch-mode-v65>span{font-weight:800;color:#26394d}
+      .service-branch-mode-options-v65{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+      .service-branch-mode-option-v65{display:flex;align-items:center;gap:9px;border:1px solid #cbd4df;border-radius:12px;padding:11px;background:#fff;font-weight:800;color:#26394d;cursor:pointer}
+      .service-branch-mode-option-v65:has(input:checked){border-color:#0a376c;background:#edf4fc;color:#0a376c}
+      .service-branch-mode-option-v65 input{width:18px;height:18px;margin:0;accent-color:#0a376c}
+      .service-branch-field-hidden-v65{display:none!important}
+      .service-branch-special-v65{background:linear-gradient(135deg,#f3f5f7 0%,#fff 78%)!important;border-color:#8b98a6!important}
+      .service-branch-special-v65 #serviceBranchNameV30{background:#44556a!important;color:#fff!important}
+      @media(max-width:540px){.service-branch-mode-options-v65{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
   }
 
-  function readCache() {
+  function removeOldExceptionUi() {
+    $('serviceBranchExceptionsButtonV64')?.remove();
+    $('serviceBranchExceptionsDialogV64')?.remove();
+  }
+
+  function ensureModeUi() {
+    const form = $('serviceBranchFormV30');
+    const choices = $('serviceBranchChoicesV30');
+    if (!form || !choices) return;
+    if (!$('serviceBranchModeV65')) {
+      const wrap = document.createElement('div');
+      wrap.id = 'serviceBranchModeV65';
+      wrap.className = 'service-branch-mode-v65';
+      wrap.innerHTML = `
+        <span>Situação deste sábado</span>
+        <div class="service-branch-mode-options-v65">
+          <label class="service-branch-mode-option-v65"><input type="radio" name="serviceBranchModeV65" value="normal" checked><span>Ramo de serviço</span></label>
+          <label class="service-branch-mode-option-v65"><input type="radio" name="serviceBranchModeV65" value="nenhuma_secao_sede"><span>Nenhuma seção na sede</span></label>
+        </div>`;
+      choices.closest('.service-branch-field-v30')?.insertAdjacentElement('beforebegin', wrap);
+      wrap.addEventListener('change', applyModeVisibility);
+    }
+    applyModeVisibility();
+  }
+
+  function mode() {
+    return document.querySelector('input[name="serviceBranchModeV65"]:checked')?.value || 'normal';
+  }
+
+  function applyModeVisibility() {
+    const special = mode() === 'nenhuma_secao_sede';
+    const field = $('serviceBranchChoicesV30')?.closest('.service-branch-field-v30');
+    field?.classList.toggle('service-branch-field-hidden-v65', special);
+    const help = $('serviceBranchDialogHelpV30');
+    if (help) {
+      help.textContent = special
+        ? 'Neste sábado não haverá nenhuma seção na sede.'
+        : 'Escolha um ou mais ramos e/ou a Diretoria para esta data.';
+    }
+  }
+
+  function readExceptionCache() {
     try {
-      const rows = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
-      if (Array.isArray(rows)) {
-        exceptions = new Map(rows.map((r) => [r.data, r]));
-      }
+      const rows = JSON.parse(localStorage.getItem(EXCEPTION_CACHE) || '[]');
+      if (Array.isArray(rows)) exceptions = new Map(rows.map((x) => [x.data, x]));
     } catch (_) {}
   }
 
-  function writeCache() {
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify([...exceptions.values()])); } catch (_) {}
+  function writeExceptionCache() {
+    try { localStorage.setItem(EXCEPTION_CACHE, JSON.stringify([...exceptions.values()])); } catch (_) {}
   }
 
   async function loadExceptions() {
-    const { data, error } = await rt.client
-      .from('ramo_servico_excecoes')
+    const { data, error } = await rt.client.from('ramo_servico_excecoes')
       .select('data,situacao,atualizado_em')
       .gte('data', isoDateLocal(nextSaturdayDate()))
       .order('data');
-    if (error) {
-      readCache();
+    if (!error) {
+      exceptions = new Map((data || []).map((x) => [x.data, x]));
+      writeExceptionCache();
     } else {
-      exceptions = new Map((data || []).map((r) => [r.data, r]));
-      writeCache();
+      readExceptionCache();
     }
-    applyCard();
-    renderDialogRows();
+    decorateCalendar();
+    await refreshCard();
   }
 
-  function ensureAdminButton() {
-    if (!isAdmin || $('serviceBranchExceptionsButtonV64')) return;
-    const wrap = $('serviceBranchAdminV30');
-    if (!wrap) return;
-    const btn = document.createElement('button');
-    btn.id = 'serviceBranchExceptionsButtonV64';
-    btn.className = 'service-branch-button-v30 secondary';
-    btn.type = 'button';
-    btn.textContent = 'Sem ramo / sede';
-    btn.addEventListener('click', openDialog);
-    wrap.appendChild(btn);
+  async function findNotice(date) {
+    const { data, error } = await rt.client.from('avisos')
+      .select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo')
+      .eq('titulo', SERVICE_TITLE)
+      .eq('aviso_geral', true)
+      .eq('ativo', true)
+      .order('id', { ascending:false })
+      .limit(200);
+    if (error) throw error;
+    return (data || []).find((n) => safeParse(n.mensagem)?.data === date) || null;
   }
 
-  function ensureDialog() {
-    let dialog = $('serviceBranchExceptionsDialogV64');
-    if (dialog) return dialog;
-    dialog = document.createElement('dialog');
-    dialog.id = 'serviceBranchExceptionsDialogV64';
-    dialog.className = 'service-exceptions-dialog-v64';
-    dialog.innerHTML = `
-      <div class="service-exceptions-body-v64">
-        <div class="service-branch-kicker-v30">ADMINISTRADOR</div>
-        <h2>Sábados sem ramo de serviço</h2>
-        <p>Use estas opções quando a sede não puder ser utilizada ou quando nenhuma seção estiver em sede. O calendário normal do ramo de serviço fica preservado.</p>
-        <div id="serviceBranchExceptionsListV64" class="service-exceptions-list-v64"></div>
-        <div class="service-exceptions-actions-v64">
-          <button id="serviceBranchExceptionsCloseV64" class="service-branch-button-v30 secondary" type="button">Fechar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(dialog);
-    $('serviceBranchExceptionsCloseV64')?.addEventListener('click', () => dialog.close());
-    return dialog;
+  function setSelectedResponsaveis(responsaveis) {
+    const keys = new Set((responsaveis || []).map(keyOf));
+    document.querySelectorAll('#serviceBranchChoicesV30 input[type="checkbox"]').forEach((input) => {
+      input.checked = keys.has(input.value);
+    });
   }
 
-  function renderDialogRows() {
-    const wrap = $('serviceBranchExceptionsListV64');
-    if (!wrap) return;
-    const first = nextSaturdayDate();
-    wrap.innerHTML = '';
-    for (let i = 0; i < 26; i += 1) {
-      const date = isoDateLocal(addDays(first, i * 7));
-      const current = exceptions.get(date)?.situacao || '';
-      const row = document.createElement('div');
-      row.className = 'service-exception-row-v64';
-      row.innerHTML = `
-        <div><div class="service-exception-date-v64">${formatDateBR(date)}</div><div class="service-exception-saved-v64" data-service-exception-status></div></div>
-        <select aria-label="Situação da sede">
-          <option value="">Ramo de serviço normal</option>
-          <option value="sede_indisponivel">Sede indisponível</option>
-          <option value="nenhuma_secao_sede">Nenhuma seção em sede</option>
-        </select>
-        <button class="service-exception-save-v64" type="button">Salvar</button>`;
-      const select = row.querySelector('select');
-      select.value = current;
-      row.querySelector('button').addEventListener('click', () => saveException(date, select.value, row));
-      wrap.appendChild(row);
-    }
+  async function syncEditor(date) {
+    if (!date) return;
+    activeDate = date;
+    ensureModeUi();
+    const special = exceptions.get(date)?.situacao === 'nenhuma_secao_sede';
+    const radio = document.querySelector(`input[name="serviceBranchModeV65"][value="${special ? 'nenhuma_secao_sede' : 'normal'}"]`);
+    if (radio) radio.checked = true;
+
+    try {
+      const notice = await findNotice(date);
+      setSelectedResponsaveis(responsaveisFromParsed(safeParse(notice?.mensagem)));
+    } catch (_) {}
+    applyModeVisibility();
+    const msg = $('serviceBranchFormMessageV30');
+    if (msg) msg.textContent = '';
   }
 
-  async function saveException(date, situacao, row) {
-    if (!isAdmin) return;
-    const button = row.querySelector('button');
-    const status = row.querySelector('[data-service-exception-status]');
-    button.disabled = true;
-    if (status) status.textContent = 'Salvando...';
-
-    let error = null;
-    if (!situacao) {
-      ({ error } = await rt.client.from('ramo_servico_excecoes').delete().eq('data', date));
-      if (!error) exceptions.delete(date);
-    } else {
-      const response = await rt.client.from('ramo_servico_excecoes').upsert({
-        data,
-        situacao,
-        criado_por: rt.state.user.id,
-        atualizado_em: new Date().toISOString()
-      }, { onConflict: 'data' }).select('data,situacao,atualizado_em').single();
-      error = response.error;
-      if (!error && response.data) exceptions.set(date, response.data);
-    }
-
-    button.disabled = false;
-    if (error) {
-      if (status) status.textContent = 'Não foi possível salvar.';
-      return;
-    }
-    writeCache();
-    if (status) status.textContent = 'Salvo.';
-    applyCard();
-    window.setTimeout(() => { if (status) status.textContent = ''; }, 1600);
+  function selectedResponsaveis() {
+    return [...document.querySelectorAll('#serviceBranchChoicesV30 input[type="checkbox"]:checked')]
+      .map((input) => ({
+        tipo: input.dataset.tipo === 'diretoria' ? 'diretoria' : 'ramo',
+        id: input.dataset.tipo === 'diretoria' ? 'diretoria' : Number(input.dataset.id),
+        nome: input.dataset.nome || ''
+      })).filter((x) => x.nome);
   }
 
-  async function openDialog() {
-    if (!isAdmin) return;
-    ensureDialog();
-    renderDialogRows();
-    $('serviceBranchExceptionsDialogV64')?.showModal();
+  function updateBaseCache(notice) {
+    if (!notice) return;
+    try {
+      const rows = JSON.parse(localStorage.getItem(BASE_CACHE) || '[]');
+      const list = Array.isArray(rows) ? rows : [];
+      const date = safeParse(notice.mensagem)?.data;
+      const filtered = list.filter((n) => safeParse(n?.mensagem)?.data !== date);
+      filtered.unshift(notice);
+      localStorage.setItem(BASE_CACHE, JSON.stringify(filtered));
+    } catch (_) {}
   }
 
-  function applyCard() {
+  function calendarRowDate(row) {
+    return dateFromBR(row?.querySelector('.service-calendar-date-v50')?.textContent || '');
+  }
+
+  function setCalendarRow(date, text) {
+    document.querySelectorAll('#serviceCalendarListV50 .service-calendar-row-v50').forEach((row) => {
+      if (calendarRowDate(row) !== date) return;
+      const name = row.querySelector('.service-calendar-name-v50');
+      const button = row.querySelector('.service-calendar-edit-v50');
+      if (name) name.textContent = text;
+      if (button) button.textContent = 'Trocar';
+    });
+  }
+
+  function decorateCalendar() {
+    document.querySelectorAll('#serviceCalendarListV50 .service-calendar-row-v50').forEach((row) => {
+      const date = calendarRowDate(row);
+      if (!date || !exceptions.has(date)) return;
+      const name = row.querySelector('.service-calendar-name-v50');
+      const button = row.querySelector('.service-calendar-edit-v50');
+      if (name) name.textContent = 'Nenhuma seção na sede';
+      if (button) button.textContent = 'Alterar';
+    });
+  }
+
+  async function refreshCard(normalOverride = '') {
     const card = $('serviceBranchCardV30');
-    const nameEl = $('serviceBranchNameV30');
-    const iconEl = card?.querySelector('.service-branch-icon-v30');
-    if (!card || !nameEl || !iconEl) return;
-
+    const name = $('serviceBranchNameV30');
+    const icon = card?.querySelector('.service-branch-icon-v30');
+    if (!card || !name || !icon) return;
     const date = isoDateLocal(nextSaturdayDate());
-    const exception = exceptions.get(date);
-    if (exception && LABELS[exception.situacao]) {
-      const specialText = LABELS[exception.situacao];
-      const specialIcon = ICONS[exception.situacao] || '📣';
 
-      if (nameEl.textContent !== specialText) {
-        cardSnapshot = {
-          name: nameEl.textContent,
-          icon: iconEl.textContent,
-          pending: nameEl.classList.contains('service-branch-pending-v30')
-        };
-      }
-      if (nameEl.textContent !== specialText) nameEl.textContent = specialText;
-      if (iconEl.textContent !== specialIcon) iconEl.textContent = specialIcon;
-      nameEl.classList.remove('service-branch-pending-v30');
-      card.classList.add('service-branch-special-v64');
+    if (exceptions.get(date)?.situacao === 'nenhuma_secao_sede') {
+      card.classList.add('service-branch-special-v65');
+      name.classList.remove('service-branch-pending-v30');
+      name.textContent = 'Nenhuma seção na sede — não haverá ramo de serviço';
+      icon.textContent = '🏕️';
       return;
     }
 
-    if (card.classList.contains('service-branch-special-v64')) {
-      card.classList.remove('service-branch-special-v64');
-      if (cardSnapshot) {
-        nameEl.textContent = cardSnapshot.name || 'Aguardando definição';
-        iconEl.textContent = cardSnapshot.icon || '📣';
-        nameEl.classList.toggle('service-branch-pending-v30', Boolean(cardSnapshot.pending));
-        cardSnapshot = null;
+    card.classList.remove('service-branch-special-v65');
+    icon.textContent = '📣';
+    if (normalOverride) {
+      name.textContent = normalOverride;
+      name.classList.remove('service-branch-pending-v30');
+      return;
+    }
+    try {
+      const notice = await findNotice(date);
+      const resp = responsaveisFromParsed(safeParse(notice?.mensagem));
+      name.textContent = resp.length ? displayResponsaveis(resp) : 'Aguardando definição';
+      name.classList.toggle('service-branch-pending-v30', !resp.length);
+    } catch (_) {}
+  }
+
+  async function saveUnified(event) {
+    if (!isAdmin || saving) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const message = $('serviceBranchFormMessageV30');
+    const button = $('serviceBranchSaveV30');
+    const date = activeDate || dateFromBR($('serviceBranchDateInputV30')?.value || '');
+    if (!date) {
+      if (message) message.textContent = 'Não foi possível identificar o sábado selecionado.';
+      return;
+    }
+
+    saving = true;
+    if (button) button.disabled = true;
+    if (message) message.textContent = 'Salvando...';
+
+    try {
+      if (mode() === 'nenhuma_secao_sede') {
+        const { data, error } = await rt.client.from('ramo_servico_excecoes').upsert({
+          data:date,
+          situacao:'nenhuma_secao_sede',
+          criado_por:rt.state.user.id,
+          atualizado_em:new Date().toISOString()
+        }, { onConflict:'data' }).select('data,situacao,atualizado_em').single();
+        if (error) throw error;
+        exceptions.set(date, data);
+        writeExceptionCache();
+        setCalendarRow(date, 'Nenhuma seção na sede');
+        await refreshCard();
+        if (message) message.textContent = 'Salvo.';
+        $('serviceBranchDialogV30')?.close();
+        return;
       }
+
+      const responsaveis = selectedResponsaveis();
+      if (!responsaveis.length) {
+        if (message) message.textContent = 'Selecione pelo menos um ramo ou a Diretoria.';
+        return;
+      }
+
+      const { error:deleteError } = await rt.client.from('ramo_servico_excecoes').delete().eq('data', date);
+      if (deleteError) throw deleteError;
+      exceptions.delete(date);
+      writeExceptionCache();
+
+      const ramos = responsaveis.filter((x) => x.tipo === 'ramo');
+      const payloadMessage = JSON.stringify({
+        tipo:'ramo_servico_sabado',
+        data,
+        responsaveis,
+        ramo_ids:ramos.map((x) => x.id),
+        ramo_nomes:ramos.map((x) => x.nome),
+        inclui_diretoria:responsaveis.some((x) => x.tipo === 'diretoria'),
+        ramo_id:ramos[0]?.id || null,
+        ramo_nome:displayResponsaveis(responsaveis)
+      });
+      const payload = {
+        titulo:SERVICE_TITLE,
+        mensagem:payloadMessage,
+        aviso_geral:true,
+        destaque:true,
+        publicado_em:new Date().toISOString(),
+        expira_em:saturdayExpiryIso(date),
+        ativo:true
+      };
+
+      const existing = await findNotice(date);
+      const response = existing?.id
+        ? await rt.client.from('avisos').update(payload).eq('id', existing.id)
+            .select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo').single()
+        : await rt.client.from('avisos').insert(payload)
+            .select('id,titulo,mensagem,aviso_geral,destaque,publicado_em,expira_em,ativo').single();
+
+      if (response.error) throw response.error;
+      updateBaseCache(response.data);
+      const label = displayResponsaveis(responsaveis);
+      setCalendarRow(date, label);
+      if (date === isoDateLocal(nextSaturdayDate())) await refreshCard(label);
+      else await refreshCard();
+
+      if (message) message.textContent = 'Ramo de serviço salvo.';
+      $('serviceBranchDialogV30')?.close();
+    } catch (error) {
+      console.error('GEArPC ramo de serviço:', error);
+      if (message) message.textContent = `Não foi possível salvar: ${error?.message || 'erro inesperado'}`;
+    } finally {
+      saving = false;
+      if (button) button.disabled = false;
     }
   }
 
-  function observeBaseCard() {
-    const card = $('serviceBranchCardV30');
-    if (!card) return;
-    let timer = null;
-    const observer = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        ensureAdminButton();
-        applyCard();
-      }, 30);
-    });
-    observer.observe(card, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['class','hidden'] });
-  }
+  function bind() {
+    const form = $('serviceBranchFormV30');
+    form?.addEventListener('submit', (event) => { void saveUnified(event); }, true);
 
-  function observeDashboard() {
-    const dashboard = $('dashboardView');
-    if (!dashboard) return;
-    const observer = new MutationObserver(() => {
-      if (!dashboard.classList.contains('hidden')) {
-        void loadExceptions();
-        ensureAdminButton();
-      }
-    });
-    observer.observe(dashboard, { attributes:true, attributeFilter:['class'] });
+    document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+      const button = event.target.closest('.service-calendar-edit-v50');
+      if (!button) return;
+      const row = button.closest('.service-calendar-row-v50');
+      activeDate = calendarRowDate(row);
+      setTimeout(() => { void syncEditor(activeDate); }, 50);
+    }, true);
+
+    const dialog = $('serviceBranchDialogV30');
+    if (dialog) new MutationObserver(() => {
+      if (!dialog.open) return;
+      const date = activeDate || dateFromBR($('serviceBranchDateInputV30')?.value || '');
+      if (date) setTimeout(() => { void syncEditor(date); }, 20);
+    }).observe(dialog, { attributes:true, attributeFilter:['open'] });
+
+    const calendar = $('serviceCalendarListV50');
+    if (calendar) new MutationObserver(() => decorateCalendar()).observe(calendar, { childList:true, subtree:true });
+
+    const card = $('serviceBranchCardV30');
+    if (card) new MutationObserver(() => setTimeout(() => { void refreshCard(); }, 30))
+      .observe(card, { childList:true, subtree:true, characterData:true, attributes:true, attributeFilter:['class'] });
   }
 
   async function boot() {
     rt = await waitRuntime();
-    if (!rt) return;
-    if (!(await isPilotProfile())) return;
+    if (!rt || !(await pilotProfile())) return;
     isAdmin = rt.state.profile?.tipo === 'administrador';
     injectStyles();
-    ensureDialog();
-    ensureAdminButton();
-    readCache();
-    applyCard();
-    observeBaseCard();
-    observeDashboard();
+    removeOldExceptionUi();
+    ensureModeUi();
+    readExceptionCache();
+    bind();
     await loadExceptions();
   }
 
