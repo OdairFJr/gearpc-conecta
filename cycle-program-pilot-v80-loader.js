@@ -2,6 +2,15 @@
   if (window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V80__) return;
   window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V80__ = true;
 
+  function loadImportModule() {
+    if (document.querySelector('script[data-gearpc-module="cycle-program-import-v81"]')) return;
+    const script = document.createElement('script');
+    script.src = 'cycle-program-import-v81.js?v=81.0';
+    script.async = false;
+    script.dataset.gearpcModule = 'cycle-program-import-v81';
+    document.head.appendChild(script);
+  }
+
   async function load() {
     try {
       const parts = [];
@@ -15,6 +24,7 @@
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
       const source = new TextDecoder('utf-8').decode(bytes);
       new Function(source)();
+      loadImportModule();
     } catch (error) {
       console.error('Falha ao carregar Ciclo de Programa (piloto v80):', error);
     }
