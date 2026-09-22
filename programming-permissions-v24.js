@@ -22,9 +22,9 @@
 
   function loadApprovedProgrammingModules() {
     loadScriptOnce('programReviewHomeV55Script', 'programming-review-home-v55.js?v=55.0');
-    loadScriptOnce('programmingRequiredV58Script', 'programming-required-v58.js?v=58.2');
+    loadScriptOnce('programmingRequiredV58Script', 'programming-required-v58.js?v=58.3');
     loadScriptOnce('programmingIdeaEditV581Script', 'programming-idea-edit-v58-1.js?v=58.2');
-    loadScriptOnce('programmingResponsibleGeneralV60Script', 'programming-responsible-general-v60.js?v=60.0');
+    loadScriptOnce('programmingResponsibleGeneralV60Script', 'programming-responsible-general-v60.js?v=60.1');
     loadScriptOnce('programmingOkCommentV59Script', 'programming-ok-comment-v59.js?v=59.0');
     loadScriptOnce('programmingOkCommentDisplayV591Script', 'programming-ok-comment-display-v59-1.js?v=59.1');
   }
