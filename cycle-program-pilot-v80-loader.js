@@ -25,7 +25,6 @@
       const source = new TextDecoder('utf-8').decode(bytes);
       new Function(source)();
       loadModule('cycle-program-import-v81', 'cycle-program-import-v81.js?v=81.0');
-      loadModule('programming-responsible-flex-v82', 'programming-responsible-flex-v82.js?v=82.0');
     } catch (error) {
       console.error('Falha ao carregar Ciclo de Programa (piloto v80):', error);
     }
