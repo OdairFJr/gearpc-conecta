@@ -265,24 +265,25 @@
     const date = isoDateLocal(nextSaturdayDate());
 
     if (exceptions.get(date)?.situacao === 'nenhuma_secao_sede') {
-      card.classList.add('service-branch-special-v65');
-      name.classList.remove('service-branch-pending-v30');
-      name.textContent = 'Nenhuma seção na sede — não haverá ramo de serviço';
-      icon.textContent = '🏕️';
+      if (!card.classList.contains('service-branch-special-v65')) card.classList.add('service-branch-special-v65');
+      if (name.classList.contains('service-branch-pending-v30')) name.classList.remove('service-branch-pending-v30');
+      if (name.textContent !== 'Nenhuma seção na sede — não haverá ramo de serviço') name.textContent = 'Nenhuma seção na sede — não haverá ramo de serviço';
+      if (icon.textContent !== '🏕️') icon.textContent = '🏕️';
       return;
     }
 
-    card.classList.remove('service-branch-special-v65');
-    icon.textContent = '📣';
+    if (card.classList.contains('service-branch-special-v65')) card.classList.remove('service-branch-special-v65');
+    if (icon.textContent !== '📣') icon.textContent = '📣';
     if (normalOverride) {
-      name.textContent = normalOverride;
-      name.classList.remove('service-branch-pending-v30');
+      if (name.textContent !== normalOverride) name.textContent = normalOverride;
+      if (name.classList.contains('service-branch-pending-v30')) name.classList.remove('service-branch-pending-v30');
       return;
     }
     try {
       const notice = await findNotice(date);
       const resp = responsaveisFromParsed(safeParse(notice?.mensagem));
-      name.textContent = resp.length ? displayResponsaveis(resp) : 'Aguardando definição';
+      const nextText = resp.length ? displayResponsaveis(resp) : 'Aguardando definição';
+      if (name.textContent !== nextText) name.textContent = nextText;
       name.classList.toggle('service-branch-pending-v30', !resp.length);
     } catch (_) {}
   }
