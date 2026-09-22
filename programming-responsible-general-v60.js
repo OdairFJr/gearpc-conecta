@@ -125,9 +125,13 @@
         const extWrap = box.querySelector('.program-responsible-external-v60');
         const extInput = box.querySelector('[data-external-name-v60]');
         const desired = currentValue(item);
-        select.innerHTML = optionHtml(item);
-        select.value = desired;
-        select.dataset.loadedValue = desired;
+        const signature = [desired, item.condutor_externo_nome || '', adults.map((x) => x.id).join(','), pioneers.map((x) => x.id).join(',')].join('|');
+        if (select.dataset.optionSignature !== signature) {
+          select.innerHTML = optionHtml(item);
+          select.value = desired;
+          select.dataset.loadedValue = desired;
+          select.dataset.optionSignature = signature;
+        }
         select.disabled = !canEditCard(button);
         select.classList.toggle('missing', !desired);
         extWrap?.classList.toggle('hidden', desired !== 'externo');
