@@ -16,7 +16,7 @@
       const parts = [];
       for (let i = 0; i < 9; i += 1) {
         const suffix = String(i).padStart(2, '0');
-        const response = await fetch(`cycle-program-pilot-v80.b64.${suffix}?v=80.0`, { cache: 'no-store' });
+        const response = await fetch(`cycle-program-pilot-v80.b64.${suffix}?v=80.1`, { cache: 'no-store' });
         if (!response.ok) throw new Error(`Parte ${suffix} indisponível`);
         parts.push((await response.text()).trim());
       }
@@ -24,7 +24,7 @@
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
       const source = new TextDecoder('utf-8').decode(bytes);
       new Function(source)();
-      loadModule('cycle-program-import-v81', 'cycle-program-import-v81.js?v=81.0');
+      loadModule('cycle-program-import-v81', 'cycle-program-import-v81.js?v=81.1');
     } catch (error) {
       console.error('Falha ao carregar Ciclo de Programa (piloto v80):', error);
     }
