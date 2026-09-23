@@ -5,7 +5,7 @@
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const $ = (id) => document.getElementById(id);
   let rt = null;
-  let pilot = false;
+  let enabled = false;
   let decorateTimer = null;
   let decorating = false;
   let adults = [];
@@ -24,10 +24,9 @@
     return null;
   }
 
-  async function resolvePilot() {
-    if (rt.state.profile?.tipo === 'administrador') return true;
-    const { data, error } = await rt.client.from('perfis_usuarios').select('eh_teste').eq('user_id', rt.state.user.id).maybeSingle();
-    return !error && data?.eh_teste === true;
+  async function resolveEnabled() {
+    const tipo = rt.state.profile?.tipo;
+    return tipo === 'administrador' || tipo === 'chefia' || tipo === 'dirigente';
   }
 
   function injectStyles() {
@@ -239,8 +238,8 @@
   async function boot() {
     rt = await waitRuntime();
     if (!rt) return;
-    pilot = await resolvePilot();
-    if (!pilot) return;
+    enabled = await resolveEnabled();
+    if (!enabled) return;
     injectStyles();
     bind();
     scheduleDecorate();
