@@ -147,22 +147,35 @@
       return;
     }
 
+    const currentSectionIds = new Set(await ownChiefSectionIds());
     const sectionIds = [...new Set(notices.map((n) => Number(n.secao_id)).filter(Boolean))];
     const dates = [...new Set(notices.map((n) => n.data_referencia).filter(Boolean))];
     let launched = [];
+    let noActivity = [];
     if (sectionIds.length && dates.length) {
-      const { data } = await client.from('programacoes')
-        .select('secao_id,data_atividade')
-        .in('secao_id', sectionIds)
-        .in('data_atividade', dates);
-      launched = data || [];
+      const [programRes, reviewRes] = await Promise.all([
+        client.from('programacoes')
+          .select('secao_id,data_atividade')
+          .in('secao_id', sectionIds)
+          .in('data_atividade', dates),
+        client.from('programacao_revisoes')
+          .select('secao_id,data_atividade,status')
+          .in('secao_id', sectionIds)
+          .in('data_atividade', dates)
+          .eq('status', 'sem_atividade')
+      ]);
+      launched = programRes.data || [];
+      noActivity = reviewRes.data || [];
     }
 
     const obsolete = [];
     const active = notices.filter((notice) => {
-      const alreadyDone = launched.some((p) => Number(p.secao_id) === Number(notice.secao_id) && p.data_atividade === notice.data_referencia);
-      if (alreadyDone) obsolete.push(notice.id);
-      return !alreadyDone;
+      const sectionId = Number(notice.secao_id);
+      const stillLinked = currentSectionIds.has(sectionId);
+      const alreadyDone = launched.some((p) => Number(p.secao_id) === sectionId && p.data_atividade === notice.data_referencia);
+      const markedNoActivity = noActivity.some((r) => Number(r.secao_id) === sectionId && r.data_atividade === notice.data_referencia);
+      if (!stillLinked || alreadyDone || markedNoActivity) obsolete.push(notice.id);
+      return stillLinked && !alreadyDone && !markedNoActivity;
     });
 
     if (obsolete.length) {
