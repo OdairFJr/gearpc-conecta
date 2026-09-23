@@ -80,7 +80,7 @@
     const style = document.createElement('style');
     style.id = 'cycleProgramStylesV80';
     style.textContent = `
-      .cycle-v80-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:18px 0}.cycle-v80-toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:800;color:#425466;flex:1;min-width:190px}.cycle-v80-toolbar select{border:1px solid #c9d2dc;border-radius:10px;padding:11px 12px;background:#fff;font:inherit}.cycle-v80-list{display:grid;gap:14px}.cycle-v80-card{background:#fff;border:1px solid #dce3ea;border-radius:18px;padding:16px;box-shadow:0 4px 14px rgba(24,54,82,.05)}.cycle-v80-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.cycle-v80-head h3{margin:0;color:#173a63}.cycle-v80-meta{margin-top:5px;color:#617284;font-size:.9rem}.cycle-v80-objective{margin:12px 0;padding:12px 14px;background:#f5f8fb;border-radius:12px;line-height:1.45}.cycle-v80-objective strong{color:#173a63}.cycle-v80-actions,.cycle-v80-pred-actions{display:flex;gap:8px;flex-wrap:wrap}.cycle-v80-actions button,.cycle-v80-pred-actions button{border:1px solid #cbd5df;background:#fff;border-radius:10px;padding:9px 11px;font:inherit;font-weight:800;cursor:pointer;color:#234}.cycle-v80-actions .danger,.cycle-v80-pred-actions .danger{color:#9e2b25;border-color:#e0b7b4}.cycle-v80-add{border:none;background:#0a376c;color:#fff;border-radius:11px;padding:11px 14px;font:inherit;font-weight:900;cursor:pointer}.cycle-v80-predictions{display:grid;gap:9px;margin-top:14px}.cycle-v80-pred{border:1px solid #e0e6ec;border-radius:14px;padding:12px;background:#fbfcfd}.cycle-v80-pred-main{display:flex;gap:12px;align-items:flex-start}.cycle-v80-date{min-width:68px;text-align:center;background:#eaf1f8;color:#173a63;border-radius:10px;padding:8px;font-weight:900}.cycle-v80-copy{flex:1}.cycle-v80-copy strong{display:block;color:#173a63}.cycle-v80-copy small{display:block;margin-top:4px;color:#627384;line-height:1.4}.cycle-v80-pred-actions{margin-top:10px}.cycle-v80-ai{background:#f3effb!important;border-color:#cabee7!important;color:#4d347f!important}.cycle-v80-program{background:#edf6ff!important;border-color:#b8d4ef!important;color:#174d78!important}.cycle-v80-empty{padding:24px;text-align:center;border:1px dashed #cdd7e1;border-radius:16px;color:#667788;background:#fff}.cycle-v80-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e8f5ec;color:#24663a;font-size:.75rem;font-weight:900}.cycle-v80-badge.history{background:#eef1f4;color:#5a6672}.cycle-v80-dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cycle-v80-dialog-grid label,.cycle-v80-stack label{display:flex;flex-direction:column;gap:6px;font-weight:800;color:#425466}.cycle-v80-dialog-grid input,.cycle-v80-dialog-grid select,.cycle-v80-stack input,.cycle-v80-stack textarea{width:100%;box-sizing:border-box;border:1px solid #c9d2dc;border-radius:10px;padding:11px 12px;background:#fff;font:inherit}.cycle-v80-stack{display:grid;gap:12px;margin-top:12px}.cycle-v80-required{color:#a22520;font-size:.75rem;font-weight:900}.cycle-v80-ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.cycle-v80-ai-field{padding:12px;border-radius:12px;background:#f6f8fb;border:1px solid #e1e6ec}.cycle-v80-ai-field.wide{grid-column:1/-1}.cycle-v80-ai-field span{display:block;color:#68798a;font-size:.76rem;font-weight:900;text-transform:uppercase;margin-bottom:5px}.cycle-v80-ai-field strong{display:block;white-space:pre-wrap;line-height:1.45;color:#173a63}.cycle-v80-note{font-size:.9rem;color:#617284;line-height:1.45}.cycle-v80-message{min-height:20px;color:#9e2b25;font-weight:700}.cycle-v80-message.ok{color:#24663a}
+      .cycle-v80-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:18px 0}.cycle-v80-toolbar label{display:flex;flex-direction:column;gap:6px;font-weight:800;color:#425466;flex:1;min-width:190px}.cycle-v80-toolbar select{border:1px solid #c9d2dc;border-radius:10px;padding:11px 12px;background:#fff;font:inherit}.cycle-v80-list{display:grid;gap:14px}.cycle-v80-card{background:#fff;border:1px solid #dce3ea;border-radius:18px;padding:16px;box-shadow:0 4px 14px rgba(24,54,82,.05)}.cycle-v80-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.cycle-v80-head h3{margin:0;color:#173a63}.cycle-v80-meta{margin-top:5px;color:#617284;font-size:.9rem}.cycle-v80-objective{margin:12px 0;padding:12px 14px;background:#f5f8fb;border-radius:12px;line-height:1.45}.cycle-v80-objective strong{color:#173a63}.cycle-v80-actions,.cycle-v80-pred-actions{display:flex;gap:8px;flex-wrap:wrap}.cycle-v80-actions button,.cycle-v80-pred-actions button{border:1px solid #cbd5df;background:#fff;border-radius:10px;padding:9px 11px;font:inherit;font-weight:800;cursor:pointer;color:#234}.cycle-v80-actions .danger,.cycle-v80-pred-actions .danger{color:#9e2b25;border-color:#e0b7b4}.cycle-v80-add{border:none;background:#0a376c;color:#fff;border-radius:11px;padding:11px 14px;font:inherit;font-weight:900;cursor:pointer}.cycle-v80-predictions{display:grid;gap:9px;margin-top:14px}.cycle-v80-pred{border:1px solid #e0e6ec;border-radius:14px;padding:12px;background:#fbfcfd}.cycle-v80-pred-main{display:flex;gap:12px;align-items:flex-start}.cycle-v80-date{min-width:68px;text-align:center;background:#eaf1f8;color:#173a63;border-radius:10px;padding:8px;font-weight:900}.cycle-v80-copy{flex:1}.cycle-v80-copy strong{display:block;color:#173a63}.cycle-v80-copy small{display:block;margin-top:4px;color:#627384;line-height:1.4}.cycle-v80-pred-actions{margin-top:10px}.cycle-v80-ai{background:#f3effb!important;border-color:#cabee7!important;color:#4d347f!important}.cycle-v80-program{background:#edf6ff!important;border-color:#b8d4ef!important;color:#174d78!important}.cycle-v80-empty{padding:24px;text-align:center;border:1px dashed #cdd7e1;border-radius:16px;color:#667788;background:#fff}.cycle-v80-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e8f5ec;color:#24663a;font-size:.75rem;font-weight:900}.cycle-v80-badge.history{background:#eef1f4;color:#5a6672}.cycle-v80-dialog-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cycle-v80-dialog-grid label,.cycle-v80-stack label{display:flex;flex-direction:column;gap:6px;font-weight:800;color:#425466}.cycle-v80-dialog-grid input,.cycle-v80-dialog-grid select,.cycle-v80-stack input,.cycle-v80-stack textarea{width:100%;box-sizing:border-box;border:1px solid #c9d2dc;border-radius:10px;padding:11px 12px;background:#fff;font:inherit}.cycle-v80-stack{display:grid;gap:12px;margin-top:12px}.cycle-v80-required{color:#a22520;font-size:.75rem;font-weight:900}.cycle-v80-ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.cycle-v80-ai-field{padding:12px;border-radius:12px;background:#f6f8fb;border:1px solid #e1e6ec}.cycle-v80-ai-field.wide{grid-column:1/-1}.cycle-v80-ai-field span{display:block;color:#68798a;font-size:.76rem;font-weight:900;text-transform:uppercase;margin-bottom:5px}.cycle-v80-ai-field strong{display:block;white-space:pre-wrap;line-height:1.45;color:#173a63}.cycle-v80-note{font-size:.9rem;color:#617284;line-height:1.45}.cycle-v80-message{min-height:20px;color:#9e2b25;font-weight:700}.cycle-v80-message.ok{color:#24663a}.cycle-v84-branch{background:#fff;border:1px solid #dce3ea;border-radius:18px;overflow:hidden;box-shadow:0 4px 14px rgba(24,54,82,.05)}.cycle-v84-branch summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 16px;cursor:pointer;font-weight:900;color:#173a63}.cycle-v84-branch summary::-webkit-details-marker{display:none}.cycle-v84-branch summary::after{content:'›';font-size:1.6rem;line-height:1;transition:transform .18s ease}.cycle-v84-branch[open] summary::after{transform:rotate(90deg)}.cycle-v84-branch-title{display:flex;flex-direction:column;gap:3px}.cycle-v84-branch-title small{font-weight:600;color:#68798a}.cycle-v84-branch-body{display:grid;gap:12px;padding:0 12px 12px}.cycle-v84-branch-body .cycle-v80-card{box-shadow:none}
       @media(max-width:680px){.cycle-v80-dialog-grid,.cycle-v80-ai-grid{grid-template-columns:1fr}.cycle-v80-head,.cycle-v80-pred-main{flex-direction:column}.cycle-v80-date{text-align:left;min-width:0}.cycle-v80-actions button,.cycle-v80-pred-actions button,.cycle-v80-add{width:100%}}
     `;
     document.head.appendChild(style);
@@ -256,35 +256,97 @@
     return { label: 'Ciclo atual', cls: '' };
   }
 
+  function renderCycleCard(cycle) {
+    const status = cycleStatus(cycle);
+    const predictions = dataState.predictions
+      .filter((p) => Number(p.ciclo_id) === Number(cycle.id))
+      .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+
+    const predHtml = predictions.length ? predictions.map((p) => `
+      <article class="cycle-v80-pred">
+        <div class="cycle-v80-pred-main">
+          <div class="cycle-v80-date">${esc(fmtDate(p.data).slice(0,5))}</div>
+          <div class="cycle-v80-copy">
+            <strong>${esc(p.titulo)}</strong>
+            ${p.observacao ? `<small>${esc(p.observacao)}</small>` : ''}
+          </div>
+        </div>
+        <div class="cycle-v80-pred-actions">
+          <button type="button" data-cycle-edit-pred="${p.id}">Editar</button>
+          <button type="button" class="danger" data-cycle-delete-pred="${p.id}">Apagar</button>
+        </div>
+      </article>`).join('') : '<div class="cycle-v80-empty">Nenhuma previsão de data lançada neste ciclo.</div>';
+
+    return `
+      <article class="cycle-v80-card">
+        <div class="cycle-v80-head">
+          <div>
+            <h3>${esc(cycle.nome)}</h3>
+            <div class="cycle-v80-meta">${esc(ramoName(cycle.ramo_id))} • ${esc(fmtDate(cycle.data_inicio))} a ${esc(fmtDate(cycle.data_fim))}</div>
+          </div>
+          <span class="cycle-v80-badge ${status.cls}">${status.label}</span>
+        </div>
+        ${cycle.diagnostico ? `<div class="cycle-v80-objective"><strong>Diagnóstico:</strong> ${esc(cycle.diagnostico)}</div>` : ''}
+        ${cycle.enfase ? `<div class="cycle-v80-objective"><strong>Ênfase:</strong> ${esc(cycle.enfase)}</div>` : ''}
+        <div class="cycle-v80-objective"><strong>Objetivo:</strong> ${esc(cycle.objetivo)}</div>
+        <div class="cycle-v80-actions">
+          <button type="button" data-cycle-add-pred="${cycle.id}">＋ Adicionar previsão</button>
+          <button type="button" data-cycle-edit="${cycle.id}">Editar ciclo</button>
+          <button type="button" class="danger" data-cycle-delete="${cycle.id}">Apagar ciclo</button>
+        </div>
+        <div class="cycle-v80-predictions">${predHtml}</div>
+      </article>`;
+  }
+
   function renderCycles() {
     const list = $('cycleListV80');
     const ramoFilter = Number($('cycleRamoFilterV80')?.value || 0);
     let rows = [...dataState.cycles];
-    if (ramoFilter) rows = rows.filter((c) => Number(c.ramo_id) === ramoFilter);
+    if (ramoFilter) rows = rows.filter((cycle) => Number(cycle.ramo_id) === ramoFilter);
+
     if (!rows.length) {
       list.innerHTML = '<div class="cycle-v80-empty"><strong>Nenhum ciclo cadastrado.</strong><br>Use “Novo ciclo” para registrar o planejamento do período.</div>';
       return;
     }
-    list.innerHTML = rows.map((cycle) => {
-      const status = cycleStatus(cycle);
-      const predictions = dataState.predictions.filter((p) => Number(p.ciclo_id) === Number(cycle.id)).sort((a, b) => String(a.data).localeCompare(String(b.data)));
-      const predHtml = predictions.length ? predictions.map((p) => `
-        <article class="cycle-v80-pred">
-          <div class="cycle-v80-pred-main"><div class="cycle-v80-date">${esc(fmtDate(p.data).slice(0,5))}</div><div class="cycle-v80-copy"><strong>${esc(p.titulo)}</strong>${p.observacao ? `<small>${esc(p.observacao)}</small>` : ''}</div></div>
-          <div class="cycle-v80-pred-actions">
-            <button type="button" data-cycle-edit-pred="${p.id}">Editar</button>
-            <button type="button" class="danger" data-cycle-delete-pred="${p.id}">Apagar</button>
-          </div>
-        </article>`).join('') : '<div class="cycle-v80-empty">Nenhuma previsão de data lançada neste ciclo.</div>';
+
+    if (!isAdmin) {
+      list.innerHTML = rows.map(renderCycleCard).join('');
+      return;
+    }
+
+    const groups = new Map();
+    rows.forEach((cycle) => {
+      const ramoId = Number(cycle.ramo_id);
+      if (!groups.has(ramoId)) groups.set(ramoId, []);
+      groups.get(ramoId).push(cycle);
+    });
+
+    const ramoOrder = dataState.ramos
+      .map((ramo) => Number(ramo.id))
+      .filter((id) => groups.has(id));
+
+    groups.forEach((_, id) => {
+      if (!ramoOrder.includes(Number(id))) ramoOrder.push(Number(id));
+    });
+
+    list.innerHTML = ramoOrder.map((ramoId) => {
+      const cycles = groups.get(ramoId) || [];
+      const currentCount = cycles.filter((cycle) => cycleStatus(cycle).label === 'Ciclo atual').length;
+      const countText = cycles.length === 1 ? '1 ciclo' : `${cycles.length} ciclos`;
+      const currentText = currentCount ? ` • ${currentCount} atual${currentCount > 1 ? 'is' : ''}` : '';
+
       return `
-        <article class="cycle-v80-card">
-          <div class="cycle-v80-head"><div><h3>${esc(cycle.nome)}</h3><div class="cycle-v80-meta">${esc(ramoName(cycle.ramo_id))} • ${esc(fmtDate(cycle.data_inicio))} a ${esc(fmtDate(cycle.data_fim))}</div></div><span class="cycle-v80-badge ${status.cls}">${status.label}</span></div>
-          ${cycle.diagnostico ? `<div class="cycle-v80-objective"><strong>Diagnóstico:</strong> ${esc(cycle.diagnostico)}</div>` : ''}
-          ${cycle.enfase ? `<div class="cycle-v80-objective"><strong>Ênfase:</strong> ${esc(cycle.enfase)}</div>` : ''}
-          <div class="cycle-v80-objective"><strong>Objetivo:</strong> ${esc(cycle.objetivo)}</div>
-          <div class="cycle-v80-actions"><button type="button" data-cycle-add-pred="${cycle.id}">＋ Adicionar previsão</button><button type="button" data-cycle-edit="${cycle.id}">Editar ciclo</button><button type="button" class="danger" data-cycle-delete="${cycle.id}">Apagar ciclo</button></div>
-          <div class="cycle-v80-predictions">${predHtml}</div>
-        </article>`;
+        <details class="cycle-v84-branch">
+          <summary>
+            <span class="cycle-v84-branch-title">
+              <strong>${esc(ramoName(ramoId))}</strong>
+              <small>${countText}${currentText}</small>
+            </span>
+          </summary>
+          <div class="cycle-v84-branch-body">
+            ${cycles.map(renderCycleCard).join('')}
+          </div>
+        </details>`;
     }).join('');
   }
 
