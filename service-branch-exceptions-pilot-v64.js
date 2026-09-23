@@ -38,11 +38,8 @@
     return null;
   }
 
-  async function isPilotProfile() {
-    if (rt.state.profile?.tipo === 'administrador') return true;
-    const { data, error } = await rt.client.from('perfis_usuarios')
-      .select('eh_teste').eq('user_id', rt.state.user.id).maybeSingle();
-    return !error && data?.eh_teste === true;
+  async function isEnabledProfile() {
+    return Boolean(rt.state.profile && rt.state.user?.id);
   }
 
   function injectStyles() {
@@ -263,7 +260,7 @@
 
   async function boot() {
     rt = await waitRuntime();
-    if (!rt || !(await isPilotProfile())) return;
+    if (!rt || !(await isEnabledProfile())) return;
     isAdmin = rt.state.profile?.tipo === 'administrador';
     injectStyles();
     removeOldSeparateUi();
