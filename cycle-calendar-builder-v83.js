@@ -162,6 +162,8 @@
     const nome = $('cycleNameV80')?.value.trim() || '';
     const start = $('cycleStartV80')?.value || '';
     const end = $('cycleEndV80')?.value || '';
+    const diagnostico = $('cycleDiagnosisV84')?.value.trim() || '';
+    const enfase = $('cycleEmphasisV84')?.value.trim() || '';
     const objetivo = $('cycleObjectiveV80')?.value.trim() || '';
 
     if (!ramoId || !nome || !start || !end || !objetivo) {
@@ -186,6 +188,8 @@
         nome,
         data_inicio: start,
         data_fim: end,
+        diagnostico: diagnostico || null,
+        enfase: enfase || null,
         objetivo,
         criado_por: rt.state.user.id,
         atualizado_em: new Date().toISOString()
