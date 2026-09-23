@@ -29,6 +29,7 @@
     try {
       await loadModule('cycle-program-pilot-v84', 'cycle-program-pilot-v84.js?v=84.1');
       await loadModule('cycle-program-import-v84', 'cycle-program-import-v84.js?v=84.3');
+      await loadModule('cycle-calendar-builder-v83', 'cycle-calendar-builder-v83.js?v=83.1');
     } catch (error) {
       console.error('Falha ao carregar Ciclo de Programa v84:', error);
     }
