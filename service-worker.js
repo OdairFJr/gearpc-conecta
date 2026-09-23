@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v69-annual-calendar';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-no-activity';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -26,7 +26,7 @@ const APP_SHELL = [
   './programming-transfer-paxtu-v42.js?v=42.1',
   './programming-permissions-v24.js',
   './programming-ai-fixes-v27-1.js',
-  './programming-review-v28.js?v=44.0',
+  './programming-review-v28.js?v=44.1',
   './programming-deadline-v28-1.js',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
@@ -127,7 +127,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-activity-v27.js"></script>\n</body>');
   }
   if (!html.includes('programming-review-v28.js')) {
-    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=44.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=44.1"></script>\n</body>');
   }
   if (!html.includes('programming-deadline-v28-1.js')) {
     html = html.replace('</body>', '  <script src="programming-deadline-v28-1.js"></script>\n</body>');
