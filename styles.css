@@ -1238,3 +1238,10 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   .program-list-date { grid-column: 1 / -1; border-right: 0; border-bottom: 1px solid #e5ebf0; padding: 0 0 8px; }
   .idea-result-actions { flex-direction: column; }
 }
+
+
+/* Ciclo de Programa: ações de atividade ficam exclusivamente em Programação */
+.cycle-v80-pred-actions .cycle-v80-ai,
+.cycle-v80-pred-actions .cycle-v80-program {
+  display: none !important;
+}
