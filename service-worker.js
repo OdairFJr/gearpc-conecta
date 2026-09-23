@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v72-1-cycle-multifile';
+const CACHE_NAME = 'gearpc-conecta-offline-v72-2-cycle-import-fallback';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -42,9 +42,9 @@ const APP_SHELL = [
   './service-branch-v30.js?v=50.0',
   './service-branch-exceptions-pilot-v64.js?v=67.0',
   './activity-materials-pilot-v63.js?v=63.1',
-  './cycle-program-pilot-v80-loader.js?v=84.0',
+  './cycle-program-pilot-v80-loader.js?v=84.1',
   './cycle-program-pilot-v84.js?v=84.0',
-  './cycle-program-import-v84.js?v=84.0',
+  './cycle-program-import-v84.js?v=84.1',
   './annual-calendar-v80.js?v=80.0',
   './config.js',
   './logo-grupo.jpeg',
