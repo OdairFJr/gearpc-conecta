@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v71-program-notice-links';
+const CACHE_NAME = 'gearpc-conecta-offline-v72-cycle-multifile';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -26,8 +26,8 @@ const APP_SHELL = [
   './programming-transfer-paxtu-v42.js?v=42.1',
   './programming-permissions-v24.js',
   './programming-ai-fixes-v27-1.js',
-  './programming-review-v28.js?v=44.1',
-  './programming-deadline-v28-1.js',
+  './programming-review-v28.js?v=44.2',
+  './programming-deadline-v28-1.js?v=28.2',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
   './admin-reports-v29.js',
@@ -42,6 +42,9 @@ const APP_SHELL = [
   './service-branch-v30.js?v=50.0',
   './service-branch-exceptions-pilot-v64.js?v=67.0',
   './activity-materials-pilot-v63.js?v=63.1',
+  './cycle-program-pilot-v80-loader.js?v=84.0',
+  './cycle-program-pilot-v84.js?v=84.0',
+  './cycle-program-import-v84.js?v=84.0',
   './annual-calendar-v80.js?v=80.0',
   './config.js',
   './logo-grupo.jpeg',
