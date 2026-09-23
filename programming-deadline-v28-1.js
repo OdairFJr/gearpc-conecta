@@ -192,6 +192,11 @@
       }
     }, true);
 
+    document.addEventListener('gearpc:no-activity-changed', async () => {
+      await loadCancellationNotices();
+      schedulePatch();
+    });
+
     const panel = $('programmingView');
     if (panel) {
       const observer = new MutationObserver(schedulePatch);
