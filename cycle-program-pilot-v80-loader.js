@@ -1,32 +1,36 @@
 (() => {
-  if (window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V80__) return;
-  window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V80__ = true;
+  if (window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V84__) return;
+  window.__GEARPC_CYCLE_PROGRAM_PILOT_LOADER_V84__ = true;
 
   function loadModule(id, src) {
-    if (document.querySelector(`script[data-gearpc-module="${id}"]`)) return;
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = false;
-    script.dataset.gearpcModule = id;
-    document.head.appendChild(script);
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-gearpc-module="${id}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === '1') return resolve();
+        existing.addEventListener('load', resolve, { once:true });
+        existing.addEventListener('error', reject, { once:true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = false;
+      script.dataset.gearpcModule = id;
+      script.addEventListener('load', () => {
+        script.dataset.loaded = '1';
+        resolve();
+      }, { once:true });
+      script.addEventListener('error', () => reject(new Error(`Falha ao carregar ${src}`)), { once:true });
+      document.head.appendChild(script);
+    });
   }
 
   async function load() {
     try {
-      const parts = [];
-      for (let i = 0; i < 9; i += 1) {
-        const suffix = String(i).padStart(2, '0');
-        const response = await fetch(`cycle-program-pilot-v80.b64.${suffix}?v=80.1`, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Parte ${suffix} indisponível`);
-        parts.push((await response.text()).trim());
-      }
-      const binary = atob(parts.join(''));
-      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-      const source = new TextDecoder('utf-8').decode(bytes);
-      new Function(source)();
-      loadModule('cycle-program-import-v81', 'cycle-program-import-v81.js?v=81.1');
+      await loadModule('cycle-program-pilot-v84', 'cycle-program-pilot-v84.js?v=84.0');
+      await loadModule('cycle-program-import-v84', 'cycle-program-import-v84.js?v=84.0');
     } catch (error) {
-      console.error('Falha ao carregar Ciclo de Programa (piloto v80):', error);
+      console.error('Falha ao carregar Ciclo de Programa v84:', error);
     }
   }
 
