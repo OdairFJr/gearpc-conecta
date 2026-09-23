@@ -1,6 +1,6 @@
 (() => {
   if (window.__GEARPC_CYCLE_PROGRAM_PILOT_V84__) return;
-  window.__GEARPC_CYCLE_PROGRAM_PILOT_V80__ = true;
+  window.__GEARPC_CYCLE_PROGRAM_PILOT_V84__ = true;
 
   const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
