@@ -9,7 +9,8 @@
   const REVIEW_STATES = {
     autorizada: { label: 'Programação revisada — tudo certo', cls: 'ok' },
     nao_autorizada: { label: 'Programação revisada — sugestões de ajuste', cls: 'no' },
-    cancelada_sem_programacao: { label: 'Atividade cancelada por falta de programação', cls: 'cancel' }
+    cancelada_sem_programacao: { label: 'Atividade cancelada por falta de programação', cls: 'cancel' },
+    sem_atividade: { label: 'Sem atividade neste sábado', cls: 'noactivity' }
   };
 
   let refreshTimer = null;
@@ -30,6 +31,41 @@
 
   function isChief() {
     return state.profile?.tipo === 'chefia';
+  }
+
+  async function ownChiefSectionIds() {
+    if (!isChief() || !state.profile?.chefe_id) return [];
+    const { data, error } = await client.from('chefe_secoes')
+      .select('secao_id')
+      .eq('chefe_id', Number(state.profile.chefe_id));
+    if (error) throw error;
+    return [...new Set((data || []).map((row) => Number(row.secao_id)).filter(Boolean))];
+  }
+
+  async function setNoActivity(sectionId, date, enabled) {
+    if (!state.user?.id || (!isAdmin() && !isChief())) return;
+    const question = enabled
+      ? 'Confirmar que esta seção não terá atividade neste sábado? O sistema deixará de cobrar a programação desta data.'
+      : 'Desfazer o registro de sem atividade? A programação desta data voltará a ser considerada pendente.';
+    if (!window.confirm(question)) return;
+
+    const { error } = await client.rpc('registrar_sem_atividade_programacao', {
+      p_secao_id: Number(sectionId),
+      p_data: date,
+      p_sem_atividade: Boolean(enabled)
+    });
+
+    if (error) {
+      console.error(error);
+      window.alert(error.message || 'Não foi possível atualizar a situação desta atividade.');
+      return;
+    }
+
+    await loadReminders();
+    await refreshWeeklyPanel();
+    document.dispatchEvent(new CustomEvent('gearpc:no-activity-changed', {
+      detail: { sectionId: Number(sectionId), date, enabled: Boolean(enabled) }
+    }));
   }
 
   function saoPauloDateParts(date = new Date()) {
@@ -70,7 +106,7 @@
     style.id = 'programReviewV28Styles';
     style.textContent = `
       .weekly-program-reminders{margin:14px 0 18px;display:grid;gap:10px}.weekly-program-reminder{background:#fff7d6;border:1px solid #e7c96a;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.05)}.weekly-program-reminder strong{display:block;color:#6d5200;margin-bottom:4px}.weekly-program-reminder p{margin:0;color:#5f532d;line-height:1.4}.weekly-program-reminder button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
-      .program-weekly-review{margin:16px 0 20px;background:#fff;border:1px solid #d7e0eb;border-radius:18px;padding:16px;box-shadow:0 5px 18px rgba(10,55,108,.06)}.program-weekly-review h3{margin:0 0 5px;color:#0a376c}.program-weekly-review .review-intro{margin:0 0 14px;color:#546579}.program-weekly-grid{display:grid;gap:12px}.program-review-card{border:1px solid #dfe6ee;border-radius:14px;padding:14px;background:#fbfcfe}.program-review-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}.program-review-card-head strong{font-size:1rem}.program-review-card-head small{display:block;color:#66788b;margin-top:3px}.program-review-state{font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 9px;background:#eef2f6;color:#556575}.program-review-state.ok{background:#e6f6ec;color:#176b38}.program-review-state.no{background:#ffe9e7;color:#9d2c24}.program-review-state.cancel{background:#f4ece7;color:#7a4930}.program-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.program-review-actions button{border:0;border-radius:10px;padding:9px 11px;font-weight:700;cursor:pointer}.review-authorize{background:#1f7a45;color:#fff}.review-deny{background:#a5322a;color:#fff}.review-cancel{background:#6b4b38;color:#fff}.review-clear{background:#e9eef4;color:#31475e}.program-review-note{margin:8px 0 0;color:#77443e;font-size:.9rem}.program-deadline-note{margin:14px 0;padding:12px 14px;border-radius:12px;background:#eef5ff;border:1px solid #c8dcf7;color:#173f70;font-weight:700}.program-editor-review-status{margin:12px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid #d9e1ea;background:#f7f9fb}.program-editor-review-status.ok{border-color:#b8dfc6;background:#edf8f1;color:#176b38}.program-editor-review-status.no{border-color:#f0c3bf;background:#fff0ee;color:#8f2d25}.program-editor-review-status.cancel{border-color:#d9c7bb;background:#f8f1ec;color:#724631}.program-editor-review-status.pending{color:#4f6173}
+      .program-weekly-review{margin:16px 0 20px;background:#fff;border:1px solid #d7e0eb;border-radius:18px;padding:16px;box-shadow:0 5px 18px rgba(10,55,108,.06)}.program-weekly-review h3{margin:0 0 5px;color:#0a376c}.program-weekly-review .review-intro{margin:0 0 14px;color:#546579}.program-weekly-grid{display:grid;gap:12px}.program-review-card{border:1px solid #dfe6ee;border-radius:14px;padding:14px;background:#fbfcfe}.program-review-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}.program-review-card-head strong{font-size:1rem}.program-review-card-head small{display:block;color:#66788b;margin-top:3px}.program-review-state{font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 9px;background:#eef2f6;color:#556575}.program-review-state.ok{background:#e6f6ec;color:#176b38}.program-review-state.no{background:#ffe9e7;color:#9d2c24}.program-review-state.cancel{background:#f4ece7;color:#7a4930}.program-review-state.noactivity{background:#e8f2ff;color:#174f86}.program-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.program-review-actions button{border:0;border-radius:10px;padding:9px 11px;font-weight:700;cursor:pointer}.review-authorize{background:#1f7a45;color:#fff}.review-deny{background:#a5322a;color:#fff}.review-cancel{background:#6b4b38;color:#fff}.review-no-activity{background:#0a376c;color:#fff}.review-clear{background:#e9eef4;color:#31475e}.program-review-note{margin:8px 0 0;color:#77443e;font-size:.9rem}.program-deadline-note{margin:14px 0;padding:12px 14px;border-radius:12px;background:#eef5ff;border:1px solid #c8dcf7;color:#173f70;font-weight:700}.program-editor-review-status{margin:12px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid #d9e1ea;background:#f7f9fb}.program-editor-review-status.ok{border-color:#b8dfc6;background:#edf8f1;color:#176b38}.program-editor-review-status.no{border-color:#f0c3bf;background:#fff0ee;color:#8f2d25}.program-editor-review-status.cancel{border-color:#d9c7bb;background:#f8f1ec;color:#724631}.program-editor-review-status.pending{color:#4f6173}
       .program-feedbacks{margin:14px 0 18px;display:grid;gap:10px}.program-feedback{border:1px solid #b8dfc6;background:#edf8f1;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between}.program-feedback.adjust{border-color:#edcf82;background:#fff9e8}.program-feedback strong{display:block;color:#176b38;margin-bottom:4px}.program-feedback.adjust strong{color:#76570b}.program-feedback p{margin:0;color:#435a4c;line-height:1.4}.program-feedback.adjust p{color:#635522}.program-feedback button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
       @media(max-width:640px){.weekly-program-reminder,.program-feedback{flex-direction:column}.weekly-program-reminder button,.program-feedback button{width:100%}.program-review-card-head{flex-direction:column}.program-review-actions button{flex:1 1 100%}}
     `;
@@ -232,34 +268,85 @@
     if (!panel || !state.profile) return;
     const saturday = nextSaturdayYmd();
 
-    if (!isAdmin()) {
+    if (!isAdmin() && !isChief()) {
       panel.className = 'program-deadline-note';
-      panel.innerHTML = `Programações das atividades regulares de sábado devem ser lançadas até <strong>quinta-feira, às 18:00</strong>.`;
+      panel.innerHTML = 'Programações das atividades regulares de sábado devem ser lançadas até <strong>sexta-feira, às 14:00</strong>.';
       return;
     }
 
     panel.className = 'program-weekly-review';
-    panel.innerHTML = `<h3>Conferência semanal</h3><p class="review-intro">Atividades regulares de sábado ${escapeHtml(formatDate(saturday))}. Confira as programações antes da reunião.</p><div class="program-weekly-grid"><div>Carregando…</div></div>`;
 
     try {
       const { sections, programs, reviews } = await fetchWeeklyData(saturday);
+
+      if (isChief()) {
+        const ownIds = new Set(await ownChiefSectionIds());
+        const ownSections = sections.filter((section) => ownIds.has(Number(section.id)));
+        panel.innerHTML = `<h3>Próximo sábado</h3><p class="review-intro">${escapeHtml(formatDate(saturday))} • lance a programação até sexta-feira às 14:00 ou registre quando a seção não tiver atividade.</p><div class="program-weekly-grid"></div>`;
+        const grid = panel.querySelector('.program-weekly-grid');
+
+        if (!ownSections.length) {
+          grid.innerHTML = '<div>Não há seção vinculada ao seu perfil.</div>';
+          return;
+        }
+
+        grid.innerHTML = ownSections.map((section) => {
+          const program = programs.find((p) => Number(p.secao_id) === Number(section.id));
+          const review = reviews.find((r) => Number(r.secao_id) === Number(section.id));
+          const noActivity = review?.status === 'sem_atividade';
+          const stateInfo = review ? REVIEW_STATES[review.status] : null;
+          const stateHtml = noActivity
+            ? `<span class="program-review-state noactivity">Sem atividade neste sábado</span>`
+            : program && stateInfo
+              ? `<span class="program-review-state ${stateInfo.cls}">${escapeHtml(stateInfo.label)}</span>`
+              : '';
+          const meta = noActivity
+            ? 'Nenhuma programação será aguardada para esta data.'
+            : program
+              ? `Programação lançada • ${String(program.horario_inicio || '').slice(0,5)}–${String(program.horario_termino || '').slice(0,5)}`
+              : 'Programação ainda não lançada';
+          const actions = noActivity
+            ? `<button class="review-clear" data-no-activity-action="clear" data-section-id="${section.id}" data-date="${saturday}">Desfazer</button>`
+            : program
+              ? ''
+              : `<button class="review-no-activity" data-no-activity-action="mark" data-section-id="${section.id}" data-date="${saturday}">Sem atividade neste sábado</button>`;
+
+          return `<article class="program-review-card">
+            <div class="program-review-card-head"><div><strong>${escapeHtml(section.nome)}</strong><small>${escapeHtml(meta)}</small></div>${stateHtml}</div>
+            <div class="program-review-actions">${actions}</div>
+          </article>`;
+        }).join('');
+        return;
+      }
+
+      panel.innerHTML = `<h3>Conferência semanal</h3><p class="review-intro">Atividades regulares de sábado ${escapeHtml(formatDate(saturday))}. Confira as programações antes da reunião.</p><div class="program-weekly-grid"></div>`;
       const grid = panel.querySelector('.program-weekly-grid');
       grid.innerHTML = sections.map((section) => {
         const program = programs.find((p) => Number(p.secao_id) === Number(section.id));
         const review = reviews.find((r) => Number(r.secao_id) === Number(section.id));
+        const noActivity = review?.status === 'sem_atividade';
         const reviewState = review ? REVIEW_STATES[review.status] : null;
         const stateHtml = reviewState
           ? `<span class="program-review-state ${reviewState.cls}">${escapeHtml(reviewState.label)}</span>`
           : `<span class="program-review-state">Aguardando conferência</span>`;
-        const meta = program
-          ? `Programação lançada • ${String(program.horario_inicio || '').slice(0,5)}–${String(program.horario_termino || '').slice(0,5)}`
-          : 'Programação ainda não lançada';
+        const meta = noActivity
+          ? 'Sem atividade registrada para este sábado'
+          : program
+            ? `Programação lançada • ${String(program.horario_inicio || '').slice(0,5)}–${String(program.horario_termino || '').slice(0,5)}`
+            : 'Programação ainda não lançada';
         const actions = program
           ? `<button class="review-authorize" data-review-action="authorize" data-section-id="${section.id}" data-date="${saturday}">✓ Revisada — tudo certo</button>
              <button class="review-deny" data-review-action="deny" data-section-id="${section.id}" data-date="${saturday}">✎ Revisada — sugerir ajustes</button>`
-          : `<button class="review-cancel" data-review-action="cancel" data-section-id="${section.id}" data-date="${saturday}">Cancelar por falta de programação</button>`;
-        const clear = review ? `<button class="review-clear" data-review-action="clear" data-section-id="${section.id}" data-date="${saturday}">Desfazer decisão</button>` : '';
-        const note = review?.observacao ? `<p class="program-review-note"><strong>Observação:</strong> ${escapeHtml(review.observacao)}</p>` : '';
+          : noActivity
+            ? ''
+            : `<button class="review-no-activity" data-no-activity-action="mark" data-section-id="${section.id}" data-date="${saturday}">Sem atividade neste sábado</button>
+               <button class="review-cancel" data-review-action="cancel" data-section-id="${section.id}" data-date="${saturday}">Cancelar por falta de programação</button>`;
+        const clear = review
+          ? noActivity
+            ? `<button class="review-clear" data-no-activity-action="clear" data-section-id="${section.id}" data-date="${saturday}">Desfazer</button>`
+            : `<button class="review-clear" data-review-action="clear" data-section-id="${section.id}" data-date="${saturday}">Desfazer decisão</button>`
+          : '';
+        const note = review?.observacao && !noActivity ? `<p class="program-review-note"><strong>Observação:</strong> ${escapeHtml(review.observacao)}</p>` : '';
         return `<article class="program-review-card">
           <div class="program-review-card-head"><div><strong>${escapeHtml(section.nome)}</strong><small>${escapeHtml(meta)}</small></div>${stateHtml}</div>
           ${note}
@@ -268,8 +355,7 @@
       }).join('');
     } catch (error) {
       console.error('Falha na conferência semanal:', error);
-      const grid = panel.querySelector('.program-weekly-grid');
-      if (grid) grid.innerHTML = '<div>Não foi possível carregar a conferência semanal.</div>';
+      panel.innerHTML = '<div class="program-deadline-note">Não foi possível carregar a situação das programações deste sábado.</div>';
     }
   }
 
@@ -401,6 +487,17 @@
         document.querySelector(`[data-feedback-id="${id}"]`)?.remove();
         const { data: programs } = await client.from('programacoes').select('id').eq('secao_id', sectionId).eq('data_atividade', date).limit(1);
         if (programs?.[0] && typeof runtime.openProgramPreview === 'function') await runtime.openProgramPreview(programs[0].id);
+        return;
+      }
+      const noActivity = event.target.closest('[data-no-activity-action]');
+      if (noActivity) {
+        const sectionId = Number(noActivity.dataset.sectionId || 0);
+        const date = noActivity.dataset.date || '';
+        const enabled = noActivity.dataset.noActivityAction === 'mark';
+        if (sectionId && date) {
+          noActivity.disabled = true;
+          try { await setNoActivity(sectionId, date, enabled); } finally { noActivity.disabled = false; }
+        }
         return;
       }
       const review = event.target.closest('[data-review-action]');
