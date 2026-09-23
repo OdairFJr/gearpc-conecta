@@ -14,10 +14,11 @@
   }
 
   function setMsg(text, ok = false) {
-    const el = $('cycleImportMessageV81');
-    if (!el) return;
-    el.textContent = text || '';
-    el.classList.toggle('ok', Boolean(ok));
+    const targets = [$('cycleImportPickMessageV84'), $('cycleImportMessageV81')].filter(Boolean);
+    targets.forEach((el) => {
+      el.textContent = text || '';
+      el.classList.toggle('ok', Boolean(ok));
+    });
   }
 
   function loadScript(id, src) {
@@ -117,6 +118,7 @@
                 <small>Você pode selecionar vários arquivos do mesmo ciclo ao mesmo tempo — por exemplo, diagnóstico em PDF + calendário em Excel. Aceita PDF, Word (.docx) e Excel (.xlsx/.xls). Arquivos .doc antigos precisam ser salvos como .docx.</small>
               </label>
               <button id="cycleImportReadV81" type="button" class="save-button">Interpretar arquivo(s)</button>
+              <p id="cycleImportPickMessageV84" class="cycle-import-v81-message" role="status"></p>
             </section>
 
             <form id="cycleImportReviewV81" class="hidden">
