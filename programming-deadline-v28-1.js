@@ -75,7 +75,28 @@
       return;
     }
 
-    host.innerHTML = data.map((notice) => `
+    let currentSectionIds = new Set();
+    if (state.profile?.chefe_id) {
+      const { data: links } = await client.from('chefe_secoes')
+        .select('secao_id')
+        .eq('chefe_id', Number(state.profile.chefe_id));
+      currentSectionIds = new Set((links || []).map((row) => Number(row.secao_id)).filter(Boolean));
+    }
+
+    const staleIds = data
+      .filter((notice) => !currentSectionIds.has(Number(notice.secao_id)))
+      .map((notice) => Number(notice.id))
+      .filter(Boolean);
+    const active = data.filter((notice) => currentSectionIds.has(Number(notice.secao_id)));
+
+    if (staleIds.length) {
+      await client.from('notificacoes')
+        .update({ lida: true })
+        .in('id', staleIds)
+        .eq('user_id', state.user.id);
+    }
+
+    host.innerHTML = active.map((notice) => `
       <article class="weekly-program-cancellation" data-cancel-notice-id="${Number(notice.id)}">
         <div><strong>⏰ ${escapeHtml(notice.titulo || 'Programação não lançada no prazo')}</strong><p>${escapeHtml(notice.mensagem || '')}</p></div>
         <button type="button" data-dismiss-cancel-notice="${Number(notice.id)}">Entendi</button>
