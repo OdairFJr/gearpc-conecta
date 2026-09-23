@@ -64,11 +64,46 @@
   async function extractSpreadsheet(file) {
     await loadScript('gearpcXlsxV81', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
     if (!window.XLSX) throw new Error('Leitor de Excel indisponível.');
-    const wb = window.XLSX.read(await file.arrayBuffer(), { type:'array', cellDates:false });
+    const wb = window.XLSX.read(await file.arrayBuffer(), {
+      type:'array',
+      cellDates:true,
+      cellNF:true,
+      cellText:true,
+      dateNF:'dd/mm/yyyy'
+    });
     const out = [];
+
+    const normalizeDateCell = (cell) => {
+      if (!cell) return;
+      try {
+        if (cell.t === 'd') {
+          const d = new Date(cell.v);
+          if (!Number.isNaN(d.getTime())) {
+            cell.t = 's';
+            cell.v = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+            cell.w = cell.v;
+          }
+          return;
+        }
+
+        if (cell.t === 'n' && cell.z && window.XLSX.SSF?.is_date?.(cell.z)) {
+          const parsed = window.XLSX.SSF.parse_date_code(cell.v);
+          if (parsed?.y && parsed?.m && parsed?.d) {
+            cell.t = 's';
+            cell.v = `${String(parsed.d).padStart(2,'0')}/${String(parsed.m).padStart(2,'0')}/${parsed.y}`;
+            cell.w = cell.v;
+          }
+        }
+      } catch (_) {}
+    };
+
     for (const name of wb.SheetNames) {
+      const sheet = wb.Sheets[name];
+      Object.keys(sheet).forEach((key) => {
+        if (!key.startsWith('!')) normalizeDateCell(sheet[key]);
+      });
       out.push('PLANILHA: ' + name);
-      out.push(window.XLSX.utils.sheet_to_csv(wb.Sheets[name], { blankrows:false }));
+      out.push(window.XLSX.utils.sheet_to_csv(sheet, { blankrows:false, dateNF:'dd/mm/yyyy', rawNumbers:false }));
     }
     return out.join('\n\n');
   }
