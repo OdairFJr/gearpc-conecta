@@ -64,6 +64,7 @@
   async function extractSpreadsheet(file) {
     await loadScript('gearpcXlsxV81', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
     if (!window.XLSX) throw new Error('Leitor de Excel indisponível.');
+
     const wb = window.XLSX.read(await file.arrayBuffer(), {
       type:'array',
       cellDates:true,
@@ -71,41 +72,69 @@
       cellText:true,
       dateNF:'dd/mm/yyyy'
     });
-    const out = [];
 
-    const normalizeDateCell = (cell) => {
-      if (!cell) return;
+    const out = [];
+    const excelSerialToDate = (value) => {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 20000 || n > 80000) return '';
+      try {
+        const parsed = window.XLSX.SSF.parse_date_code(n);
+        if (!parsed?.y || !parsed?.m || !parsed?.d) return '';
+        return `${String(parsed.d).padStart(2,'0')}/${String(parsed.m).padStart(2,'0')}/${parsed.y}`;
+      } catch (_) {
+        return '';
+      }
+    };
+
+    const formatCell = (cell) => {
+      if (!cell) return '';
       try {
         if (cell.t === 'd') {
           const d = new Date(cell.v);
           if (!Number.isNaN(d.getTime())) {
-            cell.t = 's';
-            cell.v = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
-            cell.w = cell.v;
+            return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
           }
-          return;
         }
 
-        if (cell.t === 'n' && cell.z && window.XLSX.SSF?.is_date?.(cell.z)) {
-          const parsed = window.XLSX.SSF.parse_date_code(cell.v);
-          if (parsed?.y && parsed?.m && parsed?.d) {
-            cell.t = 's';
-            cell.v = `${String(parsed.d).padStart(2,'0')}/${String(parsed.m).padStart(2,'0')}/${parsed.y}`;
-            cell.w = cell.v;
+        if (cell.t === 'n') {
+          if (cell.z && window.XLSX.SSF?.is_date?.(cell.z)) {
+            const parsed = window.XLSX.SSF.parse_date_code(cell.v);
+            if (parsed?.y && parsed?.m && parsed?.d) {
+              return `${String(parsed.d).padStart(2,'0')}/${String(parsed.m).padStart(2,'0')}/${parsed.y}`;
+            }
           }
+
+          const serialDate = excelSerialToDate(cell.v);
+          if (serialDate) return serialDate;
         }
-      } catch (_) {}
+
+        const formatted = window.XLSX.utils.format_cell(cell, { dateNF:'dd/mm/yyyy' });
+        if (String(formatted || '').trim()) return String(formatted).trim();
+        return String(cell.v ?? '').trim();
+      } catch (_) {
+        return String(cell.v ?? '').trim();
+      }
     };
 
-    for (const name of wb.SheetNames) {
-      const sheet = wb.Sheets[name];
-      Object.keys(sheet).forEach((key) => {
-        if (!key.startsWith('!')) normalizeDateCell(sheet[key]);
-      });
-      out.push('PLANILHA: ' + name);
-      out.push(window.XLSX.utils.sheet_to_csv(sheet, { blankrows:false, dateNF:'dd/mm/yyyy', rawNumbers:false }));
+    for (const sheetName of wb.SheetNames) {
+      const sheet = wb.Sheets[sheetName];
+      out.push('PLANILHA: ' + sheetName);
+
+      const range = sheet['!ref'] ? window.XLSX.utils.decode_range(sheet['!ref']) : null;
+      if (!range) continue;
+
+      for (let row = range.s.r; row <= range.e.r; row += 1) {
+        const values = [];
+        for (let col = range.s.c; col <= range.e.c; col += 1) {
+          const addr = window.XLSX.utils.encode_cell({ r:row, c:col });
+          const value = formatCell(sheet[addr]);
+          if (value !== '') values.push(`${addr}=${value}`);
+        }
+        if (values.length) out.push(`LINHA ${row + 1} | ${values.join(' | ')}`);
+      }
     }
-    return out.join('\n\n');
+
+    return out.join('\n');
   }
 
   async function extractText(file) {
