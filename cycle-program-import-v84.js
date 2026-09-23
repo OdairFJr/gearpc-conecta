@@ -1,6 +1,6 @@
 (() => {
   if (window.__GEARPC_CYCLE_IMPORT_V84__) return;
-  window.__GEARPC_CYCLE_IMPORT_V81__ = true;
+  window.__GEARPC_CYCLE_IMPORT_V84__ = true;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const $ = (id) => document.getElementById(id);
