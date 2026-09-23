@@ -339,13 +339,9 @@
     }
     if (!rt?.client || !$('cycleNewV80')) return;
 
-    const isAdmin = rt.state.profile?.tipo === 'administrador';
-    let pilot = isAdmin;
-    if (!pilot) {
-      const { data, error } = await rt.client.from('perfis_usuarios').select('eh_teste').eq('user_id', rt.state.user.id).maybeSingle();
-      pilot = !error && data?.eh_teste === true;
-    }
-    if (!pilot) return;
+    const tipo = rt.state.profile?.tipo;
+    const enabled = tipo === 'administrador' || tipo === 'chefia' || tipo === 'dirigente';
+    if (!enabled) return;
 
     installUi();
     const ramos = allowedRamos();
