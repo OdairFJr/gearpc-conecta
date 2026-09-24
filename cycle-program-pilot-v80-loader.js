@@ -35,5 +35,7 @@
     }
   }
 
-  void load();
+  const initialReady = load();
+  window.GEARPC_DASHBOARD_PREPARE_TASKS = window.GEARPC_DASHBOARD_PREPARE_TASKS || [];
+  window.GEARPC_DASHBOARD_PREPARE_TASKS.push(() => initialReady);
 })();
