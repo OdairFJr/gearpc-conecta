@@ -164,9 +164,5 @@
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureCalendar, { once: true });
-  } else {
-    ensureCalendar();
-  }
+  ensureCalendar();
 })();
