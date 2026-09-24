@@ -413,6 +413,7 @@
     await refreshAll();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
-  else init();
+  const initialReady = init();
+  window.GEARPC_DASHBOARD_PREPARE_TASKS = window.GEARPC_DASHBOARD_PREPARE_TASKS || [];
+  window.GEARPC_DASHBOARD_PREPARE_TASKS.push(() => initialReady);
 })();
