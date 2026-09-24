@@ -60,16 +60,6 @@
     return el;
   }
 
-  async function currentSectionIds() {
-    const chiefId = Number(rt?.state?.profile?.chefe_id || 0);
-    if (!chiefId) return new Set();
-    const { data, error } = await rt.client.from('chefe_secoes')
-      .select('secao_id')
-      .eq('chefe_id', chiefId);
-    if (error) throw error;
-    return new Set((data || []).map((row) => Number(row.secao_id)).filter(Boolean));
-  }
-
   async function markRead(ids) {
     if (!ids.length || !rt?.state?.user?.id) return;
     await rt.client.from('notificacoes')
@@ -90,12 +80,6 @@
     }
 
     try {
-      const sectionIds = await currentSectionIds();
-      if (!sectionIds.size) {
-        el.innerHTML = '';
-        return;
-      }
-
       const { data, error } = await rt.client.from('notificacoes')
         .select('id,tipo,titulo,mensagem,secao_id,data_referencia,lida,criado_em')
         .eq('user_id', userId)
@@ -107,11 +91,7 @@
 
       if (error) throw error;
 
-      const rows = data || [];
-      const stale = rows.filter((n) => !sectionIds.has(Number(n.secao_id))).map((n) => Number(n.id)).filter(Boolean);
-      const active = rows.filter((n) => sectionIds.has(Number(n.secao_id)));
-
-      if (stale.length) void markRead(stale);
+      const active = data || [];
 
       el.innerHTML = active.map((notice) => {
         const overdue = notice.tipo === 'cancelamento_programacao';
