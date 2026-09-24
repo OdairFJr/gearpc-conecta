@@ -177,5 +177,10 @@
     }
   }
 
-  void boot();
+  const bootReady = boot();
+  window.GEARPC_DASHBOARD_PREPARE_TASKS = window.GEARPC_DASHBOARD_PREPARE_TASKS || [];
+  window.GEARPC_DASHBOARD_PREPARE_TASKS.push(async () => {
+    await bootReady;
+    await loadNotices();
+  });
 })();
