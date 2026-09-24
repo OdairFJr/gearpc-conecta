@@ -284,6 +284,42 @@
     await Promise.race([work, timeout]);
   }
 
+  function waitForDashboardQuiet(quietMs = 180, maxMs = 700) {
+    return new Promise((resolve) => {
+      let quietTimer = 0;
+      let maxTimer = 0;
+      const finish = () => {
+        window.clearTimeout(quietTimer);
+        window.clearTimeout(maxTimer);
+        observer.disconnect();
+        resolve();
+      };
+      const armQuiet = () => {
+        window.clearTimeout(quietTimer);
+        quietTimer = window.setTimeout(finish, quietMs);
+      };
+      const observer = new MutationObserver(armQuiet);
+      observer.observe(dashboardView, { childList: true, subtree: true, characterData: true });
+      maxTimer = window.setTimeout(finish, maxMs);
+      armQuiet();
+    });
+  }
+
+  async function revealDashboardStable() {
+    hideAllViews();
+    dashboardView.classList.add('dashboard-preparing');
+    dashboardView.classList.remove('hidden');
+
+    // Alguns módulos legados do painel iniciam entre 0,9 e 1,15 s após a sessão.
+    // Mantemos o painel montando fora da visão para evitar mudanças de layout perceptíveis.
+    const minimumSettle = new Promise((resolve) => window.setTimeout(resolve, 1250));
+    await Promise.allSettled([prepareDashboardBeforeReveal(), minimumSettle]);
+    await waitForDashboardQuiet();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    dashboardView.classList.remove('dashboard-preparing');
+  }
+
   function hideAllViews() {
     loginView.classList.add('hidden');
     dashboardView.classList.add('hidden');
@@ -294,8 +330,8 @@
     $('programmingView')?.classList.add('hidden');
     $('programEditorView')?.classList.add('hidden');
   }
-  function showLogin() { hideAllViews(); loginView.classList.remove('hidden'); }
-  function showDashboard() { hideAllViews(); dashboardView.classList.remove('hidden'); }
+  function showLogin() { hideAllViews(); dashboardView.classList.remove('dashboard-preparing'); loginView.classList.remove('hidden'); }
+  function showDashboard() { hideAllViews(); dashboardView.classList.remove('dashboard-preparing'); dashboardView.classList.remove('hidden'); }
   function showMembers() { hideAllViews(); membersView.classList.remove('hidden'); }
   function showChiefs() { hideAllViews(); chiefsView.classList.remove('hidden'); }
   function showAttendance() { hideAllViews(); attendanceView.classList.remove('hidden'); }
@@ -2639,8 +2675,7 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       const allowed = await loadProfile(session.user);
       if (!allowed) return false;
       await registerAppAccess();
-      await prepareDashboardBeforeReveal();
-      showDashboard();
+      await revealDashboardStable();
       activeAuthenticatedUserId = userId;
       return true;
     })();
