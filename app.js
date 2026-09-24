@@ -1,5 +1,6 @@
 (() => {
   const cfg = window.GEARPC_CONFIG || {};
+  window.GEARPC_DASHBOARD_PREPARE_TASKS = window.GEARPC_DASHBOARD_PREPARE_TASKS || [];
   const $ = (id) => document.getElementById(id);
   const loginView = $('loginView');
   const dashboardView = $('dashboardView');
@@ -258,12 +259,30 @@
   }
 
   if (!configOk()) {
+    loginView.classList.remove('hidden');
     loginMessage.textContent = 'Primeiro preencha o arquivo config.js com o Project URL e a Publishable Key.';
     loginButton.disabled = true;
     return;
   }
 
   const client = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_PUBLISHABLE_KEY);
+  let enterAppPromise = null;
+  let enteringUserId = '';
+  let activeAuthenticatedUserId = '';
+
+  async function prepareDashboardBeforeReveal() {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const tasks = Array.isArray(window.GEARPC_DASHBOARD_PREPARE_TASKS)
+      ? [...window.GEARPC_DASHBOARD_PREPARE_TASKS]
+      : [];
+    if (!tasks.length) return;
+
+    const work = Promise.allSettled(tasks.map((task) => Promise.resolve().then(() =>
+      typeof task === 'function' ? task() : task
+    )));
+    const timeout = new Promise((resolve) => setTimeout(resolve, 1400));
+    await Promise.race([work, timeout]);
+  }
 
   function hideAllViews() {
     loginView.classList.add('hidden');
@@ -2601,6 +2620,9 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   async function doLogout() {
     await client.auth.signOut();
     accessRegisteredThisLoad = false;
+    activeAuthenticatedUserId = '';
+    state.user = null;
+    state.profile = null;
     loginForm.reset();
     loginMessage.textContent = '';
     showLogin();
@@ -2608,10 +2630,29 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
 
   async function enterApp(session) {
     if (!session?.user) { showLogin(); return; }
-    const allowed = await loadProfile(session.user);
-    if (!allowed) return;
-    await registerAppAccess();
-    showDashboard();
+    const userId = session.user.id;
+    if (activeAuthenticatedUserId === userId) return true;
+    if (enterAppPromise && enteringUserId === userId) return enterAppPromise;
+
+    enteringUserId = userId;
+    enterAppPromise = (async () => {
+      const allowed = await loadProfile(session.user);
+      if (!allowed) return false;
+      await registerAppAccess();
+      await prepareDashboardBeforeReveal();
+      showDashboard();
+      activeAuthenticatedUserId = userId;
+      return true;
+    })();
+
+    try {
+      return await enterAppPromise;
+    } finally {
+      if (enteringUserId === userId) {
+        enteringUserId = '';
+        enterAppPromise = null;
+      }
+    }
   }
 
   loginForm.addEventListener('submit', async (event) => {
@@ -2735,9 +2776,15 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   client.auth.onAuthStateChange((event, session) => {
     window.setTimeout(async () => {
       if (!session) {
+        activeAuthenticatedUserId = '';
+        state.user = null;
+        state.profile = null;
         showLogin();
         return;
       }
+
+      if (event === 'TOKEN_REFRESHED') return;
+      if (event === 'USER_UPDATED' && activeAuthenticatedUserId === session.user?.id) return;
 
       const isPasswordFlow = event === 'PASSWORD_RECOVERY' ||
         initialAuthAction === 'recovery' ||
