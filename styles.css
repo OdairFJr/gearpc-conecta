@@ -19,6 +19,7 @@ body {
   background:
     radial-gradient(circle at 82% 8%, rgba(255,255,255,.12), transparent 28%),
     linear-gradient(180deg, var(--navy) 0 29%, #edf3f8 29% 100%);
+  background-attachment: fixed;
 }
 button, input { font: inherit; }
 button { cursor: pointer; }
@@ -26,6 +27,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(246,184,0,.3
 .hidden { display: none !important; }
 
 .app-shell {
+  position: relative;
   width: min(100%, 720px);
   min-height: 100vh;
   margin: 0 auto;
@@ -108,7 +110,15 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 .access-note { font-size: 12px; opacity: .78; margin-top: 17px; }
 
 .dashboard-view { color: var(--ink); }
-.dashboard-view.dashboard-preparing { visibility: hidden !important; pointer-events: none !important; }
+.dashboard-view.dashboard-preparing {
+  position: absolute !important;
+  top: 12px;
+  left: 16px;
+  right: 16px;
+  width: auto;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 .hero-header { color: white; padding: 0 2px 9px; }
 .topbar-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .brand-mini { display: flex; gap: 10px; align-items: center; opacity: .94; }
