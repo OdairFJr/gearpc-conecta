@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-2-weekly-program-notices';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-3-weekly-program-notices';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -41,7 +41,7 @@ const APP_SHELL = [
   './admin-activity-v27.js',
   './service-branch-v30.js?v=50.0',
   './service-branch-exceptions-pilot-v64.js?v=67.0',
-  './programming-weekly-notices-v70.js?v=70.1',
+  './programming-weekly-notices-v70.js?v=70.2',
   './activity-materials-pilot-v63.js?v=63.1',
   './cycle-calendar-builder-v83.js?v=83.1',
   './cycle-program-pilot-v80-loader.js?v=84.4',
@@ -153,7 +153,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="service-branch-exceptions-pilot-v64.js?v=67.0"></script>\n</body>');
   }
   if (!html.includes('programming-weekly-notices-v70.js')) {
-    html = html.replace('</body>', '  <script src="programming-weekly-notices-v70.js?v=70.1"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programming-weekly-notices-v70.js?v=70.2"></script>\n</body>');
   }
   if (!html.includes('activity-materials-pilot-v63.js')) {
     html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.1"></script>\n</body>');
