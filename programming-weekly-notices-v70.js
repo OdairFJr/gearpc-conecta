@@ -13,9 +13,9 @@
     .replaceAll('"','&quot;').replaceAll("'","&#039;");
 
   async function waitRuntime() {
-    for (let i = 0; i < 160; i += 1) {
+    for (let i = 0; i < 200; i += 1) {
       const x = window.GEARPC_RUNTIME;
-      if (x?.client && x?.state) return x;
+      if (x?.client && x?.state?.user?.id && x?.state?.profile) return x;
       await sleep(100);
     }
     return null;
@@ -170,7 +170,11 @@
     injectStyles();
     bind();
     const { data } = await rt.client.auth.getSession();
-    if (data?.session) scheduleRefresh(700);
+    if (data?.session) {
+      scheduleRefresh(150);
+      setTimeout(() => scheduleRefresh(0), 1200);
+      setTimeout(() => scheduleRefresh(0), 3000);
+    }
   }
 
   void boot();
