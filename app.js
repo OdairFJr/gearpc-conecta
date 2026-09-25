@@ -344,6 +344,31 @@
     return ({ chefia: 'Chefia', responsavel: 'Responsável' })[profile.tipo] || profile.tipo || 'Usuário';
   }
 
+  function enforceTestResponsibleDashboard() {
+    const profile = state.profile;
+    if (!(profile?.tipo === 'responsavel' && profile?.eh_teste === true)) return;
+
+    const allowedIds = new Set(['membersButton', 'chiefsButton', 'annualCalendarButton']);
+    const apply = () => {
+      document.querySelectorAll('#dashboardView .launch-module').forEach((button) => {
+        button.classList.toggle('hidden', !allowedIds.has(button.id));
+      });
+      membersButton?.classList.remove('hidden');
+      chiefsButton?.classList.remove('hidden');
+      document.getElementById('annualCalendarButton')?.classList.remove('hidden');
+    };
+
+    apply();
+    if (!window.__GEARPC_TEST_RESPONSIBLE_DASHBOARD_OBSERVER__) {
+      const modules = document.querySelector('#dashboardView .launch-modules');
+      if (modules) {
+        const observer = new MutationObserver(apply);
+        observer.observe(modules, { childList: true, subtree: true });
+        window.__GEARPC_TEST_RESPONSIBLE_DASHBOARD_OBSERVER__ = observer;
+      }
+    }
+  }
+
   async function loadProfile(user) {
     const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta,chefe_id,responsavel_id,eh_teste').eq('user_id', user.id).single();
     if (error || !data) {
@@ -363,7 +388,8 @@
     welcomeName.textContent = `Olá, ${data.nome_completo}`;
     profileType.textContent = prettyProfile(data);
     adminCard.classList.toggle('hidden', data.tipo !== 'administrador');
-    membersButton.classList.toggle('hidden', data.tipo === 'responsavel');
+    const testResponsible = data.tipo === 'responsavel' && data.eh_teste === true;
+    membersButton.classList.toggle('hidden', data.tipo === 'responsavel' && !testResponsible);
     chiefsButton.classList.remove('hidden');
     attendanceButton.classList.toggle('hidden', data.tipo === 'responsavel');
     $('programmingButton')?.classList.toggle('hidden', data.tipo === 'responsavel');
@@ -403,6 +429,7 @@
       ? 'Selecione a seção e a data para consultar a chamada.'
       : 'Selecione a seção e a data da reunião para registrar a presença.';
     statusLine.textContent = 'Ambiente seguro • acesso restrito a usuários autorizados';
+    enforceTestResponsibleDashboard();
     return true;
   }
 
