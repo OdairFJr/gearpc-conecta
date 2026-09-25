@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-7-family-test-lab';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-8-responsible-test-access';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -16,7 +16,7 @@ const APP_SHELL = [
   './offline.html',
   './styles.css?v=23.2',
   './ideas-data.js?v=23.0',
-  './app.js?v=23.3',
+  './app.js?v=23.4',
   './programacao.js?v=48.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
