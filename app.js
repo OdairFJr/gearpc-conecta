@@ -345,7 +345,7 @@
   }
 
   async function loadProfile(user) {
-    const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta,chefe_id').eq('user_id', user.id).single();
+    const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta,chefe_id,responsavel_id,eh_teste').eq('user_id', user.id).single();
     if (error || !data) {
       await client.auth.signOut();
       loginMessage.textContent = 'Seu acesso existe, mas ainda não possui um perfil autorizado no GEArPC Conecta.';
