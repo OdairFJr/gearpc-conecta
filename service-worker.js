@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-6-offflow-prepare';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-7-family-test-lab';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -16,7 +16,7 @@ const APP_SHELL = [
   './offline.html',
   './styles.css?v=23.2',
   './ideas-data.js?v=23.0',
-  './app.js?v=23.2',
+  './app.js?v=23.3',
   './programacao.js?v=48.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
@@ -35,6 +35,7 @@ const APP_SHELL = [
   './first-access-v25.js',
   './mandatory-password-v26.js',
   './admin-password-v51.js',
+  './admin-test-user-v57.js?v=57.0',
   './apf-v52.js',
   './apf-test-gate-v52-1.js',
   './apf-formacao-v53.js',
