@@ -29,10 +29,10 @@
   }
 
   function loadTestUserModule() {
-    if (document.getElementById('adminTestUserV56Script')) return;
+    if (document.getElementById('adminTestUserV57Script')) return;
     const script = document.createElement('script');
-    script.id = 'adminTestUserV56Script';
-    script.src = 'admin-test-user-v56.js?v=56.0';
+    script.id = 'adminTestUserV57Script';
+    script.src = 'admin-test-user-v57.js?v=57.0';
     script.async = false;
     document.body.appendChild(script);
   }
