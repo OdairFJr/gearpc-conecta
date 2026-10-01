@@ -204,6 +204,9 @@
         if (message) message.textContent = 'Salvo.';
         decorateCalendar();
         applyCard();
+        document.dispatchEvent(new CustomEvent('gearpc:no-activity-changed', {
+          detail: { date, enabled: true, scope: 'all_sections' }
+        }));
         $('serviceBranchDialogV30')?.close();
         return;
       }
@@ -213,6 +216,9 @@
       exceptions.delete(date);
       writeCache();
       if (message) message.textContent = 'Salvando ramo de serviço...';
+      document.dispatchEvent(new CustomEvent('gearpc:no-activity-changed', {
+        detail: { date, enabled: false, scope: 'all_sections' }
+      }));
 
       form.dataset.serviceBranchV66Bypass = '1';
       if (saveButton) saveButton.disabled = false;
