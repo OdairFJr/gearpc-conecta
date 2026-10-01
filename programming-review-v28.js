@@ -152,8 +152,9 @@
     const dates = [...new Set(notices.map((n) => n.data_referencia).filter(Boolean))];
     let launched = [];
     let noActivity = [];
+    let globalNoActivity = [];
     if (sectionIds.length && dates.length) {
-      const [programRes, reviewRes] = await Promise.all([
+      const [programRes, reviewRes, exceptionRes] = await Promise.all([
         client.from('programacoes')
           .select('secao_id,data_atividade')
           .in('secao_id', sectionIds)
@@ -162,10 +163,15 @@
           .select('secao_id,data_atividade,status')
           .in('secao_id', sectionIds)
           .in('data_atividade', dates)
-          .eq('status', 'sem_atividade')
+          .eq('status', 'sem_atividade'),
+        client.from('ramo_servico_excecoes')
+          .select('data,situacao')
+          .in('data', dates)
+          .eq('situacao', 'nenhuma_secao_sede')
       ]);
       launched = programRes.data || [];
       noActivity = reviewRes.data || [];
+      globalNoActivity = exceptionRes.data || [];
     }
 
     const obsolete = [];
@@ -174,8 +180,9 @@
       const stillLinked = currentSectionIds.has(sectionId);
       const alreadyDone = launched.some((p) => Number(p.secao_id) === sectionId && p.data_atividade === notice.data_referencia);
       const markedNoActivity = noActivity.some((r) => Number(r.secao_id) === sectionId && r.data_atividade === notice.data_referencia);
-      if (!stillLinked || alreadyDone || markedNoActivity) obsolete.push(notice.id);
-      return stillLinked && !alreadyDone && !markedNoActivity;
+      const markedGlobalNoActivity = globalNoActivity.some((r) => r.data === notice.data_referencia && r.situacao === 'nenhuma_secao_sede');
+      if (!stillLinked || alreadyDone || markedNoActivity || markedGlobalNoActivity) obsolete.push(notice.id);
+      return stillLinked && !alreadyDone && !markedNoActivity && !markedGlobalNoActivity;
     });
 
     if (obsolete.length) {
@@ -262,17 +269,19 @@
   }
 
   async function fetchWeeklyData(date) {
-    const [sectionsRes, programsRes, reviewsRes] = await Promise.all([
+    const [sectionsRes, programsRes, reviewsRes, exceptionRes] = await Promise.all([
       client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true).order('id'),
       client.from('programacoes').select('id,secao_id,data_atividade,horario_inicio,horario_termino,atualizado_em').eq('data_atividade', date),
-      client.from('programacao_revisoes').select('id,secao_id,data_atividade,status,observacao,revisado_por,revisado_em,atualizado_em').eq('data_atividade', date)
+      client.from('programacao_revisoes').select('id,secao_id,data_atividade,status,observacao,revisado_por,revisado_em,atualizado_em').eq('data_atividade', date),
+      client.from('ramo_servico_excecoes').select('data,situacao').eq('data', date).maybeSingle()
     ]);
-    const firstError = [sectionsRes, programsRes, reviewsRes].find((r) => r.error)?.error;
+    const firstError = [sectionsRes, programsRes, reviewsRes, exceptionRes].find((r) => r.error)?.error;
     if (firstError) throw firstError;
     return {
       sections: sectionsRes.data || [],
       programs: programsRes.data || [],
-      reviews: reviewsRes.data || []
+      reviews: reviewsRes.data || [],
+      noHeadquartersActivity: exceptionRes.data?.situacao === 'nenhuma_secao_sede'
     };
   }
 
@@ -290,7 +299,14 @@
     panel.className = 'program-weekly-review';
 
     try {
-      const { sections, programs, reviews } = await fetchWeeklyData(saturday);
+      const { sections, programs, reviews, noHeadquartersActivity } = await fetchWeeklyData(saturday);
+
+      if (noHeadquartersActivity) {
+        panel.innerHTML = `<h3>Próximo sábado</h3>
+          <div class="program-deadline-note"><strong>🏕️ Nenhuma seção na sede em ${escapeHtml(formatDate(saturday))}.</strong><br>
+          Nenhuma programação será cobrada das seções para esta data.</div>`;
+        return;
+      }
 
       if (isChief()) {
         const ownIds = new Set(await ownChiefSectionIds());
@@ -526,6 +542,11 @@
 
     $('programEditorSection')?.addEventListener('change', scheduleProgrammingRefresh);
     $('programEditorDate')?.addEventListener('change', scheduleProgrammingRefresh);
+
+    document.addEventListener('gearpc:no-activity-changed', async () => {
+      await loadReminders();
+      scheduleProgrammingRefresh();
+    });
 
     const programmingView = $('programmingView');
     const editorView = $('programEditorView');
