@@ -7,9 +7,9 @@
     { origem: 'Nacional', ano: 2027, ordem: 5, atividade: '26º Jamboree Mundial Escoteiro', data: '30/07 a 08/08/2027', ramo: 'Escoteiro e Sênior' },
     { origem: 'Nacional', ano: 2027, ordem: 6, atividade: 'Dia do Amigo', data: '01 a 31/08/2027', ramo: 'Todos' },
     { origem: 'Nacional', ano: 2027, ordem: 7, atividade: '29º Mutirão Nacional Escoteiro de Ação Comunitária', data: '01 a 30/09/2027', ramo: 'Todos' },
-    { origem: 'Nacional', ano: 2027, ordem: 8, atividade: '8ª Caçada Nacional', data: '02 e 03/10/2027', ramo: 'Lobinho' },
+    { origem: 'Nacional', ano: 2027, ordem: 8, atividade: '7ª Caçada Nacional', data: '02 e 03/10/2027', ramo: 'Lobinho' },
     { origem: 'Nacional', ano: 2027, ordem: 9, atividade: '32º ELO Nacional', data: '02 e 03/10/2027', ramo: 'Escoteiro e Sênior' },
-    { origem: 'Nacional', ano: 2027, ordem: 10, atividade: '70º Jamboree do Ar (JOTA) e 31º Jamboree na Internet (JOTI)', data: '15 a 17/10/2027', ramo: 'Todos' },
+    { origem: 'Nacional', ano: 2027, ordem: 10, atividade: 'Jamboree do Ar (JOTA) e Jamboree na Internet (JOTI)', data: '15 a 17/10/2027', ramo: 'Todos' },
     { origem: 'Nacional', ano: 2027, ordem: 11, atividade: '1º Grande Jogo de Radioescotismo', data: '05 a 07/11/2027', ramo: 'Todos' }
   ];
 
@@ -351,9 +351,9 @@
 
       <section class="members-hero annual-calendar-hero">
         <div>
-          <div class="eyebrow dark">FORMAÇÃO ADULTA</div>
+          <div class="eyebrow dark">FORMAÇÃO E CAPACITAÇÃO</div>
           <h2>Cursos e Capacitações 2027</h2>
-          <p>Agenda separada das atividades juvenis para apoiar o planejamento da equipe adulta.</p>
+          <p>Agenda separada das atividades para apoiar o planejamento de cursos, formações e capacitações.</p>
           <span class="annual-calendar-source test">Regional SC + Nacional • 2027 • TESTE</span>
         </div>
       </section>
