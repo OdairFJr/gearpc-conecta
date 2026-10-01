@@ -9,6 +9,7 @@
   let isAdmin = false;
   let exceptions = new Map();
   let savingSpecial = false;
+  let dynamicUiTimer = null;
 
   function nextSaturdayDate(base = new Date()) {
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 12, 0, 0, 0);
@@ -231,31 +232,80 @@
 
   function observeDialog() {
     const dialog = $('serviceBranchDialogV30');
-    if (!dialog) return;
+    if (!dialog || dialog.dataset.serviceBranchV66Observed === '1') return;
+    dialog.dataset.serviceBranchV66Observed = '1';
     new MutationObserver(() => {
       if (!dialog.open) return;
-      setTimeout(() => ensureSpecialChoice(), 20);
+      setTimeout(() => {
+        ensureSpecialChoice();
+        decorateCalendar();
+        applyCard();
+      }, 20);
     }).observe(dialog, { attributes:true, attributeFilter:['open'] });
   }
 
   function observeCalendar() {
     const wrap = $('serviceCalendarListV50');
-    if (!wrap) return;
+    if (!wrap || wrap.dataset.serviceBranchV66Observed === '1') return;
+    wrap.dataset.serviceBranchV66Observed = '1';
     let timer = null;
     new MutationObserver(() => {
       clearTimeout(timer);
-      timer = setTimeout(decorateCalendar, 30);
+      timer = setTimeout(() => {
+        decorateCalendar();
+        ensureSpecialChoice();
+      }, 30);
     }).observe(wrap, { childList:true, subtree:true });
   }
 
   function observeCard() {
     const name = $('serviceBranchNameV30');
-    if (!name) return;
+    if (!name || name.dataset.serviceBranchV66Observed === '1') return;
+    name.dataset.serviceBranchV66Observed = '1';
     let timer = null;
     new MutationObserver(() => {
       clearTimeout(timer);
       timer = setTimeout(applyCard, 30);
     }).observe(name, { childList:true, characterData:true, subtree:true });
+  }
+
+  function bindDynamicUi() {
+    observeDialog();
+    observeCalendar();
+    observeCard();
+    ensureSpecialChoice();
+    decorateCalendar();
+    applyCard();
+  }
+
+  function scheduleDynamicUiBind() {
+    clearTimeout(dynamicUiTimer);
+    dynamicUiTimer = setTimeout(bindDynamicUi, 20);
+  }
+
+  function observeLateCreatedUi() {
+    const root = document.body || document.documentElement;
+    if (!root || root.dataset.serviceBranchV66LateObserver === '1') return;
+    root.dataset.serviceBranchV66LateObserver = '1';
+    new MutationObserver((mutations) => {
+      const relevant = mutations.some((mutation) =>
+        [...mutation.addedNodes].some((node) =>
+          node?.nodeType === 1 && (
+            node.id === 'serviceBranchDialogV30' ||
+            node.id === 'serviceCalendarDialogV50' ||
+            node.id === 'serviceCalendarListV50' ||
+            node.querySelector?.('#serviceBranchDialogV30,#serviceCalendarDialogV50,#serviceCalendarListV50')
+          )
+        )
+      );
+      if (relevant) scheduleDynamicUiBind();
+    }).observe(root, { childList:true, subtree:true });
+
+    document.addEventListener('click', (event) => {
+      if (event.target.closest?.('.service-calendar-edit-v50,#serviceBranchEditV30')) {
+        setTimeout(bindDynamicUi, 35);
+      }
+    }, true);
   }
 
   async function boot() {
@@ -269,10 +319,10 @@
     const form = $('serviceBranchFormV30');
     form?.addEventListener('submit', (event) => { void saveSpecial(event); }, true);
 
-    observeDialog();
-    observeCalendar();
-    observeCard();
+    observeLateCreatedUi();
+    bindDynamicUi();
     await loadExceptions();
+    bindDynamicUi();
   }
 
   if (document.readyState === 'loading') {
