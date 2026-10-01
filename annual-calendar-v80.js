@@ -29,8 +29,7 @@
   function client() { return runtime()?.client || null; }
 
   function isPreviewProfile() {
-    const p = profile();
-    return Boolean(p && (p.tipo === 'administrador' || p.eh_teste === true));
+    return Boolean(profile());
   }
 
   function isAdmin() {
@@ -39,7 +38,7 @@
 
   function canSeeTraining() {
     const p = profile();
-    return Boolean(p && (p.tipo === 'administrador' || (p.eh_teste === true && p.tipo !== 'responsavel')));
+    return Boolean(p && p.tipo !== 'responsavel');
   }
 
   function esc(value) {
@@ -230,11 +229,11 @@
 
     if (title) title.textContent = 'Calendário de Atividades 2027';
     if (source) {
-      source.textContent = preview ? 'Mundial • Nacional • Regional • Distrital • Grupo • TESTE' : 'Nacional • 2027';
-      source.classList.toggle('test', preview);
+      source.textContent = 'Mundial • Nacional • Regional • Distrital • Grupo • 2027';
+      source.classList.remove('test');
     }
-    note?.classList.toggle('hidden', !preview);
-    $('calendarAdminTools')?.classList.toggle('hidden', !(preview && isAdmin()));
+    note?.classList.remove('hidden');
+    $('calendarAdminTools')?.classList.toggle('hidden', !isAdmin());
     if (body) body.innerHTML = renderTimeline(activityEventsForCurrentView());
   }
 
@@ -324,7 +323,7 @@
           ramo_ids: null,
           fonte: 'Cadastro manual do administrador',
           versao_fonte: 'GEArPC Conecta',
-          em_teste: true
+          em_teste: false
         });
         if (error) throw error;
       }
@@ -345,7 +344,7 @@
     const event = state.events.find((item) => Number(item.id) === id && item.categoria === 'atividade' && !item.secao_id);
     if (!event) return;
 
-    if (!window.confirm(`Excluir "${event.atividade}" do calendário?\n\nEssa atividade deixará de aparecer na linha do tempo de teste.`)) return;
+    if (!window.confirm(`Excluir "${event.atividade}" do calendário?\n\nEssa atividade deixará de aparecer para os usuários.`)) return;
 
     const { error } = await client().from('calendario_eventos')
       .delete()
@@ -416,8 +415,8 @@
         </div>
       </section>
 
-      <div id="annualCalendarTestNote" class="calendar-test-note hidden">
-        <strong>EM TESTE.</strong> Base de 2027 organizada a partir do calendário regional de Santa Catarina. Cada atividade traz sua abrangência. Eventos de Grupo e Distrital aparecerão automaticamente na mesma linha do tempo quando forem cadastrados. O planejamento específico das seções permanece no Ciclo de Programa. O documento regional é sujeito a alterações.
+      <div id="annualCalendarTestNote" class="calendar-test-note">
+        Base de 2027 organizada a partir do calendário regional de Santa Catarina. Cada atividade traz sua abrangência. Eventos de Grupo e Distrital aparecem na mesma linha do tempo quando cadastrados. O planejamento específico das seções permanece no Ciclo de Programa. O documento regional é sujeito a alterações.
       </div>
 
       <section id="calendarAdminTools" class="calendar-admin-tools hidden">
@@ -516,11 +515,11 @@
           <div class="eyebrow dark">FORMAÇÃO E CAPACITAÇÃO</div>
           <h2>Cursos e Capacitações 2027</h2>
           <p>Agenda separada do calendário das seções.</p>
-          <span class="annual-calendar-source test">Regional SC + Nacional • 2027 • TESTE</span>
+          <span class="annual-calendar-source">Regional SC + Nacional • 2027</span>
         </div>
       </section>
 
-      <div class="calendar-test-note"><strong>EM TESTE.</strong> ${esc(SOURCE_LABEL)}. Documento sujeito a alterações.</div>
+      <div class="calendar-test-note">${esc(SOURCE_LABEL)}. Documento sujeito a alterações.</div>
       <section id="trainingCalendarRows" class="training-calendar-card"></section>
       <footer class="app-footer">GEArPC Conecta • Grupo Escoteiro do Ar Paulo Carzino</footer>
     `;
@@ -583,7 +582,7 @@
       trainingButton.type = 'button';
       trainingButton.innerHTML = `
         <span class="launch-module-icon programming-icon" aria-hidden="true">🎓</span>
-        <span class="launch-module-copy"><strong>Cursos e Capacitações</strong><small>Formações previstas para 2027 • EM TESTE.</small></span>
+        <span class="launch-module-copy"><strong>Cursos e Capacitações</strong><small>Formações previstas para 2027.</small></span>
         <span class="launch-module-arrow" aria-hidden="true">›</span>`;
       modules.appendChild(trainingButton);
       buildTrainingView(shell, dashboard);
