@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-8-responsible-test-access';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-9-calendar-test';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -48,7 +48,7 @@ const APP_SHELL = [
   './cycle-program-pilot-v80-loader.js?v=84.5',
   './cycle-program-pilot-v84.js?v=84.1',
   './cycle-program-import-v84.js?v=84.3',
-  './annual-calendar-v80.js?v=80.1',
+  './annual-calendar-v80.js?v=80.2',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
