@@ -20,8 +20,6 @@
   const $ = (id) => document.getElementById(id);
   const state = {
     events: [],
-    sections: [],
-    selectedSectionId: null,
     loaded: false
   };
 
@@ -32,11 +30,6 @@
   function isPreviewProfile() {
     const p = profile();
     return Boolean(p && (p.tipo === 'administrador' || p.eh_teste === true));
-  }
-
-  function canPlanSection() {
-    const p = profile();
-    return Boolean(p && (p.tipo === 'administrador' || (p.eh_teste === true && p.tipo === 'chefia')));
   }
 
   function canSeeTraining() {
@@ -123,15 +116,14 @@
       .calendar-event-title{font-weight:900;color:#17324d;line-height:1.35}
       .calendar-event-meta{margin-top:5px;color:#687b8e;font-size:.76rem;line-height:1.4}
       .calendar-scope{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:.66rem;font-weight:950;letter-spacing:.03em;text-transform:uppercase;background:#edf2f7;color:#455b70}
-      .calendar-scope-mundial{background:#eee9ff;color:#563a99}.calendar-scope-nacional{background:#e9f2ff;color:#174f86}.calendar-scope-regional{background:#e9f6ee;color:#1c6a3b}.calendar-scope-distrital{background:#fff0df;color:#8b5314}.calendar-scope-grupo{background:#e9f5f5;color:#176363}.calendar-scope-secao{background:#fff1cf;color:#775900}
+      .calendar-scope-mundial{background:#eee9ff;color:#563a99}.calendar-scope-nacional{background:#e9f2ff;color:#174f86}.calendar-scope-regional{background:#e9f6ee;color:#1c6a3b}.calendar-scope-distrital{background:#fff0df;color:#8b5314}.calendar-scope-grupo{background:#e9f5f5;color:#176363}
       .calendar-empty{margin:0 18px 28px;padding:24px;text-align:center;color:#60758a;background:#fff;border:1px solid #dbe4ee;border-radius:14px}
       .training-calendar-card{margin:0 18px 28px;background:#fff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden}
       .training-row{display:grid;grid-template-columns:145px minmax(0,1fr) 185px;border-top:1px solid #e6edf4}
       .training-row:first-child{border-top:0}.training-row>div{padding:12px 13px;line-height:1.4}.training-row strong{color:#17324d}.training-row small{color:#64798d}
       .training-month{padding:9px 13px;background:#edf5ff;color:#0a376c;font-weight:950;border-top:1px solid #d6e5f2}
       @media(max-width:620px){
-        .calendar-test-note,.calendar-tools,.calendar-timeline,.training-calendar-card{margin-left:12px;margin-right:12px}
-        .calendar-tools-grid{grid-template-columns:1fr}.calendar-tool-btn{width:100%}
+        .calendar-test-note,.calendar-timeline,.training-calendar-card{margin-left:12px;margin-right:12px}
         .calendar-event{grid-template-columns:1fr;gap:5px}.calendar-date{color:#0a376c}
         .training-row{grid-template-columns:1fr;padding:11px 13px;gap:3px}.training-row>div{padding:0}
       }
@@ -161,66 +153,9 @@
     return state.events;
   }
 
-  async function loadPlanningSections() {
-    if (!canPlanSection()) {
-      state.sections = [];
-      state.selectedSectionId = null;
-      return [];
-    }
-
-    const c = client();
-    const p = profile();
-    let sections = [];
-
-    if (p.tipo === 'administrador') {
-      const { data, error } = await c.from('secoes')
-        .select('id,nome,ramo_id,ativo')
-        .eq('ativo', true)
-        .order('id');
-      if (error) throw error;
-      sections = data || [];
-    } else {
-      const { data: links, error: linkError } = await c.from('chefe_secoes')
-        .select('secao_id')
-        .eq('chefe_id', p.chefe_id);
-      if (linkError) throw linkError;
-      const ids = [...new Set((links || []).map((r) => Number(r.secao_id)).filter(Boolean))];
-      if (ids.length) {
-        const { data, error } = await c.from('secoes')
-          .select('id,nome,ramo_id,ativo')
-          .in('id', ids)
-          .eq('ativo', true)
-          .order('id');
-        if (error) throw error;
-        sections = data || [];
-      }
-    }
-
-    state.sections = sections;
-    if (!state.selectedSectionId || !sections.some((s) => Number(s.id) === Number(state.selectedSectionId))) {
-      state.selectedSectionId = sections[0]?.id || null;
-    }
-    return sections;
-  }
-
-  function selectedSection() {
-    return state.sections.find((s) => Number(s.id) === Number(state.selectedSectionId)) || null;
-  }
-
-  function commonEventAppliesToSection(event, section) {
-    if (event.secao_id) return Number(event.secao_id) === Number(section?.id);
-    if (!section) return true;
-    if (!Array.isArray(event.ramo_ids) || !event.ramo_ids.length) return true;
-    return event.ramo_ids.map(Number).includes(Number(section.ramo_id));
-  }
-
   function activityEventsForCurrentView() {
     if (!isPreviewProfile()) return sortEvents(LEGACY_NATIONAL_EVENTS);
-
-    const section = selectedSection();
-    const rows = state.events.filter((e) => e.categoria === 'atividade');
-    if (!section) return sortEvents(rows.filter((e) => !e.secao_id));
-    return sortEvents(rows.filter((e) => commonEventAppliesToSection(e, section)));
+    return sortEvents(state.events.filter((e) => e.categoria === 'atividade' && !e.secao_id));
   }
 
   function renderTimeline(rows) {
@@ -252,45 +187,21 @@
     return html;
   }
 
-  function renderSectionTools() {
-    const host = $('sectionCalendarTools');
-    if (!host) return;
-    const visible = isPreviewProfile() && canPlanSection();
-    host.classList.toggle('hidden', !visible);
-    if (!visible) return;
-
-    const select = $('sectionCalendarSelect');
-    if (select) {
-      select.innerHTML = state.sections.map((s) => `<option value="${Number(s.id)}">${esc(s.nome)}</option>`).join('');
-      if (state.selectedSectionId) select.value = String(state.selectedSectionId);
-    }
-
-    const enabled = Boolean(selectedSection());
-    $('sectionCalendarDownload')?.toggleAttribute('disabled', !enabled);
-    $('sectionCalendarImportButton')?.toggleAttribute('disabled', !enabled);
-  }
-
   function renderActivityCalendar() {
     const view = $('annualCalendarView');
     if (!view) return;
     const preview = isPreviewProfile();
-    const section = selectedSection();
     const title = $('annualCalendarTitle');
     const source = $('annualCalendarSource');
     const note = $('annualCalendarTestNote');
     const body = $('annualCalendarTimeline');
 
-    if (title) {
-      title.textContent = preview && section
-        ? `Calendário completo • ${section.nome}`
-        : 'Calendário de Atividades 2027';
-    }
+    if (title) title.textContent = 'Calendário de Atividades 2027';
     if (source) {
-      source.textContent = preview ? 'Mundial • Nacional • Regional • Distrital • Grupo • Seção • TESTE' : 'Nacional • 2027';
+      source.textContent = preview ? 'Mundial • Nacional • Regional • Distrital • Grupo • TESTE' : 'Nacional • 2027';
       source.classList.toggle('test', preview);
     }
     note?.classList.toggle('hidden', !preview);
-    renderSectionTools();
     if (body) body.innerHTML = renderTimeline(activityEventsForCurrentView());
   }
 
@@ -325,219 +236,6 @@
     host.innerHTML = html;
   }
 
-  function csvEscape(value) {
-    const s = String(value ?? '');
-    return `"${s.replaceAll('"', '""')}"`;
-  }
-
-  function safeFileName(value) {
-    return normalize(value).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'secao';
-  }
-
-  function toCsvDate(iso) {
-    return iso ? formatDate(iso) : '';
-  }
-
-  function downloadSectionCsv() {
-    const section = selectedSection();
-    if (!section) return;
-
-    const rows = activityEventsForCurrentView();
-    const header = ['Tipo de linha','Data inicial','Data final','Atividade','Abrangência','Local','Seção','Observações'];
-    const table = [header];
-
-    for (const e of rows) {
-      table.push([
-        e.abrangencia === 'Seção' ? 'SEÇÃO' : 'BASE',
-        toCsvDate(e.data_inicio),
-        toCsvDate(e.data_fim),
-        e.atividade,
-        e.abrangencia,
-        e.local || '',
-        section.nome,
-        e.observacoes || ''
-      ]);
-    }
-
-    // Linhas prontas para preenchimento das atividades próprias da seção.
-    for (let i = 0; i < 10; i += 1) {
-      table.push(['SEÇÃO','','','','SEÇÃO','',section.nome,'']);
-    }
-
-    const csv = '\ufeff' + table.map((row) => row.map(csvEscape).join(';')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Calendario_2027_${safeFileName(section.nome)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function parseCsv(text) {
-    const rows = [];
-    let row = [];
-    let field = '';
-    let quoted = false;
-
-    for (let i = 0; i < text.length; i += 1) {
-      const ch = text[i];
-      const next = text[i + 1];
-      if (quoted) {
-        if (ch === '"' && next === '"') {
-          field += '"';
-          i += 1;
-        } else if (ch === '"') {
-          quoted = false;
-        } else {
-          field += ch;
-        }
-      } else if (ch === '"') {
-        quoted = true;
-      } else if (ch === ';') {
-        row.push(field);
-        field = '';
-      } else if (ch === '\n') {
-        row.push(field.replace(/\r$/, ''));
-        rows.push(row);
-        row = [];
-        field = '';
-      } else {
-        field += ch;
-      }
-    }
-    if (field.length || row.length) {
-      row.push(field.replace(/\r$/, ''));
-      rows.push(row);
-    }
-    return rows.filter((r) => r.some((v) => String(v).trim()));
-  }
-
-  function parseInputDate(value) {
-    const raw = String(value || '').trim();
-    if (!raw) return null;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (!m) return null;
-    const day = Number(m[1]);
-    const month = Number(m[2]);
-    const year = Number(m[3]);
-    const d = new Date(Date.UTC(year, month - 1, day));
-    if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return null;
-    return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-  }
-
-  async function importSectionCsv(file) {
-    const section = selectedSection();
-    const status = $('sectionCalendarImportStatus');
-    if (!section || !file) return;
-    if (status) status.textContent = 'Lendo planilha…';
-
-    try {
-      const text = await file.text();
-      const rows = parseCsv(text.replace(/^\uFEFF/, ''));
-      if (rows.length < 2) throw new Error('A planilha não possui linhas para importar.');
-
-      const headers = rows[0].map((h) => normalize(h));
-      const indexOf = (...names) => {
-        for (const name of names) {
-          const idx = headers.indexOf(normalize(name));
-          if (idx >= 0) return idx;
-        }
-        return -1;
-      };
-
-      const ixType = indexOf('Tipo de linha');
-      const ixStart = indexOf('Data inicial');
-      const ixEnd = indexOf('Data final');
-      const ixActivity = indexOf('Atividade');
-      const ixScope = indexOf('Abrangência','Abrangencia');
-      const ixLocal = indexOf('Local');
-      const ixNotes = indexOf('Observações','Observacoes');
-
-      if (ixType < 0 || ixStart < 0 || ixActivity < 0 || ixScope < 0) {
-        throw new Error('Use a planilha baixada pelo GEArPC Conecta; faltam colunas obrigatórias.');
-      }
-
-      const imported = [];
-      for (let i = 1; i < rows.length; i += 1) {
-        const r = rows[i];
-        const lineType = normalize(r[ixType]);
-        const scope = normalize(r[ixScope]);
-        if (lineType !== 'secao' || scope !== 'secao') continue;
-
-        const activity = String(r[ixActivity] || '').trim();
-        const start = parseInputDate(r[ixStart]);
-        const end = ixEnd >= 0 ? parseInputDate(r[ixEnd]) : null;
-        if (!activity && !start) continue;
-        if (!activity || !start) throw new Error(`Linha ${i + 1}: informe Data inicial e Atividade.`);
-        if (end && end < start) throw new Error(`Linha ${i + 1}: a Data final não pode ser anterior à inicial.`);
-
-        imported.push({
-          ano: YEAR,
-          categoria: 'atividade',
-          data_inicio: start,
-          data_fim: end,
-          atividade: activity,
-          abrangencia: 'Seção',
-          local: ixLocal >= 0 ? (String(r[ixLocal] || '').trim() || null) : null,
-          secao_id: Number(section.id),
-          ramo_ids: [Number(section.ramo_id)],
-          observacoes: ixNotes >= 0 ? (String(r[ixNotes] || '').trim() || null) : null,
-          fonte: 'Planejamento da seção',
-          versao_fonte: 'Importado pelo GEArPC Conecta',
-          em_teste: true
-        });
-      }
-
-      if (!imported.length) {
-        throw new Error('Nenhuma atividade com abrangência SEÇÃO foi encontrada. Preencha ao menos uma das linhas de seção.');
-      }
-
-      const ok = window.confirm(
-        `Importar ${imported.length} atividade(s) para ${section.nome}?\n\nAs atividades de seção atualmente salvas para 2027 serão substituídas pelas desta planilha. Os eventos Mundial, Nacional, Regional, Distrital e de Grupo não serão alterados.`
-      );
-      if (!ok) {
-        if (status) status.textContent = 'Importação cancelada.';
-        return;
-      }
-
-      const c = client();
-      const { data: oldRows, error: oldError } = await c.from('calendario_eventos')
-        .select('id')
-        .eq('ano', YEAR)
-        .eq('secao_id', Number(section.id))
-        .eq('abrangencia', 'Seção');
-      if (oldError) throw oldError;
-
-      const { data: inserted, error: insertError } = await c.from('calendario_eventos')
-        .insert(imported)
-        .select('id');
-      if (insertError) throw insertError;
-
-      const oldIds = (oldRows || []).map((r) => r.id).filter(Boolean);
-      if (oldIds.length) {
-        const { error: deleteError } = await c.from('calendario_eventos').delete().in('id', oldIds);
-        if (deleteError) {
-          const newIds = (inserted || []).map((r) => r.id).filter(Boolean);
-          if (newIds.length) await c.from('calendario_eventos').delete().in('id', newIds);
-          throw deleteError;
-        }
-      }
-
-      await loadPreviewEvents(true);
-      renderActivityCalendar();
-      if (status) status.textContent = `✓ ${imported.length} atividade(s) de ${section.nome} importada(s).`;
-    } catch (error) {
-      if (status) status.textContent = `Não foi possível importar: ${error.message || error}`;
-    } finally {
-      const input = $('sectionCalendarImportInput');
-      if (input) input.value = '';
-    }
-  }
-
   function buildActivityView(shell, dashboard) {
     if ($('annualCalendarView')) return;
 
@@ -561,22 +259,8 @@
       </section>
 
       <div id="annualCalendarTestNote" class="calendar-test-note hidden">
-        <strong>EM TESTE.</strong> Base de 2027 organizada a partir do calendário regional de Santa Catarina. Cada atividade traz sua abrangência. Eventos de Grupo e Distrital aparecerão automaticamente na mesma linha do tempo quando forem cadastrados. O documento regional é sujeito a alterações.
+        <strong>EM TESTE.</strong> Base de 2027 organizada a partir do calendário regional de Santa Catarina. Cada atividade traz sua abrangência. Eventos de Grupo e Distrital aparecerão automaticamente na mesma linha do tempo quando forem cadastrados. O planejamento específico das seções permanece no Ciclo de Programa. O documento regional é sujeito a alterações.
       </div>
-
-      <section id="sectionCalendarTools" class="calendar-tools hidden">
-        <h3>Calendário da seção</h3>
-        <p>Baixe a planilha já com os eventos comuns. As linhas oficiais vêm marcadas como <strong>BASE</strong>; preencha apenas as linhas <strong>SEÇÃO</strong> e importe de volta. Somente essas linhas são gravadas.</p>
-        <div class="calendar-tools-grid">
-          <label>Seção
-            <select id="sectionCalendarSelect"></select>
-          </label>
-          <button id="sectionCalendarDownload" class="calendar-tool-btn secondary" type="button">⬇ Baixar planilha</button>
-          <button id="sectionCalendarImportButton" class="calendar-tool-btn" type="button">⬆ Importar planilha</button>
-        </div>
-        <input id="sectionCalendarImportInput" type="file" accept=".csv,text/csv" hidden>
-        <p id="sectionCalendarImportStatus" class="calendar-import-status" role="status"></p>
-      </section>
 
       <div id="annualCalendarTimeline"></div>
       <footer class="app-footer">GEArPC Conecta • Grupo Escoteiro do Ar Paulo Carzino</footer>
@@ -592,17 +276,8 @@
       view.classList.add('hidden');
       $('logoutButton')?.click();
     });
-    $('sectionCalendarSelect')?.addEventListener('change', (event) => {
-      state.selectedSectionId = Number(event.target.value || 0) || null;
-      renderActivityCalendar();
-    });
-    $('sectionCalendarDownload')?.addEventListener('click', downloadSectionCsv);
-    $('sectionCalendarImportButton')?.addEventListener('click', () => $('sectionCalendarImportInput')?.click());
-    $('sectionCalendarImportInput')?.addEventListener('change', (event) => {
-      const file = event.target.files?.[0];
-      if (file) void importSectionCsv(file);
-    });
   }
+
 
   function buildTrainingView(shell, dashboard) {
     if (!canSeeTraining() || $('trainingCalendarView')) return;
@@ -673,7 +348,7 @@
       activityButton.dataset.calendarBound = '1';
       activityButton.addEventListener('click', async () => {
         if (isPreviewProfile()) {
-          await Promise.all([loadPreviewEvents(), loadPlanningSections()]);
+          await loadPreviewEvents();
         }
         renderActivityCalendar();
         hideTopViews(shell);
@@ -724,7 +399,7 @@
     if (!ready) return;
     ensureButtonsAndViews();
     if (isPreviewProfile()) {
-      await Promise.allSettled([loadPreviewEvents(), loadPlanningSections()]);
+      await Promise.allSettled([loadPreviewEvents()]);
       renderActivityCalendar();
       if (canSeeTraining()) renderTrainingCalendar();
     }
