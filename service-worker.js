@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-12-calendar-admin-test';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-13-calendar-published';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -48,7 +48,7 @@ const APP_SHELL = [
   './cycle-program-pilot-v80-loader.js?v=84.5',
   './cycle-program-pilot-v84.js?v=84.1',
   './cycle-program-import-v84.js?v=84.3',
-  './annual-calendar-v80.js?v=80.5',
+  './annual-calendar-v80.js?v=80.6',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -160,7 +160,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.1"></script>\n</body>');
   }
   if (!html.includes('annual-calendar-v80.js')) {
-    html = html.replace('</body>', '  <script src="annual-calendar-v80.js?v=80.5"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="annual-calendar-v80.js?v=80.6"></script>\n</body>');
   }
   if (!html.includes('programming-language-v31-1.js')) {
     html = html.replace('</body>', '  <script src="programming-language-v31-1.js"></script>\n</body>');
