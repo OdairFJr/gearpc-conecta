@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-14-service-no-activity';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-15-no-activity-programming';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -26,7 +26,7 @@ const APP_SHELL = [
   './programming-transfer-paxtu-v42.js?v=42.1',
   './programming-permissions-v24.js',
   './programming-ai-fixes-v27-1.js',
-  './programming-review-v28.js?v=44.2',
+  './programming-review-v28.js?v=44.3',
   './programming-deadline-v28-1.js?v=28.2',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
@@ -41,8 +41,8 @@ const APP_SHELL = [
   './apf-formacao-v53.js',
   './admin-activity-v27.js',
   './service-branch-v30.js?v=50.1',
-  './service-branch-exceptions-pilot-v64.js?v=67.1',
-  './programming-weekly-notices-v70.js?v=70.3',
+  './service-branch-exceptions-pilot-v64.js?v=67.2',
+  './programming-weekly-notices-v70.js?v=70.4',
   './activity-materials-pilot-v63.js?v=63.1',
   './cycle-calendar-builder-v83.js?v=83.1',
   './cycle-program-pilot-v80-loader.js?v=84.5',
@@ -133,7 +133,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-activity-v27.js"></script>\n</body>');
   }
   if (!html.includes('programming-review-v28.js')) {
-    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=44.1"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=44.3"></script>\n</body>');
   }
   if (!html.includes('programming-deadline-v28-1.js')) {
     html = html.replace('</body>', '  <script src="programming-deadline-v28-1.js"></script>\n</body>');
@@ -151,10 +151,10 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="service-branch-v30.js?v=50.1"></script>\n</body>');
   }
   if (!html.includes('service-branch-exceptions-pilot-v64.js')) {
-    html = html.replace('</body>', '  <script src="service-branch-exceptions-pilot-v64.js?v=67.1"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="service-branch-exceptions-pilot-v64.js?v=67.2"></script>\n</body>');
   }
   if (!html.includes('programming-weekly-notices-v70.js')) {
-    html = html.replace('</body>', '  <script src="programming-weekly-notices-v70.js?v=70.3"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programming-weekly-notices-v70.js?v=70.4"></script>\n</body>');
   }
   if (!html.includes('activity-materials-pilot-v63.js')) {
     html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.1"></script>\n</body>');
