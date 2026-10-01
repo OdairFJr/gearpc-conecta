@@ -343,11 +343,12 @@
     if (!section) return;
 
     const rows = activityEventsForCurrentView();
-    const header = ['Data inicial','Data final','Atividade','Abrangência','Local','Seção','Observações'];
+    const header = ['Tipo de linha','Data inicial','Data final','Atividade','Abrangência','Local','Seção','Observações'];
     const table = [header];
 
     for (const e of rows) {
       table.push([
+        e.abrangencia === 'Seção' ? 'SEÇÃO' : 'BASE',
         toCsvDate(e.data_inicio),
         toCsvDate(e.data_fim),
         e.atividade,
@@ -360,7 +361,7 @@
 
     // Linhas prontas para preenchimento das atividades próprias da seção.
     for (let i = 0; i < 10; i += 1) {
-      table.push(['','','','SEÇÃO','',section.nome,'']);
+      table.push(['SEÇÃO','','','','SEÇÃO','',section.nome,'']);
     }
 
     const csv = '\ufeff' + table.map((row) => row.map(csvEscape).join(';')).join('\r\n');
@@ -448,6 +449,7 @@
         return -1;
       };
 
+      const ixType = indexOf('Tipo de linha');
       const ixStart = indexOf('Data inicial');
       const ixEnd = indexOf('Data final');
       const ixActivity = indexOf('Atividade');
@@ -455,15 +457,16 @@
       const ixLocal = indexOf('Local');
       const ixNotes = indexOf('Observações','Observacoes');
 
-      if (ixStart < 0 || ixActivity < 0 || ixScope < 0) {
+      if (ixType < 0 || ixStart < 0 || ixActivity < 0 || ixScope < 0) {
         throw new Error('Use a planilha baixada pelo GEArPC Conecta; faltam colunas obrigatórias.');
       }
 
       const imported = [];
       for (let i = 1; i < rows.length; i += 1) {
         const r = rows[i];
+        const lineType = normalize(r[ixType]);
         const scope = normalize(r[ixScope]);
-        if (scope !== 'secao') continue;
+        if (lineType !== 'secao' || scope !== 'secao') continue;
 
         const activity = String(r[ixActivity] || '').trim();
         const start = parseInputDate(r[ixStart]);
@@ -563,7 +566,7 @@
 
       <section id="sectionCalendarTools" class="calendar-tools hidden">
         <h3>Calendário da seção</h3>
-        <p>Baixe a planilha já com os eventos comuns, acrescente as atividades da seção e importe de volta. Na importação, somente as linhas marcadas como <strong>SEÇÃO</strong> são gravadas.</p>
+        <p>Baixe a planilha já com os eventos comuns. As linhas oficiais vêm marcadas como <strong>BASE</strong>; preencha apenas as linhas <strong>SEÇÃO</strong> e importe de volta. Somente essas linhas são gravadas.</p>
         <div class="calendar-tools-grid">
           <label>Seção
             <select id="sectionCalendarSelect"></select>
@@ -666,15 +669,18 @@
 
     buildActivityView(shell, dashboard);
 
-    activityButton.addEventListener('click', async () => {
-      if (isPreviewProfile()) {
-        await Promise.all([loadPreviewEvents(), loadPlanningSections()]);
-      }
-      renderActivityCalendar();
-      hideTopViews(shell);
-      $('annualCalendarView')?.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    }, { once: false });
+    if (!activityButton.dataset.calendarBound) {
+      activityButton.dataset.calendarBound = '1';
+      activityButton.addEventListener('click', async () => {
+        if (isPreviewProfile()) {
+          await Promise.all([loadPreviewEvents(), loadPlanningSections()]);
+        }
+        renderActivityCalendar();
+        hideTopViews(shell);
+        $('annualCalendarView')?.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      });
+    }
 
     if (canSeeTraining() && !$('trainingCalendarButton')) {
       const trainingButton = document.createElement('button');
