@@ -143,6 +143,8 @@
       if (!document.hidden) scheduleRefresh(100);
     });
 
+    document.addEventListener('gearpc:no-activity-changed', () => scheduleRefresh(0));
+
     const dashboard = $('dashboardView');
     if (dashboard) {
       new MutationObserver(() => {
