@@ -20,7 +20,8 @@
   const $ = (id) => document.getElementById(id);
   const state = {
     events: [],
-    loaded: false
+    loaded: false,
+    editingEventId: null
   };
 
   function runtime() { return window.GEARPC_RUNTIME || null; }
@@ -30,6 +31,10 @@
   function isPreviewProfile() {
     const p = profile();
     return Boolean(p && (p.tipo === 'administrador' || p.eh_teste === true));
+  }
+
+  function isAdmin() {
+    return profile()?.tipo === 'administrador';
   }
 
   function canSeeTraining() {
@@ -118,12 +123,34 @@
       .calendar-scope{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:.66rem;font-weight:950;letter-spacing:.03em;text-transform:uppercase;background:#edf2f7;color:#455b70}
       .calendar-scope-mundial{background:#eee9ff;color:#563a99}.calendar-scope-nacional{background:#e9f2ff;color:#174f86}.calendar-scope-regional{background:#e9f6ee;color:#1c6a3b}.calendar-scope-distrital{background:#fff0df;color:#8b5314}.calendar-scope-grupo{background:#e9f5f5;color:#176363}
       .calendar-empty{margin:0 18px 28px;padding:24px;text-align:center;color:#60758a;background:#fff;border:1px solid #dbe4ee;border-radius:14px}
+      .calendar-admin-tools{margin:0 18px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;background:#f7fafc;border:1px solid #d8e2ec;border-radius:14px}
+      .calendar-admin-tools strong{color:#17324d}.calendar-admin-tools span{display:block;margin-top:2px;color:#667a8e;font-size:.76rem}
+      .calendar-admin-primary{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:900;cursor:pointer}
+      .calendar-event-actions{margin-top:8px;display:flex;gap:7px;flex-wrap:wrap}
+      .calendar-event-action{border:1px solid #cbd7e2;border-radius:8px;padding:5px 8px;background:#fff;color:#17324d;font-size:.72rem;font-weight:850;cursor:pointer}
+      .calendar-event-action.danger{border-color:#efc7c7;color:#9a2f2f;background:#fff7f7}
+      .calendar-event-dialog{width:min(92vw,560px);border:0;border-radius:18px;padding:0;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+      .calendar-event-dialog::backdrop{background:rgba(3,20,38,.62)}
+      .calendar-event-dialog-card{padding:20px}
+      .calendar-event-dialog h3{margin:0 0 4px;color:#0a376c}
+      .calendar-event-dialog p{margin:0 0 15px;color:#687b8e;font-size:.8rem}
+      .calendar-event-form{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+      .calendar-event-form label{display:grid;gap:5px;color:#53687b;font-size:.76rem;font-weight:850}
+      .calendar-event-form label.wide{grid-column:1/-1}
+      .calendar-event-form input,.calendar-event-form select,.calendar-event-form textarea{width:100%;box-sizing:border-box;border:1px solid #c7d3df;border-radius:10px;padding:9px 10px;background:#fff;font:inherit}
+      .calendar-event-form textarea{min-height:78px;resize:vertical}
+      .calendar-event-dialog-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+      .calendar-event-dialog-actions button{border:0;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}
+      .calendar-event-cancel{background:#e9eef3;color:#17324d}.calendar-event-save{background:#0a376c;color:#fff}
+      .calendar-event-message{grid-column:1/-1;min-height:18px;margin:0!important;color:#a13f2d!important;font-weight:750}
       .training-calendar-card{margin:0 18px 28px;background:#fff;border:1px solid #dbe4ee;border-radius:16px;overflow:hidden}
       .training-row{display:grid;grid-template-columns:145px minmax(0,1fr) 185px;border-top:1px solid #e6edf4}
       .training-row:first-child{border-top:0}.training-row>div{padding:12px 13px;line-height:1.4}.training-row strong{color:#17324d}.training-row small{color:#64798d}
       .training-month{padding:9px 13px;background:#edf5ff;color:#0a376c;font-weight:950;border-top:1px solid #d6e5f2}
       @media(max-width:620px){
-        .calendar-test-note,.calendar-timeline,.training-calendar-card{margin-left:12px;margin-right:12px}
+        .calendar-test-note,.calendar-timeline,.training-calendar-card,.calendar-admin-tools{margin-left:12px;margin-right:12px}
+        .calendar-admin-tools{align-items:flex-start;flex-direction:column}.calendar-admin-primary{width:100%}
+        .calendar-event-form{grid-template-columns:1fr}.calendar-event-form label.wide{grid-column:auto}.calendar-event-dialog-actions{grid-column:auto}
         .calendar-event{grid-template-columns:1fr;gap:5px}.calendar-date{color:#0a376c}
         .training-row{grid-template-columns:1fr;padding:11px 13px;gap:3px}.training-row>div{padding:0}
       }
@@ -144,7 +171,7 @@
     if (state.loaded && !force) return state.events;
     const c = client();
     const { data, error } = await c.from('calendario_eventos')
-      .select('id,ano,categoria,data_inicio,data_fim,atividade,abrangencia,local,secao_id,ramo_ids,observacoes,fonte,versao_fonte,em_teste')
+      .select('id,ano,categoria,data_inicio,data_fim,atividade,abrangencia,local,secao_id,ramo_ids,observacoes,fonte,versao_fonte,em_teste,criado_em,atualizado_em')
       .eq('ano', YEAR)
       .order('data_inicio', { ascending: true });
     if (error) throw error;
@@ -180,6 +207,11 @@
               <span class="calendar-scope ${scopeClass(event.abrangencia)}">${esc(event.abrangencia)}</span>
             </div>
             ${place || note ? `<div class="calendar-event-meta">${place}${note}</div>` : ''}
+            ${isAdmin() && isPreviewProfile() && event.id ? `
+              <div class="calendar-event-actions">
+                <button class="calendar-event-action" type="button" data-calendar-edit="${Number(event.id)}">Editar</button>
+                <button class="calendar-event-action danger" type="button" data-calendar-delete="${Number(event.id)}">Excluir</button>
+              </div>` : ''}
           </div>
         </article>`;
     }
@@ -202,7 +234,133 @@
       source.classList.toggle('test', preview);
     }
     note?.classList.toggle('hidden', !preview);
+    $('calendarAdminTools')?.classList.toggle('hidden', !(preview && isAdmin()));
     if (body) body.innerHTML = renderTimeline(activityEventsForCurrentView());
+  }
+
+  function openCalendarEventDialog(eventId = null) {
+    if (!isAdmin() || !isPreviewProfile()) return;
+    const dialog = $('calendarEventDialog');
+    if (!dialog) return;
+
+    state.editingEventId = eventId ? Number(eventId) : null;
+    const event = state.editingEventId
+      ? state.events.find((item) => Number(item.id) === state.editingEventId && item.categoria === 'atividade' && !item.secao_id)
+      : null;
+
+    $('calendarEventDialogTitle').textContent = event ? 'Editar atividade' : 'Nova atividade';
+    $('calendarEventStart').value = event?.data_inicio || '';
+    $('calendarEventEnd').value = event?.data_fim || '';
+    $('calendarEventName').value = event?.atividade || '';
+    $('calendarEventScope').value = event?.abrangencia || 'Grupo';
+    $('calendarEventLocal').value = event?.local || '';
+    $('calendarEventNotes').value = event?.observacoes || '';
+    $('calendarEventMessage').textContent = '';
+    $('calendarEventSave').disabled = false;
+    if (!dialog.open) dialog.showModal();
+  }
+
+  function closeCalendarEventDialog() {
+    const dialog = $('calendarEventDialog');
+    if (dialog?.open) dialog.close();
+    state.editingEventId = null;
+  }
+
+  async function saveCalendarEvent() {
+    if (!isAdmin() || !isPreviewProfile()) return;
+    const start = $('calendarEventStart')?.value || '';
+    const end = $('calendarEventEnd')?.value || '';
+    const activity = $('calendarEventName')?.value?.trim() || '';
+    const scope = $('calendarEventScope')?.value || 'Grupo';
+    const local = $('calendarEventLocal')?.value?.trim() || '';
+    const notes = $('calendarEventNotes')?.value?.trim() || '';
+    const message = $('calendarEventMessage');
+    const save = $('calendarEventSave');
+
+    if (!start || !activity) {
+      if (message) message.textContent = 'Informe a data inicial e o nome da atividade.';
+      return;
+    }
+    if (end && end < start) {
+      if (message) message.textContent = 'A data final não pode ser anterior à data inicial.';
+      return;
+    }
+
+    const allowedScopes = new Set(['Mundial','Nacional','Regional','Distrital','Grupo']);
+    if (!allowedScopes.has(scope)) {
+      if (message) message.textContent = 'Abrangência inválida.';
+      return;
+    }
+
+    const payload = {
+      ano: YEAR,
+      categoria: 'atividade',
+      data_inicio: start,
+      data_fim: end || null,
+      atividade: activity,
+      abrangencia: scope,
+      local: local || null,
+      observacoes: notes || null,
+      atualizado_em: new Date().toISOString()
+    };
+
+    save.disabled = true;
+    if (message) message.textContent = 'Salvando…';
+
+    try {
+      const c = client();
+      if (state.editingEventId) {
+        const { error } = await c.from('calendario_eventos')
+          .update(payload)
+          .eq('id', state.editingEventId)
+          .eq('ano', YEAR)
+          .eq('categoria', 'atividade')
+          .is('secao_id', null);
+        if (error) throw error;
+      } else {
+        const { error } = await c.from('calendario_eventos').insert({
+          ...payload,
+          secao_id: null,
+          ramo_ids: null,
+          fonte: 'Cadastro manual do administrador',
+          versao_fonte: 'GEArPC Conecta',
+          em_teste: true
+        });
+        if (error) throw error;
+      }
+
+      await loadPreviewEvents(true);
+      closeCalendarEventDialog();
+      renderActivityCalendar();
+    } catch (error) {
+      if (message) message.textContent = `Não foi possível salvar: ${error.message || error}`;
+    } finally {
+      save.disabled = false;
+    }
+  }
+
+  async function deleteCalendarEvent(eventId) {
+    if (!isAdmin() || !isPreviewProfile()) return;
+    const id = Number(eventId);
+    const event = state.events.find((item) => Number(item.id) === id && item.categoria === 'atividade' && !item.secao_id);
+    if (!event) return;
+
+    if (!window.confirm(`Excluir "${event.atividade}" do calendário?\n\nEssa atividade deixará de aparecer na linha do tempo de teste.`)) return;
+
+    const { error } = await client().from('calendario_eventos')
+      .delete()
+      .eq('id', id)
+      .eq('ano', YEAR)
+      .eq('categoria', 'atividade')
+      .is('secao_id', null);
+
+    if (error) {
+      window.alert(`Não foi possível excluir: ${error.message}`);
+      return;
+    }
+
+    await loadPreviewEvents(true);
+    renderActivityCalendar();
   }
 
   function trainingRows() {
@@ -262,7 +420,50 @@
         <strong>EM TESTE.</strong> Base de 2027 organizada a partir do calendário regional de Santa Catarina. Cada atividade traz sua abrangência. Eventos de Grupo e Distrital aparecerão automaticamente na mesma linha do tempo quando forem cadastrados. O planejamento específico das seções permanece no Ciclo de Programa. O documento regional é sujeito a alterações.
       </div>
 
+      <section id="calendarAdminTools" class="calendar-admin-tools hidden">
+        <div><strong>Gerenciar calendário</strong><span>Exclusivo do administrador • inclusão, alteração e exclusão manual de datas.</span></div>
+        <button id="calendarAddEventButton" class="calendar-admin-primary" type="button">＋ Nova data</button>
+      </section>
+
       <div id="annualCalendarTimeline"></div>
+
+      <dialog id="calendarEventDialog" class="calendar-event-dialog">
+        <div class="calendar-event-dialog-card">
+          <h3 id="calendarEventDialogTitle">Nova atividade</h3>
+          <p>As alterações entram imediatamente na linha do tempo de teste.</p>
+          <form id="calendarEventForm" class="calendar-event-form">
+            <label>Data inicial
+              <input id="calendarEventStart" type="date" required>
+            </label>
+            <label>Data final
+              <input id="calendarEventEnd" type="date">
+            </label>
+            <label class="wide">Atividade
+              <input id="calendarEventName" type="text" maxlength="220" required>
+            </label>
+            <label>Abrangência
+              <select id="calendarEventScope">
+                <option>Mundial</option>
+                <option>Nacional</option>
+                <option>Regional</option>
+                <option>Distrital</option>
+                <option selected>Grupo</option>
+              </select>
+            </label>
+            <label>Local
+              <input id="calendarEventLocal" type="text" maxlength="160">
+            </label>
+            <label class="wide">Observações
+              <textarea id="calendarEventNotes" maxlength="600"></textarea>
+            </label>
+            <p id="calendarEventMessage" class="calendar-event-message" role="status"></p>
+            <div class="calendar-event-dialog-actions">
+              <button id="calendarEventCancel" class="calendar-event-cancel" type="button">Cancelar</button>
+              <button id="calendarEventSave" class="calendar-event-save" type="submit">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
       <footer class="app-footer">GEArPC Conecta • Grupo Escoteiro do Ar Paulo Carzino</footer>
     `;
     shell.appendChild(view);
@@ -275,6 +476,24 @@
     $('annualCalendarLogoutButton')?.addEventListener('click', () => {
       view.classList.add('hidden');
       $('logoutButton')?.click();
+    });
+    $('calendarAddEventButton')?.addEventListener('click', () => openCalendarEventDialog());
+    $('calendarEventCancel')?.addEventListener('click', closeCalendarEventDialog);
+    $('calendarEventForm')?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      void saveCalendarEvent();
+    });
+    $('annualCalendarTimeline')?.addEventListener('click', (event) => {
+      const edit = event.target.closest('[data-calendar-edit]');
+      if (edit) {
+        openCalendarEventDialog(Number(edit.dataset.calendarEdit));
+        return;
+      }
+      const del = event.target.closest('[data-calendar-delete]');
+      if (del) void deleteCalendarEvent(Number(del.dataset.calendarDelete));
+    });
+    $('calendarEventDialog')?.addEventListener('click', (event) => {
+      if (event.target === $('calendarEventDialog')) closeCalendarEventDialog();
     });
   }
 
