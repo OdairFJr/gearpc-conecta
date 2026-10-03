@@ -48,7 +48,8 @@ const APP_SHELL = [
   './cycle-program-pilot-v80-loader.js?v=84.5',
   './cycle-program-pilot-v84.js?v=84.1',
   './cycle-program-import-v84.js?v=84.3',
-  './annual-calendar-v80.js?v=80.6',\n  './responsible-first-access-v90.js?v=90.1',
+  './annual-calendar-v80.js?v=80.6',
+  './responsible-first-access-v90.js?v=90.1',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -159,7 +160,10 @@ async function withRuntimeModules(response) {
   if (!html.includes('activity-materials-pilot-v63.js')) {
     html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.1"></script>\n</body>');
   }
-  if (!html.includes('responsible-first-access-v90.js')) {\n    html = html.replace('</body>', '  <script src="responsible-first-access-v90.js?v=90.1"></script>\\n</body>');\n  }\n  if (!html.includes('annual-calendar-v80.js')) {
+  if (!html.includes('responsible-first-access-v90.js')) {
+    html = html.replace('</body>', '  <script src="responsible-first-access-v90.js?v=90.1"></script>\n</body>');
+  }
+  if (!html.includes('annual-calendar-v80.js')) {
     html = html.replace('</body>', '  <script src="annual-calendar-v80.js?v=80.6"></script>\n</body>');
   }
   if (!html.includes('programming-language-v31-1.js')) {
