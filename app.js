@@ -348,7 +348,7 @@
     const profile = state.profile;
     if (!(profile?.tipo === 'responsavel' && profile?.eh_teste === true)) return;
 
-    const allowedIds = new Set(['membersButton', 'chiefsButton', 'annualCalendarButton']);
+    const allowedIds = new Set(['membersButton', 'chiefsButton', 'annualCalendarButton', 'responsibleDataReviewButtonV91']);
     const apply = () => {
       document.querySelectorAll('#dashboardView .launch-module').forEach((button) => {
         button.classList.toggle('hidden', !allowedIds.has(button.id));
