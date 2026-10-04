@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-17-responsible-monitor';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-18-adult-modules-release';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -43,7 +43,12 @@ const APP_SHELL = [
   './service-branch-v30.js?v=50.1',
   './service-branch-exceptions-pilot-v64.js?v=67.2',
   './programming-weekly-notices-v70.js?v=70.4',
-  './activity-materials-pilot-v63.js?v=63.1',
+  './activity-materials-pilot-v63.js?v=63.2',
+  './birthday-pilot-v61.js?v=61.1',
+  './compras-v37.js?v=37.0',
+  './compras-entrega-v38.js?v=38.0',
+  './compras-fixes-v39.js?v=39.0',
+  './compras-labels-v40.js?v=40.0',
   './cycle-calendar-builder-v83.js?v=83.1',
   './cycle-program-pilot-v80-loader.js?v=84.5',
   './cycle-program-pilot-v84.js?v=84.1',
@@ -159,7 +164,13 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="programming-weekly-notices-v70.js?v=70.4"></script>\n</body>');
   }
   if (!html.includes('activity-materials-pilot-v63.js')) {
-    html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.1"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="activity-materials-pilot-v63.js?v=63.2"></script>\n</body>');
+  }
+  if (!html.includes('birthday-pilot-v61.js')) {
+    html = html.replace('</body>', '  <script src="birthday-pilot-v61.js?v=61.1"></script>\n</body>');
+  }
+  if (!html.includes('compras-v37.js')) {
+    html = html.replace('</body>', '  <script src="compras-v37.js?v=37.0"></script>\n  <script src="compras-entrega-v38.js?v=38.0"></script>\n  <script src="compras-fixes-v39.js?v=39.0"></script>\n  <script src="compras-labels-v40.js?v=40.0"></script>\n</body>');
   }
   if (!html.includes('responsible-first-access-v90.js')) {
     html = html.replace('</body>', '  <script src="responsible-first-access-v90.js?v=90.1"></script>\n</body>');
