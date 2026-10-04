@@ -23,13 +23,10 @@
   }
 
   async function resolvePilot() {
-    if (rt.state.profile?.tipo === 'administrador') return true;
-    const { data, error } = await rt.client
-      .from('perfis_usuarios')
-      .select('eh_teste')
-      .eq('user_id', rt.state.user.id)
-      .maybeSingle();
-    return !error && data?.eh_teste === true;
+    const profile = rt.state.profile || {};
+    return profile.tipo === 'administrador' ||
+      profile.tipo === 'chefia' ||
+      profile.acesso_geral_consulta === true;
   }
 
   function injectStyles() {
