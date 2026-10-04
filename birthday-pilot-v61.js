@@ -32,7 +32,12 @@
   }
 
   async function resolveEnabled() {
-    return Boolean(rt?.state?.profile && rt?.state?.user?.id);
+    const profile = rt?.state?.profile || {};
+    return Boolean(rt?.state?.user?.id) && (
+      profile.tipo === 'administrador' ||
+      profile.tipo === 'chefia' ||
+      profile.acesso_geral_consulta === true
+    );
   }
 
   function saoPauloParts(date = new Date()) {
