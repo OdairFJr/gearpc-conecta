@@ -12,7 +12,7 @@
   };
   if (!ui.button || !ui.view || !ui.section || !ui.date || !ui.list) return;
 
-  const m = { ramos: [], secoes: [], jovens: [], own: [], call: null, rows: [], offline: false, syncing: false };
+  const m = { ramos: [], secoes: [], jovens: [], own: [], call: null, rows: [], advance: new Map(), offline: false, syncing: false };
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
   const uid = () => state.user?.id || 'anon';
   const storeKey = () => `gearpc-presenca-offline-v24:${uid()}`;
@@ -80,6 +80,11 @@
     const {data:calls,error}=await client.from('chamadas').select('id,secao_id,data_reuniao,titulo,criado_por,criado_em,atualizado_em').eq('secao_id',secaoId).eq('data_reuniao',date).limit(1); if(error) throw error;
     const call=calls?.[0]||null; let rows=[];
     if(call){ const r=await client.from('presencas_chamada').select('id,chamada_id,jovem_id,status,observacao,registrado_por,atualizado_em').eq('chamada_id',call.id); if(r.error) throw r.error; rows=r.data||[]; }
+    const youngIds=m.jovens.filter(j=>j.ativo!==false&&Number(j.secao_id)===Number(secaoId)).map(j=>Number(j.id));
+    m.advance=new Map();
+    if(youngIds.length){const cf=await client.from('confirmacoes_presenca_responsavel').select('jovem_id,status,motivo,responsavel_id,atualizado_em').eq('data_atividade',date).in('jovem_id',youngIds);if(!cf.error)m.advance=new Map((cf.data||[]).map(x=>[Number(x.jovem_id),x]));}
+    const existing=new Set(rows.map(r=>Number(r.jovem_id)));
+    for(const [jid,cf] of m.advance){if(cf.status==='justificada'&&!existing.has(jid))rows.push({id:'responsavel:'+jid,chamada_id:call?.id||null,jovem_id:jid,status:'justificada',observacao:cf.motivo||'',registrado_por:null,atualizado_em:cf.atualizado_em,_responsavel:true});}
     saveSelection(secaoId,date,call,rows); return {call,rows};
   }
   async function loadSelection() {
@@ -95,10 +100,10 @@
     const sid=Number(ui.section.value||0), date=ui.date.value;
     if(!sid||!date){ui.list.innerHTML='<div class="empty-members"><div>✅</div><strong>Selecione seção e data</strong><span>A lista de jovens aparecerá aqui.</span></div>';ui.present.textContent='0';ui.absent.textContent='0';ui.pending.textContent='0';return;}
     const young=m.jovens.filter(j=>j.ativo!==false&&Number(j.secao_id)===sid).sort((a,b)=>a.nome_completo.localeCompare(b.nome_completo,'pt-BR'));
-    const sm=new Map(m.rows.map(r=>[Number(r.jovem_id),r.status])); let p=0,a=0; for(const j of young){if(sm.get(Number(j.id))==='presente')p++;if(sm.get(Number(j.id))==='ausente')a++;}
-    ui.present.textContent=String(p);ui.absent.textContent=String(a);ui.pending.textContent=String(Math.max(0,young.length-p-a));
+    const sm=new Map(m.rows.map(r=>[Number(r.jovem_id),r.status])); let p=0,a=0,jf=0; for(const j of young){if(sm.get(Number(j.id))==='presente')p++;if(sm.get(Number(j.id))==='ausente')a++;if(sm.get(Number(j.id))==='justificada')jf++;}
+    ui.present.textContent=String(p);ui.absent.textContent=String(a);ui.pending.textContent=String(Math.max(0,young.length-p-a-jf));
     const manage=canManage(sid); if(ui.role) ui.role.textContent=manage?'Você pode registrar a presença desta seção.':'Seu perfil possui somente consulta nesta seção.';
-    ui.list.innerHTML=young.map(j=>{const st=sm.get(Number(j.id))||'pendente';const clear=st!=='pendente'?`<button type="button" class="attendance-mark clear" data-aoc="${j.id}">↺ Limpar</button>`:'';const ctr=manage?`<div class="attendance-actions"><button type="button" class="attendance-mark present ${st==='presente'?'selected':''}" data-ao="${j.id}" data-st="presente">✓ Presente</button><button type="button" class="attendance-mark absent ${st==='ausente'?'selected':''}" data-ao="${j.id}" data-st="ausente">✕ Ausente</button><button type="button" class="attendance-mark justified ${st==='justificada'?'selected':''}" data-ao="${j.id}" data-st="justificada">! Justificada</button>${clear}</div>`:`<span class="attendance-readonly-badge ${st}">${st==='presente'?'✓ Presente':st==='ausente'?'✕ Ausente':'• Não marcado'}</span>`;return `<article class="attendance-card ${st}"><div class="attendance-person"><div class="member-avatar">${escapeHtml(j.nome_completo.charAt(0).toUpperCase())}</div><div><h3>${escapeHtml(j.nome_completo)}</h3><span>${escapeHtml(m.secoes.find(s=>Number(s.id)===sid)?.nome||'Seção')}</span></div></div>${ctr}</article>`;}).join('');
+    ui.list.innerHTML=young.map(j=>{const row=m.rows.find(r=>Number(r.jovem_id)===Number(j.id));const st=sm.get(Number(j.id))||'pendente';const resp=row?._responsavel&&st==='justificada'?`<div style="margin-top:8px;padding:8px 10px;border-radius:9px;background:#fff6d9;color:#654f00;font-size:.78rem"><strong>Justificada pelo responsável</strong>${row.observacao?`<br>${escapeHtml(row.observacao)}`:''}</div>`:'';const clear=st!=='pendente'?`<button type="button" class="attendance-mark clear" data-aoc="${j.id}">↺ Limpar</button>`:'';const ctr=manage?`<div class="attendance-actions"><button type="button" class="attendance-mark present ${st==='presente'?'selected':''}" data-ao="${j.id}" data-st="presente">✓ Presente</button><button type="button" class="attendance-mark absent ${st==='ausente'?'selected':''}" data-ao="${j.id}" data-st="ausente">✕ Ausente</button><button type="button" class="attendance-mark justified ${st==='justificada'?'selected':''}" data-ao="${j.id}" data-st="justificada">! Justificada</button>${clear}</div>`:`<span class="attendance-readonly-badge ${st}">${st==='presente'?'✓ Presente':st==='ausente'?'✕ Ausente':'• Não marcado'}</span>`;return `<article class="attendance-card ${st}"><div class="attendance-person"><div class="member-avatar">${escapeHtml(j.nome_completo.charAt(0).toUpperCase())}</div><div><h3>${escapeHtml(j.nome_completo)}</h3><span>${escapeHtml(m.secoes.find(s=>Number(s.id)===sid)?.nome||'Seção')}</span></div></div>${resp}${ctr}</article>`;}).join('');
     const q=queueCount(); if(!navigator.onLine||m.offline) msg(q?`📴 Modo offline — ${q} alteração(ões) aguardando sincronização.`:'📴 Modo offline — faça a chamada normalmente; ela será sincronizada quando a internet voltar.'); else if(q) msg(`⏳ ${q} alteração(ões) aguardando sincronização.`); else msg('');
   }
   function queueOp(op){const s=readStore();s.queue=s.queue.filter(q=>!(q.key===op.key&&Number(q.jovemId)===Number(op.jovemId)));s.queue.push(op);writeStore(s);}
