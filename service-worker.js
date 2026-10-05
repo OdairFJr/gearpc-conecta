@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-23-attendance-justified';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-24-attendance-native';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -21,7 +21,7 @@ const APP_SHELL = [
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
-  './attendance-offline-v24.js',
+  './attendance-offline-v24.js?v=24.2',
   './attendance-justified-test-v92.js?v=92.2',
   './attendance-paxtu-v41.js?v=41.3',
   './programming-transfer-paxtu-v42.js?v=42.1',
