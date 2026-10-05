@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v70-22-attendance-justified';
+const CACHE_NAME = 'gearpc-conecta-offline-v70-23-attendance-justified';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -22,7 +22,7 @@ const APP_SHELL = [
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
   './attendance-offline-v24.js',
-  './attendance-justified-test-v92.js?v=92.1',
+  './attendance-justified-test-v92.js?v=92.2',
   './attendance-paxtu-v41.js?v=41.3',
   './programming-transfer-paxtu-v42.js?v=42.1',
   './programming-permissions-v24.js',
@@ -110,7 +110,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="attendance-offline-v24.js"></script>\n</body>');
   }
   if (!html.includes('attendance-justified-test-v92.js')) {
-    html = html.replace('</body>', '  <script src="attendance-justified-test-v92.js?v=92.1"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="attendance-justified-test-v92.js?v=92.2"></script>\n</body>');
   }
   if (!html.includes('attendance-paxtu-v41.js')) {
     html = html.replace('</body>', '  <script src="attendance-paxtu-v41.js?v=41.3"></script>\n</body>');
