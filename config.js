@@ -20,6 +20,7 @@ window.GEARPC_CONFIG = {
   loadModule('safety-photo-memory-v75', 'safety-photo-memory-v75.js?v=75.1');
   loadModule('safety-inapp-camera-v76', 'safety-inapp-camera-v76.js?v=76.2');
   loadModule('safety-admin-delete-v79', 'safety-admin-delete-v79.js?v=79.0');
+  loadModule('compras-v37', 'compras-v37.js?v=37.2');
   loadModule('birthday-v61', 'birthday-pilot-v61.js?v=61.1');
   loadModule('cycle-program-pilot-v80', 'cycle-program-pilot-v80-loader.js?v=80.2');
 })();
