@@ -1,6 +1,6 @@
 (() => {
-  if (window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_3__) return;
-  window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_3__ = true;
+  if (window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_4__) return;
+  window.__GEARPC_SAFETY_UNIFIED_FLOW_V66_4__ = true;
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const $ = (id) => document.getElementById(id);
@@ -258,6 +258,21 @@
     }, 160);
   }
 
+  function validateRequiredVisitFields() {
+    const required = [
+      ['svActivityNameV63','Nome da atividade'],
+      ['svActivityTypeV63','Tipo de atividade'],
+      ['svCoordinatorV63','Coordenador da atividade'],
+      ['svLocationV63','Local'],
+      ['svAddressV63','Endereço'],
+      ['svMapsLinkV64','Local no Google Maps']
+    ];
+    for (const [id,label] of required) {
+      const el=$(id); if(el && !String(el.value||'').trim()){el.focus();alert('Preencha o campo obrigatório: '+label+'.');return false;}
+    }
+    return true;
+  }
+
   function wire() {
     document.addEventListener('click', (event) => {
       const newPlanning = event.target.closest('#newSafetyVisitV63');
@@ -282,7 +297,8 @@
       }
     }, true);
 
-    $('safetyVisitFormV63')?.addEventListener('submit', () => {
+    $('safetyVisitFormV63')?.addEventListener('submit', (event) => {
+      if (!validateRequiredVisitFields()) { event.preventDefault(); event.stopImmediatePropagation(); savingUnified=false; return; }
       if (savingUnified) return;
       savingUnified = true;
       const beforeIds = new Set(readStore().visits.map((visit) => visit.id));
