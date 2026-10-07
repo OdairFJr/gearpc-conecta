@@ -1256,3 +1256,7 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 .cycle-v80-pred-actions .cycle-v80-program {
   display: none !important;
 }
+
+/* Contraste do botão de transferência de presenças para o Paxtu */
+#attendancePaxtuButton.attendance-paxtu-button:not(.hidden){background:#174d80!important;color:#ffffff!important;border:2px solid #123b63!important;opacity:1!important;font-weight:800!important;text-shadow:none!important;box-shadow:0 2px 6px rgba(0,0,0,.16)!important}
+#attendancePaxtuButton.attendance-paxtu-button:disabled{background:#d8e0e8!important;color:#34495e!important;border-color:#a7b7c7!important;opacity:1!important;box-shadow:none!important}
