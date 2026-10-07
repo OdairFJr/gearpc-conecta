@@ -25,4 +25,5 @@ window.GEARPC_CONFIG = {
   loadModule('compras-labels-v40', 'compras-labels-v40.js?v=40.2');
   loadModule('birthday-v61', 'birthday-pilot-v61.js?v=61.1');
   loadModule('cycle-program-pilot-v80', 'cycle-program-pilot-v80-loader.js?v=80.2');
+  loadModule('section-chief-permissions-test-v94', 'section-chief-permissions-test-v94.js?v=94.0');
 })();
