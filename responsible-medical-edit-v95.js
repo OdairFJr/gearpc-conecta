@@ -160,7 +160,8 @@
   }
   function collect() {
     const u=utils(), dlg=editor();
-    const full={};
+    // Preserve campos adicionais importados do Paxtu que não possuem controle visível.
+    const full={...u.fullMedicalData(state.proposal?.dados_propostos || state.med)};
     dlg.querySelectorAll('[data-full-key]').forEach((el)=>{
       const key=el.dataset.fullKey;
       if(el.type==='checkbox')full[key]=el.checked;
