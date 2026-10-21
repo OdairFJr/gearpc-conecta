@@ -401,10 +401,15 @@
     btn.addEventListener('click',()=>void openAdmin());modules.appendChild(btn);
   }
   async function prepare() {
-    const rt=window.GEARPC_RUNTIME;
-    if(!rt?.client||!rt?.state?.profile)return;
-    state.rt=rt;
-    if(isAdmin())addAdminButton();
+    for(let i=0;i<120;i++){
+      const rt=window.GEARPC_RUNTIME;
+      if(rt?.client&&rt?.state?.profile&&rt?.state?.user?.id){
+        state.rt=rt;
+        if(isAdmin())addAdminButton();
+        return;
+      }
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
   }
   window.GEARPC_MEDICAL_EDIT_V95={open,openAdmin};
   window.GEARPC_DASHBOARD_PREPARE_TASKS=window.GEARPC_DASHBOARD_PREPARE_TASKS||[];
