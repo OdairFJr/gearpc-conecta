@@ -7,6 +7,7 @@
     rt: null,
     rows: [],
     confirmations: new Map(),
+    pendingMedical: new Map(),
     loading: false
   };
 
@@ -231,6 +232,12 @@
       : { data: [], error: null };
     if (medicalRes.error) throw medicalRes.error;
     const medicalMap = new Map((medicalRes.data || []).map((x) => [Number(x.jovem_id), x]));
+    const pendingRes = linkedIds.size
+      ? await c.from('responsavel_propostas_ficha_medica')
+        .select('id,jovem_id,status').eq('responsavel_id',Number(p.responsavel_id)).eq('status','pendente').in('jovem_id',[...linkedIds])
+      : {data:[],error:null};
+    if(pendingRes.error)throw pendingRes.error;
+    state.pendingMedical=new Map((pendingRes.data||[]).map(x=>[Number(x.jovem_id),x]));
     const linkMap = new Map((linksRes.data || []).map((x) => [Number(x.jovem_id), x]));
     const ramoMap = new Map((ramosRes.data || []).map((x) => [Number(x.id), x]));
     const secaoMap = new Map((secoesRes.data || []).map((x) => [Number(x.id), x]));
@@ -334,8 +341,9 @@
   function cardHtml(row) {
     const confirmation = state.confirmations.get(Number(row.id));
     const status = confirmation?.status || 'pendente';
-    const confirmed = isFullyConfirmed(row);
-    const correction = status === 'correcao_solicitada';
+    const hasPendingMedical = state.pendingMedical.has(Number(row.id));
+    const confirmed = isFullyConfirmed(row) && !hasPendingMedical;
+    const correction = status === 'correcao_solicitada' || hasPendingMedical;
     const badge = confirmed
       ? '<span class="rfa-status-v90 ok">Confirmado</span>'
       : correction
@@ -364,13 +372,19 @@
         </div>
 
         ${correctionText}
-        ${medicalReviewHtml(row.medical)}
+        <div class="rfa-medical-v94">
+          <strong>Ficha médica</strong>
+          <p style="font-size:.82rem;margin:7px 0">Abra a ficha completa, confira cada informação e faça as correções necessárias diretamente nos campos.</p>
+          <button class="med-edit-open-v95" type="button" data-rfa-edit-medical="${Number(row.id)}">🩺 Abrir e editar ficha médica</button>
+          ${hasPendingMedical ? '<div class="rfa-medical-alert-v94">Alterações enviadas. Aguardando aprovação do administrador. É possível reabrir e ajustar a proposta.</div>' : ''}
+          ${!row.medical ? '<div class="rfa-medical-alert-v94">Ainda não existe uma ficha médica. Abra o formulário para preenchê-la e enviar para aprovação.</div>' : ''}
+        </div>
 
         ${confirmed ? '' : `
           ${row.medical ? '<label class="rfa-medical-check-v94"><input type="checkbox" data-rfa-medical-confirm> <span>Conferi os dados cadastrais e toda a ficha médica deste jovem e confirmo que estão corretos.</span></label>' : ''}
 
           <div class="rfa-card-actions-v90">
-            <button class="rfa-confirm-v90" type="button" data-rfa-confirm="${Number(row.id)}" ${row.medical ? '' : 'disabled title="Solicite o cadastro da ficha médica"'}>
+            <button class="rfa-confirm-v90" type="button" data-rfa-confirm="${Number(row.id)}" ${row.medical && !hasPendingMedical ? '' : 'disabled title="É necessário ter uma ficha médica aprovada, sem propostas pendentes"'}>
               ${correction ? '✓ Dados agora estão corretos' : '✓ Cadastro e ficha médica conferidos'}
             </button>
             <button class="rfa-correction-v90" type="button" data-rfa-correction="${Number(row.id)}">✎ Solicitar correção</button>
@@ -399,7 +413,7 @@
       return;
     }
 
-    const confirmedCount = state.rows.filter(isFullyConfirmed).length;
+    const confirmedCount = state.rows.filter(row=>isFullyConfirmed(row)&&!state.pendingMedical.has(Number(row.id))).length;
     progress.textContent = `${confirmedCount} de ${state.rows.length} jovem(ns) confirmado(s)`;
     list.innerHTML = state.rows.map(cardHtml).join('');
 
@@ -468,6 +482,10 @@
       setMessage('Solicitação registrada. Após a correção, atualize os dados e confirme o jovem.', true);
     }
   }
+
+  window.GEARPC_RESPONSIBLE_FIRST_ACCESS_V95 = {
+    refresh: () => loadAndRender(true)
+  };
 
   async function waitRuntime() {
     for (let i = 0; i < 120; i += 1) {
