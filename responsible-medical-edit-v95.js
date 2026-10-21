@@ -67,6 +67,26 @@
     if (note) note.textContent='Confira toda a ficha, altere o que for necessário e envie para aprovação da administração. Até a aprovação, a ficha oficial permanece como está.';
     const save=dialog.querySelector('[data-original-id="saveMedicalButton"]');
     if (save) save.textContent='Enviar alterações para aprovação';
+    const actions=dialog.querySelector('.dialog-actions-right');
+    const confirmButton=document.createElement('button');
+    confirmButton.type='button';confirmButton.className='med-edit-open-v95';
+    confirmButton.textContent='✓ Confirmar ficha sem alterações';
+    confirmButton.addEventListener('click',async()=>{
+      if(state.busy)return;
+      if(state.proposal){msg('Há uma proposta pendente. Aguarde a aprovação ou edite e reenvie.',true);return;}
+      if(!state.med){msg('Preencha a ficha médica e envie para aprovação.',true);return;}
+      if(JSON.stringify(collect())!==JSON.stringify(state.original)){
+        msg('Há alterações no formulário. Envie-as para aprovação do administrador.',true);return;
+      }
+      state.busy=true;confirmButton.disabled=true;
+      try{
+        const success=await window.GEARPC_RESPONSIBLE_FIRST_ACCESS_V95?.confirmUnchanged?.(state.jovemId);
+        if(success){dialog.close();await window.GEARPC_RESPONSIBLE_FIRST_ACCESS_V95.refresh();}
+        else msg('Não foi possível confirmar. Atualize os dados e tente novamente.',true);
+      }catch(e){msg('Não foi possível confirmar: '+(e.message||e),true);}
+      finally{state.busy=false;confirmButton.disabled=false;}
+    });
+    actions?.insertBefore(confirmButton,save);
     const form=dialog.querySelector('form');
     form.setAttribute('method','dialog');
     form.insertAdjacentHTML('afterbegin','<p class="med-edit-notice-v95">Somente um responsável vinculado pode enviar esta proposta. O administrador terá acesso às informações alteradas para conferência.</p>');
