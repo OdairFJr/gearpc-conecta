@@ -235,6 +235,7 @@
     fichasMedicasChefes: [],
     visitasProximoRamo: [],
     ownChiefSectionIds: [],
+    onlyOwnChildren: false,
     selectedMemberDetailId: null,
     selectedChiefDetailId: null,
     attendanceOwnSectionIds: [],
@@ -341,7 +342,37 @@
     if (!profile) return 'Usuário';
     if (profile.tipo === 'administrador') return 'Administrador';
     if (profile.acesso_geral_consulta) return 'Dirigente';
+    if (profile.tipo === 'chefia' && profile.eh_teste === true && profile.responsavel_id)
+      return 'Chefia • responsável (teste)';
     return ({ chefia: 'Chefia', responsavel: 'Responsável' })[profile.tipo] || profile.tipo || 'Usuário';
+  }
+
+  // Exibe a visão familiar apenas no chefe de teste vinculado a um responsável.
+  // Os jovens de sua seção continuam disponíveis no módulo normal da chefia.
+  function setupChiefTestChildrenButton() {
+    const profile = state.profile;
+    const enabled = Boolean(
+      profile?.tipo === 'chefia' && profile?.eh_teste === true &&
+      profile?.chefe_id && profile?.responsavel_id
+    );
+    const existing = $('chiefTestChildrenButtonV96');
+    if (!enabled) {
+      existing?.remove();
+      return;
+    }
+    if (existing) return;
+    const modules = document.querySelector('#dashboardView .launch-modules');
+    if (!modules) return;
+    const button = document.createElement('button');
+    button.id = 'chiefTestChildrenButtonV96';
+    button.type = 'button';
+    button.className = 'launch-module';
+    button.innerHTML = '<span class="launch-module-icon" aria-hidden="true">👨‍👧‍👦</span>' +
+      '<span class="launch-module-copy"><strong>Meus filhos</strong>' +
+      '<small>Consulte somente seus jovens vinculados, além das atividades de chefia.</small></span>' +
+      '<span class="launch-module-arrow" aria-hidden="true">›</span>';
+    button.addEventListener('click', () => void openMembersView(true));
+    modules.appendChild(button);
   }
 
   function enforceTestResponsibleDashboard() {
@@ -385,6 +416,7 @@
     }
     state.user = user;
     state.profile = data;
+    setupChiefTestChildrenButton();
     welcomeName.textContent = `Olá, ${data.nome_completo}`;
     profileType.textContent = prettyProfile(data);
     adminCard.classList.toggle('hidden', data.tipo !== 'administrador');
@@ -409,7 +441,7 @@
         ? 'Dirigente: consulta geral dos jovens do grupo.'
         : data.tipo === 'responsavel'
           ? 'Consulta dos jovens vinculados ao seu acesso.'
-          : 'Chefia: consulta dos jovens das suas seções.';
+          : 'Chefia: consulte jovens das suas seções e, quando vinculados, seus próprios filhos.';
     chiefsRoleNote.textContent = data.tipo === 'administrador'
       ? 'Administrador: consulta e edição da equipe adulta.'
       : data.tipo === 'responsavel'
@@ -637,6 +669,18 @@
     const search = normalizeText(memberSearch.value);
     const secaoId = memberSecaoFilter.value;
     let rows = memberRows();
+    if (state.onlyOwnChildren) {
+      const p = state.profile;
+      // Nunca ativar o filtro familiar no perfil administrador ou na chefia real.
+      if (p?.tipo === 'chefia' && p?.eh_teste === true && p?.responsavel_id) {
+        const ids = new Set(state.vinculos
+          .filter((link) => Number(link.responsavel_id) === Number(p.responsavel_id))
+          .map((link) => Number(link.jovem_id)));
+        rows = rows.filter((j) => ids.has(Number(j.id)));
+      } else {
+        rows = [];
+      }
+    }
     const canShowInactive = state.profile?.tipo === 'administrador' && memberShowInactive.checked;
     if (!canShowInactive) rows = rows.filter((m) => m.ativo !== false);
     if (secaoId) rows = rows.filter((m) => String(m.secao?.id || m.secao_id || '') === String(secaoId));
@@ -710,7 +754,21 @@
     return true;
   }
 
-  async function openMembersView() {
+  async function openMembersView(onlyOwnChildren = false) {
+    const p = state.profile;
+    state.onlyOwnChildren = onlyOwnChildren === true &&
+      p?.tipo === 'chefia' && p?.eh_teste === true && Boolean(p?.responsavel_id);
+    if (state.onlyOwnChildren) {
+      memberSearch.value = '';
+      memberSecaoFilter.value = '';
+      membersRoleNote.textContent = 'Meus filhos vinculados: consulta pessoal separada dos jovens da sua seção.';
+    } else {
+      membersRoleNote.textContent = p?.tipo === 'administrador'
+        ? 'Administrador: consulta e edição dos jovens.'
+        : p?.acesso_geral_consulta ? 'Dirigente: consulta geral dos jovens do grupo.'
+        : p?.tipo === 'responsavel' ? 'Consulta dos jovens vinculados ao seu acesso.'
+        : 'Chefia: consulte jovens das suas seções e, quando vinculados, seus próprios filhos.';
+    }
     showMembers();
     await loadMembersData();
   }
@@ -2743,7 +2801,7 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   chiefsLogoutButton.addEventListener('click', doLogout);
   attendanceLogoutButton.addEventListener('click', doLogout);
   accessLogoutButton.addEventListener('click', doLogout);
-  membersButton.addEventListener('click', openMembersView);
+  membersButton.addEventListener('click', () => void openMembersView(false));
   chiefsButton.addEventListener('click', openChiefsView);
   attendanceButton.addEventListener('click', openAttendanceView);
   accessButton.addEventListener('click', openAccessView);
