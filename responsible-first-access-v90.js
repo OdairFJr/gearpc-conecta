@@ -472,7 +472,7 @@
 
     if (error) {
       setMessage(`Não foi possível salvar: ${error.message}`);
-      return;
+      return false;
     }
 
     await loadRows();
@@ -481,10 +481,16 @@
     if (status === 'correcao_solicitada') {
       setMessage('Solicitação registrada. Após a correção, atualize os dados e confirme o jovem.', true);
     }
+    return true;
   }
 
   window.GEARPC_RESPONSIBLE_FIRST_ACCESS_V95 = {
-    refresh: () => loadAndRender(true)
+    refresh: () => loadAndRender(true),
+    confirmUnchanged: async (jovemId) => {
+      const row=state.rows.find((x)=>Number(x.id)===Number(jovemId));
+      if(!row?.medical || state.pendingMedical.has(Number(jovemId))) return false;
+      return await setStatus(Number(jovemId),'confirmado','');
+    }
   };
 
   async function waitRuntime() {
