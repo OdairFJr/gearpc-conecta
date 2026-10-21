@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v95-parent-medical-editor';
+const CACHE_NAME = 'gearpc-conecta-offline-v96-chief-test-family';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -16,7 +16,7 @@ const APP_SHELL = [
   './offline.html',
   './styles.css?v=23.2',
   './ideas-data.js?v=23.0',
-  './app.js?v=95.0',
+  './app.js?v=96.0',
   './programacao.js?v=48.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
