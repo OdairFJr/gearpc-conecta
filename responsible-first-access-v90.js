@@ -70,6 +70,17 @@
       .rfa-field-v90 span{display:block;color:#718294;font-size:.68rem;font-weight:850;text-transform:uppercase;letter-spacing:.03em}
       .rfa-field-v90 strong{display:block;margin-top:3px;color:#243c53;font-size:.86rem;word-break:break-word}
       .rfa-card-actions-v90{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+      .rfa-medical-v94{margin-top:12px;padding:12px;background:#eff5fb;border:1px solid #c8d9e8;border-radius:12px}
+      .rfa-medical-v94 summary{cursor:pointer;font-size:.91rem;color:#103c69;font-weight:950}
+      .rfa-medical-v94 h4{margin:13px 0 6px;font-size:.79rem;color:#17324d}
+      .rfa-medical-grid-v94{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+      .rfa-medical-field-v94{padding:8px;border-radius:8px;background:#fff}
+      .rfa-medical-field-v94 span{display:block;font-size:.67rem;color:#5a7083}
+      .rfa-medical-field-v94 strong{display:block;margin-top:3px;font-size:.79rem;color:#253c53;white-space:pre-wrap;overflow-wrap:anywhere}
+      .rfa-medical-check-v94{display:flex;gap:9px;align-items:flex-start;margin:12px 0 0;padding:11px;border-radius:9px;background:#eaf5ee;color:#234b34;font-size:.83rem;font-weight:750}
+      .rfa-medical-check-v94 input{width:20px;height:20px;flex:0 0 20px;margin-top:1px}
+      .rfa-medical-alert-v94{margin:10px 0;padding:10px;border-radius:9px;background:#fff0cf;color:#6e520e;font-size:.83rem}
+      @media(max-width:580px){.rfa-medical-grid-v94{grid-template-columns:1fr}}
       .rfa-confirm-v90{border:0;border-radius:10px;padding:10px 12px;background:#176b3a;color:#fff;font-weight:900;cursor:pointer}
       .rfa-correction-v90{border:1px solid #d4b65c;border-radius:10px;padding:9px 11px;background:#fff8e2;color:#725400;font-weight:900;cursor:pointer}
       .rfa-correction-box-v90{margin-top:11px;padding-top:11px;border-top:1px solid #e7d9ae}
@@ -109,7 +120,7 @@
               <h1>Confira os dados dos seus jovens</h1>
             </div>
           </div>
-          <p>Antes de acessar o GEArPC Conecta, confira os dados cadastrais de cada jovem vinculado ao seu acesso. A navegação será liberada quando todos estiverem confirmados.</p>
+          <p>Antes de acessar o GEArPC Conecta, confira os dados cadastrais e a ficha médica de cada jovem vinculado. Se houver divergências, solicite uma correção. A navegação será liberada após a conferência das duas partes.</p>
           <div id="responsibleFirstAccessProgressV90" class="rfa-progress-v90"></div>
         </header>
 
@@ -134,6 +145,11 @@
     gate.addEventListener('click', (event) => {
       const confirm = event.target.closest('[data-rfa-confirm]');
       if (confirm) {
+        const card = confirm.closest('.rfa-card-v90');
+        if (!card?.querySelector('[data-rfa-medical-confirm]')?.checked) {
+          setMessage('Leia a ficha médica e marque a confirmação antes de continuar.');
+          return;
+        }
         confirm.disabled = true;
         void setStatus(Number(confirm.dataset.rfaConfirm), 'confirmado', '').finally(() => { confirm.disabled = false; });
         return;
@@ -200,7 +216,7 @@
       c.from('secoes').select('id,nome,ramo_id'),
       c.from('equipes').select('id,nome,secao_id,tipo,ativo').eq('ativo', true),
       c.from('responsavel_confirmacoes_jovens')
-        .select('id,responsavel_id,jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em')
+        .select('id,responsavel_id,jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em,ficha_medica_confirmada_em')
         .eq('responsavel_id', Number(p.responsavel_id))
     ]);
 
@@ -208,6 +224,13 @@
     if (firstError) throw firstError;
 
     const linkedIds = new Set((linksRes.data || []).map((x) => Number(x.jovem_id)));
+    const medicalRes = linkedIds.size
+      ? await c.from('fichas_medicas')
+        .select('jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,dados_completos,atualizado_em')
+        .in('jovem_id', [...linkedIds])
+      : { data: [], error: null };
+    if (medicalRes.error) throw medicalRes.error;
+    const medicalMap = new Map((medicalRes.data || []).map((x) => [Number(x.jovem_id), x]));
     const linkMap = new Map((linksRes.data || []).map((x) => [Number(x.jovem_id), x]));
     const ramoMap = new Map((ramosRes.data || []).map((x) => [Number(x.id), x]));
     const secaoMap = new Map((secoesRes.data || []).map((x) => [Number(x.id), x]));
@@ -219,6 +242,7 @@
       .map((j) => ({
         ...j,
         link: linkMap.get(Number(j.id)) || null,
+        medical: medicalMap.get(Number(j.id)) || null,
         ramo: ramoMap.get(Number(j.ramo_id)) || null,
         secao: secaoMap.get(Number(j.secao_id)) || null,
         equipe: equipeMap.get(Number(j.equipe_id)) || null
@@ -234,16 +258,89 @@
     return 'Equipe';
   }
 
+
+  function isFullyConfirmed(row) {
+    const confirmation = state.confirmations.get(Number(row.id));
+    const medicalAt = confirmation?.ficha_medica_confirmada_em;
+    if (confirmation?.status !== 'confirmado' || !medicalAt || !row.medical) return false;
+    const reviewedTime = new Date(medicalAt).getTime();
+    const editedTime = row.medical.atualizado_em ? new Date(row.medical.atualizado_em).getTime() : 0;
+    return Number.isFinite(reviewedTime) && (!Number.isFinite(editedTime) || reviewedTime >= editedTime);
+  }
+
+  function medicalReviewHtml(med) {
+    if (!med) {
+      return '<div class="rfa-medical-alert-v94"><strong>Ficha médica não cadastrada.</strong> Solicite à administração o preenchimento da ficha antes de confirmar este jovem.</div>';
+    }
+    const full = med.dados_completos && typeof med.dados_completos === 'object' && !Array.isArray(med.dados_completos)
+      ? med.dados_completos : {};
+    const display = (v) => v === true ? 'Sim' : v === false ? 'Não' : (String(v ?? '').trim() || 'Não informado');
+    const field = (label, value) => '<div class="rfa-medical-field-v94"><span>' + esc(label) + '</span><strong>' + esc(display(value)) + '</strong></div>';
+    const base = [
+      ['Tipo sanguíneo', med.tipo_sanguineo],
+      ['Alergias registradas', med.alergias],
+      ['Medicamentos / uso contínuo', med.medicamentos_uso_continuo],
+      ['Restrições alimentares', med.restricoes_alimentares],
+      ['Condições relevantes', med.condicoes_relevantes],
+      ['Necessidades especiais', med.necessidades_especiais],
+      ['Plano de saúde', med.plano_saude],
+      ['Número da carteirinha', med.numero_carteirinha],
+      ['Contato de emergência', med.contato_emergencia_nome],
+      ['Telefone de emergência', med.contato_emergencia_telefone],
+      ['Observações', med.observacoes]
+    ];
+    const groups = [...document.querySelectorAll('#medicalDialog details.medical-section')].map((section) => {
+      const seen = new Set();
+      const items = [];
+      for (const input of section.querySelectorAll('[data-full-key]')) {
+        const key = input.dataset.fullKey;
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        // Os detalhes de uma opção marcada são exibidos junto de "Sim/Não".
+        if (!key.endsWith('_marcado') && section.querySelector('[data-full-key="' + key + '_marcado"]')) continue;
+        const option = input.closest('.medical-option-row');
+        const legend = input.closest('fieldset')?.querySelector('legend');
+        const label = (option?.querySelector('.medical-option span')?.textContent
+          || legend?.textContent || input.closest('label')?.textContent || key.replaceAll('_', ' ')).trim();
+        let value = full[key];
+        if (key.endsWith('_marcado')) {
+          const detail = full[key.slice(0, -8)];
+          value = key in full ? (full[key] ? 'Sim' : 'Não') : 'Não informado';
+          if (full[key] && detail) value += ' — ' + String(detail);
+        } else if (input.type === 'radio' && value) {
+          const chosen = [...section.querySelectorAll('[data-full-key]')]
+            .find((f) => f.dataset.fullKey === key && f.value === String(value));
+          value = chosen?.closest('label')?.textContent.trim() || value;
+        }
+        items.push(field(label, value));
+      }
+      const medicines = section.querySelector('#medicalMedicationsList') && Array.isArray(full.medicamentos)
+        ? full.medicamentos.filter((m) => m && (m.nome || m.informacoes || m.uso_continuo != null))
+          .map((m, i) => field('Medicamento ' + (i + 1),
+            [m.nome, m.uso_continuo === true ? 'uso contínuo' : m.uso_continuo === false ? 'não contínuo' : '', m.informacoes].filter(Boolean).join(' • ')))
+        : [];
+      items.push(...medicines);
+      return items.length
+        ? '<h4>' + esc(section.querySelector('summary')?.textContent.trim() || 'Outras informações') + '</h4><div class="rfa-medical-grid-v94">' + items.join('') + '</div>'
+        : '';
+    }).join('');
+    return '<details class="rfa-medical-v94" open><summary>Ficha médica completa — confira as informações</summary>'
+      + '<div class="rfa-medical-grid-v94" style="margin-top:11px">' + base.map(([name, value]) => field(name, value)).join('') + '</div>'
+      + groups + '</details>';
+  }
+  window.GEARPC_RESPONSIBLE_MEDICAL_REVIEW_HTML_V94 = medicalReviewHtml;
+  window.GEARPC_RESPONSIBLE_IS_MEDICAL_REVIEWED_V94 = isFullyConfirmed;
+
   function cardHtml(row) {
     const confirmation = state.confirmations.get(Number(row.id));
     const status = confirmation?.status || 'pendente';
-    const confirmed = status === 'confirmado';
+    const confirmed = isFullyConfirmed(row);
     const correction = status === 'correcao_solicitada';
     const badge = confirmed
       ? '<span class="rfa-status-v90 ok">Confirmado</span>'
       : correction
         ? '<span class="rfa-status-v90 wait">Correção solicitada</span>'
-        : '<span class="rfa-status-v90">Aguardando conferência</span>';
+        : '<span class="rfa-status-v90">Conferência pendente</span>';
 
     const correctionText = correction && confirmation?.observacao
       ? `<div class="rfa-request-text-v90"><strong>Correção informada:</strong><br>${esc(confirmation.observacao)}</div>`
@@ -267,16 +364,19 @@
         </div>
 
         ${correctionText}
+        ${medicalReviewHtml(row.medical)}
 
         ${confirmed ? '' : `
+          ${row.medical ? '<label class="rfa-medical-check-v94"><input type="checkbox" data-rfa-medical-confirm> <span>Conferi os dados cadastrais e toda a ficha médica deste jovem e confirmo que estão corretos.</span></label>' : ''}
+
           <div class="rfa-card-actions-v90">
-            <button class="rfa-confirm-v90" type="button" data-rfa-confirm="${Number(row.id)}">
-              ${correction ? '✓ Dados agora estão corretos' : '✓ Dados conferidos'}
+            <button class="rfa-confirm-v90" type="button" data-rfa-confirm="${Number(row.id)}" ${row.medical ? '' : 'disabled title="Solicite o cadastro da ficha médica"'}>
+              ${correction ? '✓ Dados agora estão corretos' : '✓ Cadastro e ficha médica conferidos'}
             </button>
             <button class="rfa-correction-v90" type="button" data-rfa-correction="${Number(row.id)}">✎ Solicitar correção</button>
           </div>
           <div class="rfa-correction-box-v90 hidden" data-rfa-correction-box="${Number(row.id)}">
-            <textarea maxlength="700" placeholder="Ex.: data de nascimento incorreta; número de registro diferente; seção incorreta..."></textarea>
+            <textarea maxlength="700" placeholder="Informe quais dados cadastrais ou da ficha médica precisam de correção. Não inclua informações de saúde além das necessárias."></textarea>
             <div class="rfa-card-actions-v90">
               <button class="rfa-correction-v90" type="button" data-rfa-send-correction="${Number(row.id)}">Enviar solicitação</button>
             </div>
@@ -299,7 +399,7 @@
       return;
     }
 
-    const confirmedCount = state.rows.filter((row) => state.confirmations.get(Number(row.id))?.status === 'confirmado').length;
+    const confirmedCount = state.rows.filter(isFullyConfirmed).length;
     progress.textContent = `${confirmedCount} de ${state.rows.length} jovem(ns) confirmado(s)`;
     list.innerHTML = state.rows.map(cardHtml).join('');
 
@@ -345,6 +445,7 @@
       status,
       observacao: status === 'correcao_solicitada' ? observation : null,
       confirmado_em: status === 'confirmado' ? now : null,
+      ficha_medica_confirmada_em: status === 'confirmado' ? now : null,
       solicitado_em: status === 'correcao_solicitada' ? now : null,
       confirmado_por: u.id,
       atualizado_em: now
