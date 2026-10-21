@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v94-medical-confirmation';
+const CACHE_NAME = 'gearpc-conecta-offline-v95-parent-medical-editor';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -16,7 +16,7 @@ const APP_SHELL = [
   './offline.html',
   './styles.css?v=23.2',
   './ideas-data.js?v=23.0',
-  './app.js?v=23.5',
+  './app.js?v=95.0',
   './programacao.js?v=48.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
@@ -51,8 +51,9 @@ const APP_SHELL = [
   './cycle-program-pilot-v84.js?v=84.1',
   './cycle-program-import-v84.js?v=84.3',
   './annual-calendar-v80.js?v=80.6',
-  './responsible-first-access-v90.js?v=94.0',
-  './responsible-data-monitor-v91.js?v=94.0',
+  './responsible-first-access-v90.js?v=95.0',
+  './responsible-data-monitor-v91.js?v=95.0',
+  './responsible-medical-edit-v95.js?v=95.0',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -170,10 +171,13 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="birthday-pilot-v61.js?v=61.1"></script>\n</body>');
   }
   if (!html.includes('responsible-first-access-v90.js')) {
-    html = html.replace('</body>', '  <script src="responsible-first-access-v90.js?v=94.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="responsible-first-access-v90.js?v=95.0"></script>\n</body>');
   }
   if (!html.includes('responsible-data-monitor-v91.js')) {
-    html = html.replace('</body>', '  <script src="responsible-data-monitor-v91.js?v=94.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="responsible-data-monitor-v91.js?v=95.0"></script>\n</body>');
+  }
+  if (!html.includes('responsible-medical-edit-v95.js')) {
+    html = html.replace('</body>', '  <script src="responsible-medical-edit-v95.js?v=95.0"></script>\n</body>');
   }
   if (!html.includes('annual-calendar-v80.js')) {
     html = html.replace('</body>', '  <script src="annual-calendar-v80.js?v=80.6"></script>\n</body>');

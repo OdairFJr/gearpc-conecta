@@ -1961,6 +1961,12 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     }
   });
 
+  // Shared read/normalization logic: parent medical form uses the same calculations as admin.
+  window.GEARPC_MEDICAL_UTILS_V95 = Object.freeze({
+    fullMedicalData, parseBloodType, manualMedicalComplements,
+    applyMedicalFallbacks, buildMedicalSummary
+  });
+
   medicalForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (state.profile?.tipo !== 'administrador') return;
