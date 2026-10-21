@@ -115,26 +115,39 @@
       c.from('perfis_usuarios').select('user_id,nome_completo,responsavel_id,ativo,eh_teste').eq('tipo','responsavel').eq('eh_teste',true).eq('ativo',true).order('nome_completo'),
       c.from('jovem_responsaveis').select('jovem_id,responsavel_id,parentesco,responsavel_principal'),
       c.from('jovens').select('id,nome_completo,ativo,eh_teste').eq('ativo',true),
-      c.from('responsavel_confirmacoes_jovens').select('responsavel_id,jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em'),
-      c.from('responsavel_confirmacoes_historico').select('responsavel_id,jovem_id,acao,observacao,criado_em').order('criado_em',{ascending:false}).limit(100)
+      c.from('responsavel_confirmacoes_jovens').select('responsavel_id,jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em,ficha_medica_confirmada_em'),
+      c.from('responsavel_confirmacoes_historico').select('responsavel_id,jovem_id,acao,observacao,criado_em').order('criado_em',{ascending:false}).limit(100),
+      c.from('fichas_medicas').select('jovem_id,atualizado_em')
     ]);
     const err=a.find(x=>x.error); if(err) throw err.error;
     const profiles=a[0].data||[], links=a[1].data||[], jovens=a[2].data||[], conf=a[3].data||[], hist=a[4].data||[];
+    const byMedical=new Map((a[5].data||[]).map(m=>[Number(m.jovem_id),m]));
     const byResp=new Map(profiles.map(x=>[Number(x.responsavel_id),x])), allowed=new Set(byResp.keys()), byJovem=new Map(jovens.map(x=>[Number(x.id),x])), byConf=new Map(conf.map(x=>[Number(x.responsavel_id)+':'+Number(x.jovem_id),x]));
     state.adminRows=links.filter(x=>allowed.has(Number(x.responsavel_id))).map(x=>{
       const p=byResp.get(Number(x.responsavel_id)),j=byJovem.get(Number(x.jovem_id)); if(!p||!j)return null;
-      return {responsavel:p,jovem:j,link:x,confirmation:byConf.get(Number(x.responsavel_id)+':'+Number(x.jovem_id))||null};
+      return {responsavel:p,jovem:j,link:x,confirmation:byConf.get(Number(x.responsavel_id)+':'+Number(x.jovem_id))||null,medical:byMedical.get(Number(x.jovem_id))||null};
     }).filter(Boolean);
     state.history=hist.filter(x=>allowed.has(Number(x.responsavel_id))).map(x=>Object.assign({},x,{responsavel:byResp.get(Number(x.responsavel_id)),jovem:byJovem.get(Number(x.jovem_id))}));
   }
 
+  function validReview(x){
+    const c=x.confirmation, med=x.medical;
+    if(c?.status!=='confirmado'||!c.ficha_medica_confirmada_em||!med)return false;
+    const reviewed=new Date(c.ficha_medica_confirmada_em).getTime();
+    const edited=med.atualizado_em?new Date(med.atualizado_em).getTime():0;
+    return Number.isFinite(reviewed)&&(!Number.isFinite(edited)||reviewed>=edited);
+  }
+
   function renderAdmin(){
-    const ok=state.adminRows.filter(x=>x.confirmation&&x.confirmation.status==='confirmado').length;
+    const ok=state.adminRows.filter(validReview).length;
     const corr=state.adminRows.filter(x=>x.confirmation&&x.confirmation.status==='correcao_solicitada').length;
     const pend=state.adminRows.length-ok-corr;
     $('responsibleAdminSummaryV91').innerHTML='<div class="rdm-summary-card-v91"><span>Confirmados</span><strong>'+ok+'</strong></div><div class="rdm-summary-card-v91"><span>Pendentes</span><strong>'+pend+'</strong></div><div class="rdm-summary-card-v91"><span>Correção solicitada</span><strong>'+corr+'</strong></div>';
     $('responsibleAdminRowsV91').innerHTML=state.adminRows.length?state.adminRows.map(x=>{
-      const c=x.confirmation, status=!c?'Pendente':c.status==='confirmado'?'Confirmado':'Correção solicitada', cls=!c?'':c.status==='confirmado'?'ok':'warn', when=c&&(c.confirmado_em||c.solicitado_em||c.atualizado_em);
+      const c=x.confirmation, reviewed=validReview(x),
+        status=!c?'Pendente':c.status==='correcao_solicitada'?'Correção solicitada':reviewed?'Confirmado':'Conferência médica pendente',
+        cls=reviewed?'ok':c?.status==='correcao_solicitada'?'warn':'',
+        when=c&&(c.confirmado_em||c.solicitado_em||c.atualizado_em);
       return '<div class="rdm-row-v91"><div class="rdm-row-head-v91"><div><strong>'+esc(x.jovem.nome_completo)+'</strong><div class="rdm-meta-v91"><span>Responsável: '+esc(x.responsavel.nome_completo)+'</span><span>Vínculo: '+esc(x.link.parentesco||'responsável')+'</span>'+(when?'<span>Atualizado: '+esc(fmtDateTime(when))+'</span>':'')+'</div></div><span class="rdm-status-v91 '+cls+'">'+esc(status)+'</span></div>'+(c&&c.status==='correcao_solicitada'&&c.observacao?'<div class="rdm-note-v91"><strong>Correção solicitada:</strong> '+esc(c.observacao)+'</div>':'')+'</div>';
     }).join(''):'<div class="rdm-empty-v91">Nenhum responsável de teste com jovem vinculado.</div>';
     const labels={confirmado:'Dados confirmados',correcao_solicitada:'Correção solicitada',reconfirmado:'Dados reconfirmados'};
@@ -155,20 +168,27 @@
       c.from('jovem_responsaveis').select('jovem_id,responsavel_id,parentesco').eq('responsavel_id',Number(p.responsavel_id)),
       c.from('jovens').select('id,nome_completo,data_nascimento,registro_paxtu,validade_registro,data_acolhida,ramo_id,secao_id,equipe_id,ativo').eq('ativo',true).order('nome_completo'),
       c.from('ramos').select('id,nome'),c.from('secoes').select('id,nome'),c.from('equipes').select('id,nome,ativo').eq('ativo',true),
-      c.from('responsavel_confirmacoes_jovens').select('jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em').eq('responsavel_id',Number(p.responsavel_id))
+      c.from('responsavel_confirmacoes_jovens').select('jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em,ficha_medica_confirmada_em').eq('responsavel_id',Number(p.responsavel_id))
     ]);
     const err=a.find(x=>x.error); if(err)throw err.error;
     const ids=new Set((a[0].data||[]).map(x=>Number(x.jovem_id))), links=new Map((a[0].data||[]).map(x=>[Number(x.jovem_id),x])), ramos=new Map((a[2].data||[]).map(x=>[Number(x.id),x])), secoes=new Map((a[3].data||[]).map(x=>[Number(x.id),x])), equipes=new Map((a[4].data||[]).map(x=>[Number(x.id),x]));
     state.confirmations=new Map((a[5].data||[]).map(x=>[Number(x.jovem_id),x]));
-    state.reviewRows=(a[1].data||[]).filter(x=>ids.has(Number(x.id))).map(x=>Object.assign({},x,{link:links.get(Number(x.id)),ramo:ramos.get(Number(x.ramo_id)),secao:secoes.get(Number(x.secao_id)),equipe:equipes.get(Number(x.equipe_id))}));
+    const medRes=ids.size
+      ? await c.from('fichas_medicas').select('jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,dados_completos,atualizado_em').in('jovem_id',[...ids])
+      : {data:[],error:null};
+    if(medRes.error)throw medRes.error;
+    const medMap=new Map((medRes.data||[]).map(x=>[Number(x.jovem_id),x]));
+    state.reviewRows=(a[1].data||[]).filter(x=>ids.has(Number(x.id))).map(x=>Object.assign({},x,{link:links.get(Number(x.id)),ramo:ramos.get(Number(x.ramo_id)),secao:secoes.get(Number(x.secao_id)),equipe:equipes.get(Number(x.equipe_id)),medical:medMap.get(Number(x.id))||null}));
   }
 
   function teamLabel(row){ const n=String(row.ramo&&row.ramo.nome||'').toLowerCase(); if(n.includes('lobinho'))return'Matilha'; if(n.includes('escoteiro')||n.includes('sênior')||n.includes('senior'))return'Patrulha'; return'Equipe'; }
   function renderReview(){
     const host=$('responsibleReviewRowsV91');
     host.innerHTML=state.reviewRows.length?state.reviewRows.map(row=>{
-      const c=state.confirmations.get(Number(row.id)), confirmed=c&&c.status==='confirmado', correction=c&&c.status==='correcao_solicitada';
-      return '<article class="rdm-review-card-v91"><div class="rdm-row-head-v91"><h3>'+esc(row.nome_completo)+'</h3><span class="rdm-status-v91 '+(confirmed?'ok':correction?'warn':'')+'">'+(confirmed?'Confirmado':correction?'Correção solicitada':'Pendente')+'</span></div><div class="rdm-grid-v91"><div class="rdm-field-v91"><span>Nascimento</span><strong>'+esc(fmtDate(row.data_nascimento))+'</strong></div><div class="rdm-field-v91"><span>Ramo</span><strong>'+esc(row.ramo&&row.ramo.nome||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>Seção</span><strong>'+esc(row.secao&&row.secao.nome||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>'+esc(teamLabel(row))+'</span><strong>'+esc(row.equipe&&row.equipe.nome||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>Nº de registro</span><strong>'+esc(row.registro_paxtu||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>Validade do registro</span><strong>'+esc(fmtDate(row.validade_registro))+'</strong></div><div class="rdm-field-v91"><span>Data de acolhida</span><strong>'+esc(fmtDate(row.data_acolhida))+'</strong></div><div class="rdm-field-v91"><span>Vínculo</span><strong>'+esc(row.link&&row.link.parentesco||'responsável')+'</strong></div></div>'+(correction&&c.observacao?'<div class="rdm-note-v91"><strong>Correção já solicitada:</strong> '+esc(c.observacao)+'</div>':'')+(confirmed?'<div class="rdm-review-actions-v91"><button class="rdm-correct-v91" type="button" data-rdm-open-correction="'+Number(row.id)+'">✎ Solicitar correção</button></div><div class="rdm-correction-box-v91 hidden" data-rdm-correction-box="'+Number(row.id)+'"><textarea maxlength="700" placeholder="Explique o que precisa ser corrigido."></textarea><button type="button" data-rdm-send-correction="'+Number(row.id)+'">Enviar solicitação</button></div>':'')+'</article>';
+      const c=state.confirmations.get(Number(row.id)),
+        confirmed=c?.status==='confirmado'&&!!c.ficha_medica_confirmada_em&&!!row.medical&&new Date(c.ficha_medica_confirmada_em).getTime()>=new Date(row.medical.atualizado_em||0).getTime(),
+        correction=c&&c.status==='correcao_solicitada';
+      return '<article class="rdm-review-card-v91"><div class="rdm-row-head-v91"><h3>'+esc(row.nome_completo)+'</h3><span class="rdm-status-v91 '+(confirmed?'ok':correction?'warn':'')+'">'+(confirmed?'Confirmado':correction?'Correção solicitada':'Pendente')+'</span></div><div class="rdm-grid-v91"><div class="rdm-field-v91"><span>Nascimento</span><strong>'+esc(fmtDate(row.data_nascimento))+'</strong></div><div class="rdm-field-v91"><span>Ramo</span><strong>'+esc(row.ramo&&row.ramo.nome||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>Seção</span><strong>'+esc(row.secao&&row.secao.nome||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>'+esc(teamLabel(row))+'</span><strong>'+esc(row.equipe&&row.equipe.nome||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>Nº de registro</span><strong>'+esc(row.registro_paxtu||'Não informado')+'</strong></div><div class="rdm-field-v91"><span>Validade do registro</span><strong>'+esc(fmtDate(row.validade_registro))+'</strong></div><div class="rdm-field-v91"><span>Data de acolhida</span><strong>'+esc(fmtDate(row.data_acolhida))+'</strong></div><div class="rdm-field-v91"><span>Vínculo</span><strong>'+esc(row.link&&row.link.parentesco||'responsável')+'</strong></div></div>'+(window.GEARPC_RESPONSIBLE_MEDICAL_REVIEW_HTML_V94?.(row.medical)||'')+(correction&&c.observacao?'<div class="rdm-note-v91"><strong>Correção já solicitada:</strong> '+esc(c.observacao)+'</div>':'')+(confirmed?'<div class="rdm-review-actions-v91"><button class="rdm-correct-v91" type="button" data-rdm-open-correction="'+Number(row.id)+'">✎ Solicitar correção</button></div><div class="rdm-correction-box-v91 hidden" data-rdm-correction-box="'+Number(row.id)+'"><textarea maxlength="700" placeholder="Explique o que precisa ser corrigido."></textarea><button type="button" data-rdm-send-correction="'+Number(row.id)+'">Enviar solicitação</button></div>':'')+'</article>';
     }).join(''):'<div class="rdm-empty-v91">Nenhum jovem vinculado ao seu acesso.</div>';
   }
 
@@ -179,7 +199,7 @@
 
   async function requestCorrection(jovemId,obs){
     const p=profile(),u=user(),now=new Date().toISOString(); setReviewMessage('Registrando solicitação…');
-    const r=await client().from('responsavel_confirmacoes_jovens').upsert({responsavel_id:Number(p.responsavel_id),jovem_id:Number(jovemId),status:'correcao_solicitada',observacao:obs,confirmado_em:null,solicitado_em:now,confirmado_por:u.id,atualizado_em:now},{onConflict:'responsavel_id,jovem_id'});
+    const r=await client().from('responsavel_confirmacoes_jovens').upsert({responsavel_id:Number(p.responsavel_id),jovem_id:Number(jovemId),status:'correcao_solicitada',observacao:obs,confirmado_em:null,ficha_medica_confirmada_em:null,solicitado_em:now,confirmado_por:u.id,atualizado_em:now},{onConflict:'responsavel_id,jovem_id'});
     if(r.error){setReviewMessage('Não foi possível salvar: '+r.error.message);return;}
     state.correctionPending=true; $('responsibleReviewCloseV91').classList.add('hidden'); await loadReview();renderReview();setReviewMessage('Solicitação registrada e administrador avisado. O acesso ficará aguardando a correção e uma nova confirmação.',true);
   }
