@@ -411,6 +411,7 @@
     ui.previewMessage.textContent = 'Carregando programação...';
     ui.previewTimeline.innerHTML = '';
     ui.previewDialog.querySelector('.program-preview-review')?.remove();
+    ui.previewDialog.querySelector('.dme-guidance-preview-v102')?.remove();
     ui.previewNotes.classList.add('hidden');
     ui.previewEdit.classList.add('hidden');
     ui.previewDialog.showModal();
@@ -436,6 +437,22 @@
       : review?.status === 'nao_autorizada' ? '● Sugestões de ajuste' : '● Aguardando revisão';
     const reviewClass = review?.status === 'autorizada' ? 'ok' : review?.status === 'nao_autorizada' ? 'adjust' : 'pending';
     ui.previewMeta.insertAdjacentHTML('afterend', `<div class="program-preview-review ${reviewClass}">${reviewLabel}${review?.observacao ? `<span>${escapeHtml(review.observacao)}</span>` : ''}</div>`);
+    const { data: dmeNotes,error: dmeError } = await client
+      .from('programacao_orientacoes_dme')
+      .select('mensagem,criado_em')
+      .eq('secao_id',program.secao_id)
+      .eq('data_atividade',program.data_atividade)
+      .order('criado_em',{ascending:true});
+    if(!dmeError && dmeNotes?.length) {
+      const messages=dmeNotes.map((note)=>{
+        const when=note.criado_em ? new Date(note.criado_em).toLocaleString('pt-BR',
+          {dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}) : '';
+        return `<article class="dme-guidance-item-v102"><small>DME • ${escapeHtml(when)}</small><p>${escapeHtml(note.mensagem)}</p></article>`;
+      }).join('');
+      ui.previewDialog.querySelector('.program-preview-review')
+        ?.insertAdjacentHTML('afterend',
+          `<section class="dme-guidance-preview-v102"><h3>Orientações e comentários do DME</h3>${messages}</section>`);
+    }
     const rows = items || [];
     ui.previewTimeline.innerHTML = rows.length ? rows.map((item) => {
       const start = toMinutes(item.hora_inicio);
