@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=97.0" />
+  <link rel="stylesheet" href="styles.css?v=99.0" />
 </head>
 <body>
   <main class="app-shell">
@@ -788,43 +788,6 @@
     </form>
   </dialog>
 
-  <dialog id="journeyDialog" class="member-dialog">
-    <form id="journeyForm" method="dialog" class="member-form">
-      <div class="dialog-title-row">
-        <div><div class="eyebrow dark">PROGRAMA EDUCATIVO</div><h2 id="journeyDialogTitle">Marcos do Jovem</h2></div>
-        <button id="closeJourneyDialog" type="button" class="dialog-close" aria-label="Fechar">×</button>
-      </div>
-      <input id="journeyMemberId" type="hidden" />
-      <p id="journeyMemberName" class="dialog-helper"></p>
-      <fieldset class="multi-fieldset">
-        <legend>Acontecimentos realizados</legend>
-        <p class="milestone-info-v97">A chefia da seção pode registrar, corrigir ou apagar as datas reais de cada acontecimento.</p>
-        <div class="date-field-row"><label>Data de acolhida<input id="journeyAcolhida" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyAcolhida">Limpar</button></div>
-        <div class="date-field-row" id="journeyPromiseWrap"><label><span id="journeyPromiseLabel">Data da promessa</span><input id="journeyPromise" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyPromise">Limpar</button></div>
-        <div class="date-field-row"><label>Data real de início do Caminho<input id="journeyStart" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyStart">Limpar</button></div>
-        <div class="date-field-row"><label>Data real da passagem de ramo<input id="journeyPassage" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyPassage">Limpar</button></div>
-      </fieldset>
-      <fieldset class="multi-fieldset compact-fieldset hidden" id="journeyPromiseHistoryAdmin">
-        <legend>Promessas anteriores • somente administração</legend>
-        <p class="milestone-info-v97">Para preservar o histórico dos ramos anteriores. A promessa do ramo atual é editada acima.</p>
-        <div class="date-field-row" id="journeyHistoryLobinhoWrap"><label>Promessa de Lobinho (anterior)<input id="journeyHistoryLobinho" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyHistoryLobinho">Limpar</button></div>
-        <div class="date-field-row" id="journeyHistoryEscoteiraWrap"><label>Promessa Escoteira (anterior)<input id="journeyHistoryEscoteira" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyHistoryEscoteira">Limpar</button></div>
-        <div class="date-field-row"><label>Promessa Adulta (histórico)<input id="journeyPromiseAdulta" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyPromiseAdulta">Limpar</button></div>
-      </fieldset>
-      <fieldset class="multi-fieldset milestone-alerts-v97" id="journeyAdminFields">
-        <legend>Alertas de planejamento • exclusivos do administrador</legend>
-        <p class="milestone-info-v97">São referências de planejamento, não registros de acontecimentos. A chefia pode consultá-las, mas somente a administração pode alterá-las.</p>
-        <div class="date-field-row"><label>Data a partir da qual pode iniciar o Caminho<input id="journeyCanStart" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyCanStart">Limpar</button></div>
-        <div class="date-field-row"><label>Data limite prevista para passagem<input id="journeyLimit" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyLimit">Limpar</button></div>
-      </fieldset>
-      <p id="journeyMessage" class="form-message" role="status"></p>
-      <div class="dialog-actions dialog-actions-split">
-        <button id="clearJourneyButton" type="button" class="danger-button">Apagar datas de acontecimentos</button>
-        <div class="dialog-actions-right"><button id="cancelJourneyButton" type="button" class="cancel-button">Cancelar</button><button id="saveJourneyButton" type="submit" class="save-button">Salvar marcos</button></div>
-      </div>
-    </form>
-  </dialog>
-
   <dialog id="visitDialog" class="member-dialog">
     <form id="visitForm" method="dialog" class="member-form">
       <div class="dialog-title-row">
@@ -986,7 +949,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="ideas-data.js?v=23.0"></script>
-  <script src="app.js?v=98.0"></script>
+  <script src="app.js?v=99.0"></script>
   <script src="programacao.js?v=48.0"></script>
   <script src="programming-import-v33.js?v=48.0"></script>
   <script src="attendance-offline-v24.js?v=24.3"></script>
@@ -1006,7 +969,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=98.0').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=99.0').catch(() => {});
       });
     }
   </script>
