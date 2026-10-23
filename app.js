@@ -97,6 +97,11 @@
   const journeyForm = $('journeyForm');
   const journeyMemberId = $('journeyMemberId');
   const journeyMemberName = $('journeyMemberName');
+  const journeyAcolhida = $('journeyAcolhida');
+  const journeyPromise = $('journeyPromise');
+  const journeyPromiseLabel = $('journeyPromiseLabel');
+  const journeyPromiseWrap = $('journeyPromiseWrap');
+  const journeyAdminFields = $('journeyAdminFields');
   const journeyCanStart = $('journeyCanStart');
   const journeyStart = $('journeyStart');
   const journeyPassage = $('journeyPassage');
@@ -642,7 +647,7 @@
   function canManageJourney(member) {
     if (!member || !state.profile) return false;
     if (state.profile.tipo === 'administrador') return true;
-    if (state.profile.acesso_geral_consulta || state.profile.tipo !== 'chefia') return false;
+    if (state.profile.tipo !== 'chefia') return false;
     return state.ownChiefSectionIds.includes(Number(member.secao?.id || member.secao_id));
   }
 
@@ -1055,18 +1060,8 @@
           ${detailValue('Nº de registro', m.registro_paxtu || '—')}
           ${detailValue('Seção', m.secao?.nome || '—')}
           ${detailValue(teamLabel, team?.nome || 'Não definida')}
-          ${detailValue('Data da acolhida', formatDateBR(m.data_acolhida))}
         </div>
         ${team ? `<div class="detail-subline"><span>Responsável(is) pela ${escapeHtml(teamLabel.toLocaleLowerCase('pt-BR'))}:</span><strong>${escapeHtml(teamChiefs.length ? teamChiefs.map((c) => c.nome_completo).join(', ') : 'Não definido')}</strong></div>` : ''}
-      </section>
-
-      <section class="detail-card">
-        <h3>Histórico de promessas</h3>
-        <div class="detail-grid">
-          ${detailValue('Promessa de Lobinho', formatDateBR(m.data_promessa_lobinho))}
-          ${detailValue('Promessa Escoteira', formatDateBR(m.data_promessa_escoteira))}
-          ${detailValue('Promessa Adulta', formatDateBR(m.data_promessa_adulta))}
-        </div>
       </section>
 
       <section class="detail-card">
@@ -1079,12 +1074,23 @@
       </section>
 
       <section class="detail-card">
-        <div class="detail-card-heading"><h3>Caminho e passagem de ramo</h3>${canManage ? '<button type="button" class="mini-primary" data-edit-journey="1">Editar / limpar datas</button>' : ''}</div>
+        <div class="detail-card-heading"><h3>Marcos do Jovem</h3>${canManage ? '<button type="button" class="mini-primary" data-edit-journey="1">Registrar / corrigir datas</button>' : ''}</div>
+        <p class="milestone-info-v97">Datas reais de acontecimentos registrados pela chefia.</p>
         <div class="detail-grid">
-          ${detailValue('Pode iniciar o Caminho', formatDateBR(m.data_pode_iniciar_caminho))}
+          ${detailValue('Acolhida', formatDateBR(m.data_acolhida))}
+          ${detailValue('Promessa de Lobinho', formatDateBR(m.data_promessa_lobinho))}
+          ${detailValue('Promessa Escoteira', formatDateBR(m.data_promessa_escoteira))}
+          ${m.data_promessa_adulta ? detailValue('Promessa Adulta (histórico)', formatDateBR(m.data_promessa_adulta)) : ''}
           ${detailValue('Início do Caminho', formatDateBR(m.data_inicio_caminho))}
           ${detailValue('Passagem de ramo', formatDateBR(m.data_passagem_ramo))}
-          ${detailValue('Data limite para passagem', formatDateBR(m.data_limite_passagem_ramo))}
+        </div>
+        <div class="milestone-alerts-v97">
+          <h4>Alertas de planejamento • definidos pela administração</h4>
+          <p class="milestone-info-v97">Estas datas servem como referência para a chefia. Não substituem os registros dos acontecimentos realizados.</p>
+          <div class="detail-grid">
+            ${detailValue('Pode iniciar o Caminho a partir de', formatDateBR(m.data_pode_iniciar_caminho))}
+            ${detailValue('Data limite prevista para passagem', formatDateBR(m.data_limite_passagem_ramo))}
+          </div>
         </div>
         <div class="detail-card-heading visits-heading"><h4>Visitas ao próximo ramo</h4>${canManage ? '<button type="button" class="mini-primary" data-add-visit="1">＋ Registrar visita</button>' : ''}</div>
         <div class="visits-list">${visitHtml}</div>
@@ -1574,10 +1580,22 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     journeyMessage.textContent = '';
     journeyMemberId.value = String(m.id);
     journeyMemberName.textContent = m.nome_completo;
-    journeyCanStart.value = m.data_pode_iniciar_caminho || '';
+    const isAdmin = state.profile?.tipo === 'administrador';
+    const isLobinho = Number(m.ramo_id) === 2;
+    const hasPromise = [2,3,4,5].includes(Number(m.ramo_id));
+    journeyAcolhida.value = m.data_acolhida || '';
+    journeyPromiseWrap.classList.toggle('hidden', !hasPromise);
+    journeyPromiseLabel.textContent = isLobinho ? 'Data da Promessa de Lobinho' : 'Data da Promessa Escoteira';
+    journeyPromise.value = hasPromise
+      ? (isLobinho ? m.data_promessa_lobinho : m.data_promessa_escoteira) || ''
+      : '';
     journeyStart.value = m.data_inicio_caminho || '';
     journeyPassage.value = m.data_passagem_ramo || '';
+    journeyCanStart.value = m.data_pode_iniciar_caminho || '';
     journeyLimit.value = m.data_limite_passagem_ramo || '';
+    journeyAdminFields.querySelectorAll('input,button').forEach((control) => {
+      control.disabled = !isAdmin;
+    });
     journeyDialog.showModal();
   }
 
@@ -1586,12 +1604,19 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   }
 
   async function saveJourneyValues(jovemId, values) {
-    const { error } = await client.rpc('salvar_caminho_passagem', {
+    const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
+    if (!m || !canManageJourney(m)) {
+      throw new Error('Sem permissão para alterar marcos deste jovem.');
+    }
+    const isAdmin = state.profile?.tipo === 'administrador';
+    const { error } = await client.rpc('salvar_marcos_jovem', {
       p_jovem_id: jovemId,
-      p_data_pode_iniciar_caminho: values.canStart || null,
+      p_data_acolhida: values.acolhida || null,
+      p_data_promessa: values.promise || null,
       p_data_inicio_caminho: values.start || null,
       p_data_passagem_ramo: values.passage || null,
-      p_data_limite_passagem_ramo: values.limit || null
+      p_data_pode_iniciar_caminho: isAdmin ? (values.canStart || null) : null,
+      p_data_limite_passagem_ramo: isAdmin ? (values.limit || null) : null
     });
     if (error) throw error;
   }
@@ -1604,10 +1629,15 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   async function clearJourneyDates() {
     const jovemId = Number(journeyMemberId.value || 0);
     if (!jovemId) return;
-    if (!window.confirm('Apagar todas as datas de Caminho e passagem deste jovem?')) return;
+    if (!window.confirm('Apagar as quatro datas de acontecimentos (acolhida, promessa, início do Caminho e passagem)? Os dois alertas definidos pela administração serão mantidos.')) return;
     clearJourneyButton.disabled = true;
     try {
-      await saveJourneyValues(jovemId, { canStart: '', start: '', passage: '', limit: '' });
+      const m = memberRows().find((item) => Number(item.id) === jovemId);
+      await saveJourneyValues(jovemId, {
+        acolhida: '', promise: '', start: '', passage: '',
+        canStart: m?.data_pode_iniciar_caminho || '',
+        limit: m?.data_limite_passagem_ramo || ''
+      });
       closeJourneyForm();
       await refreshMemberDetail(jovemId);
     } catch (error) {
@@ -2136,6 +2166,8 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     saveJourneyButton.textContent = 'Salvando...';
     try {
       await saveJourneyValues(jovemId, {
+        acolhida: journeyAcolhida.value,
+        promise: journeyPromiseWrap.classList.contains('hidden') ? '' : journeyPromise.value,
         canStart: journeyCanStart.value,
         start: journeyStart.value,
         passage: journeyPassage.value,
@@ -2147,7 +2179,7 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       journeyMessage.textContent = `Não foi possível salvar: ${error.message}`;
     } finally {
       saveJourneyButton.disabled = false;
-      saveJourneyButton.textContent = 'Salvar';
+      saveJourneyButton.textContent = 'Salvar marcos';
     }
   });
 
