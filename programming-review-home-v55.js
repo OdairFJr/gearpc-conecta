@@ -81,7 +81,7 @@
   }
 
   function ackKey(review) {
-    return `gearpc_program_review_ack_v55:${rt.state.user?.id || ''}:${review.secao_id}:${review.data_atividade}:${review.status}:${review.revisado_em || ''}`;
+    return `gearpc_program_review_ack_v55:${rt.state.user?.id || ''}:${review.secao_id}:${review.data_atividade}:${review.status}:${review.revisado_em || ''}:${review.dme_ultima_data || ''}`;
   }
 
   function isAcked(review) {
@@ -119,7 +119,7 @@
 
     const today = saoPauloYmd();
     const until = addDaysYmd(today, 14);
-    const [reviewRes, sectionRes, programRes] = await Promise.all([
+    const [reviewRes, sectionRes, programRes, dmeRes] = await Promise.all([
       rt.client.from('programacao_revisoes')
         .select('secao_id,data_atividade,status,observacao,revisado_em')
         .in('secao_id', sectionIds)
@@ -128,14 +128,27 @@
         .lte('data_atividade', until)
         .order('data_atividade', { ascending: true }),
       rt.client.from('secoes').select('id,nome').in('id', sectionIds),
-      rt.client.from('programacoes').select('id,secao_id,data_atividade').in('secao_id', sectionIds).gte('data_atividade', today).lte('data_atividade', until)
+      rt.client.from('programacoes').select('id,secao_id,data_atividade').in('secao_id', sectionIds).gte('data_atividade', today).lte('data_atividade', until),
+      rt.client.from('programacao_orientacoes_dme')
+        .select('secao_id,data_atividade,mensagem,criado_em')
+        .in('secao_id',sectionIds).gte('data_atividade',today).lte('data_atividade',until)
+        .order('criado_em',{ascending:true})
     ]);
-    const error = reviewRes.error || sectionRes.error || programRes.error;
+    const error = reviewRes.error || sectionRes.error || programRes.error || dmeRes.error;
     if (error) throw error;
 
     const sections = new Map((sectionRes.data || []).map((s) => [Number(s.id), s.nome]));
     const programs = programRes.data || [];
-    const reviews = (reviewRes.data || []).filter((r) => !isAcked(r));
+    const grouped = new Map();
+    for(const note of (dmeRes.data || [])) {
+      const key=Number(note.secao_id)+'|'+note.data_atividade;
+      if(!grouped.has(key)) grouped.set(key,[]);
+      grouped.get(key).push(note);
+    }
+    const reviews = (reviewRes.data || []).map(row=>{
+      const notes=grouped.get(Number(row.secao_id)+'|'+row.data_atividade)||[];
+      return {...row,dme_notes:notes,dme_ultima_data:notes.at(-1)?.criado_em || ''};
+    }).filter((r)=>!isAcked(r));
 
     host.innerHTML = reviews.map((r, index) => {
       const adjust = r.status === 'nao_autorizada';
@@ -146,7 +159,8 @@
         ? 'A programação foi conferida e precisa de alguns ajustes antes da atividade.'
         : 'A programação foi conferida e está aprovada para a atividade.';
       return `<article class="program-review-home-card-v55 ${adjust ? 'adjust' : ''}" data-review-home-card="${index}">
-        <div class="program-review-home-top-v55"><div class="program-review-home-icon-v55">${adjust ? '📝' : '✅'}</div><div class="program-review-home-copy-v55"><strong>${esc(title)}</strong><p>${esc(base)}<br>${esc(message)}</p>${r.observacao ? `<p class="program-review-home-note-v55">Observação: ${esc(r.observacao)}</p>` : ''}</div></div>
+        <div class="program-review-home-top-v55"><div class="program-review-home-icon-v55">${adjust ? '📝' : '✅'}</div><div class="program-review-home-copy-v55"><strong>${esc(title)}</strong><p>${esc(base)}<br>${esc(message)}</p>${r.observacao ? `<p class="program-review-home-note-v55">Observação: ${esc(r.observacao)}</p>` : ''}
+          ${r.dme_notes?.length ? `<p class="program-review-home-note-v55">💬 Orientação do DME: ${esc(r.dme_notes.at(-1).mensagem)}</p>` : ''}</div></div>
         <div class="program-review-home-actions-v55">${program ? `<button type="button" class="program-review-home-open-v55" data-review-home-open="${Number(program.id)}">Ver programação</button>` : ''}<button type="button" class="program-review-home-dismiss-v55" data-review-home-dismiss="${index}">Entendi</button></div>
       </article>`;
     }).join('');
