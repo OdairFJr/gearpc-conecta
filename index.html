@@ -349,13 +349,7 @@
       <label>Seção<select id="memberSecao" required></select><small class="field-helper">O ramo é definido automaticamente pela seção escolhida.</small></label>
       <label id="memberEquipeWrap" class="hidden"><span id="memberEquipeLabel">Matilha/Patrulha</span><select id="memberEquipe"><option value="">Sem equipe definida</option></select></label>
 
-      <fieldset class="multi-fieldset compact-fieldset">
-        <legend>Histórico escoteiro</legend>
-        <div class="date-field-row"><label>Data da acolhida<input id="memberAcolhida" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberAcolhida">Limpar</button></div>
-        <div class="date-field-row"><label>Promessa de Lobinho<input id="memberPromiseLobinho" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberPromiseLobinho">Limpar</button></div>
-        <div class="date-field-row"><label>Promessa Escoteira<input id="memberPromiseEscoteira" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberPromiseEscoteira">Limpar</button></div>
-        <div class="date-field-row"><label>Promessa Adulta<input id="memberPromiseAdulta" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="memberPromiseAdulta">Limpar</button></div>
-      </fieldset>
+      <p class="milestone-info-v97">Acolhida, promessas, início do Caminho e passagem são registrados na área <strong>Marcos do Jovem</strong>, após salvar o cadastro.</p>
 
       <label>Nome do responsável<input id="responsibleName" type="text" required maxlength="160" /></label>
       <div class="form-grid">
@@ -810,6 +804,13 @@
         <div class="date-field-row"><label>Data real de início do Caminho<input id="journeyStart" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyStart">Limpar</button></div>
         <div class="date-field-row"><label>Data real da passagem de ramo<input id="journeyPassage" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyPassage">Limpar</button></div>
       </fieldset>
+      <fieldset class="multi-fieldset compact-fieldset hidden" id="journeyPromiseHistoryAdmin">
+        <legend>Promessas anteriores • somente administração</legend>
+        <p class="milestone-info-v97">Para preservar o histórico dos ramos anteriores. A promessa do ramo atual é editada acima.</p>
+        <div class="date-field-row" id="journeyHistoryLobinhoWrap"><label>Promessa de Lobinho (anterior)<input id="journeyHistoryLobinho" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyHistoryLobinho">Limpar</button></div>
+        <div class="date-field-row" id="journeyHistoryEscoteiraWrap"><label>Promessa Escoteira (anterior)<input id="journeyHistoryEscoteira" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyHistoryEscoteira">Limpar</button></div>
+        <div class="date-field-row"><label>Promessa Adulta (histórico)<input id="journeyPromiseAdulta" type="date" /></label><button type="button" class="clear-field-button" data-clear-target="journeyPromiseAdulta">Limpar</button></div>
+      </fieldset>
       <fieldset class="multi-fieldset milestone-alerts-v97" id="journeyAdminFields">
         <legend>Alertas de planejamento • exclusivos do administrador</legend>
         <p class="milestone-info-v97">São referências de planejamento, não registros de acontecimentos. A chefia pode consultá-las, mas somente a administração pode alterá-las.</p>
@@ -985,7 +986,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="ideas-data.js?v=23.0"></script>
-  <script src="app.js?v=97.0"></script>
+  <script src="app.js?v=98.0"></script>
   <script src="programacao.js?v=48.0"></script>
   <script src="programming-import-v33.js?v=48.0"></script>
   <script src="attendance-offline-v24.js?v=24.3"></script>
@@ -1005,7 +1006,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=97.0').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=98.0').catch(() => {});
       });
     }
   </script>
