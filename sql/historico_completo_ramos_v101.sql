@@ -51,7 +51,7 @@ on conflict (jovem_id,ramo_id) do nothing;
 -- sem inventar datas de ingresso e sem substituir promessas já classificadas.
 insert into public.jovem_historico_ramos
 (jovem_id,ramo_id,data_acolhida,data_inicio_caminho,data_passagem,origem)
-select id,ramo_id,data_acolhida,data_inicio_caminho,data_passagem,'legado_a_conferir'
+select id,ramo_id,data_acolhida,data_inicio_caminho,data_passagem_ramo,'legado_a_conferir'
 from public.jovens
 where (data_acolhida is not null or data_inicio_caminho is not null
   or data_passagem_ramo is not null)
