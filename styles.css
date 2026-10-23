@@ -1360,3 +1360,9 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 @media (max-width:680px) {
   .milestone-inline-grid-v99 {grid-template-columns: 1fr;}
 }
+
+/* v100: remove o módulo de teste Gestão da seção, inclusive em páginas PWA armazenadas. */
+#sectionChiefPermsTestV94,
+#scpv94 {
+  display: none !important;
+}

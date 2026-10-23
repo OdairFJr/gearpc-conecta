@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v99-inline-member-milestones';
+const CACHE_NAME = 'gearpc-conecta-offline-v100-no-section-management';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -14,7 +14,7 @@ const APP_SHELL = [
   './index.html',
   './launcher-v24.html',
   './offline.html',
-  './styles.css?v=99.0',
+  './styles.css?v=100.0',
   './ideas-data.js?v=23.0',
   './app.js?v=99.0',
   './programacao.js?v=48.0',
@@ -54,6 +54,7 @@ const APP_SHELL = [
   './responsible-first-access-v90.js?v=95.0',
   './responsible-data-monitor-v91.js?v=95.0',
   './responsible-medical-edit-v95.js?v=95.0',
+  './section-chief-permissions-test-v94.js?v=100.0',
   './config.js',
   './logo-grupo.jpeg',
   './manifest.webmanifest',
@@ -184,6 +185,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('programming-language-v31-1.js')) {
     html = html.replace('</body>', '  <script src="programming-language-v31-1.js"></script>\n</body>');
+  }
+  if (!html.includes('section-chief-permissions-test-v94.js?v=100.0')) {
+    html = html.replace('</body>', '  <script src="section-chief-permissions-test-v94.js?v=100.0"></script>\n</body>');
   }
   const headers = new Headers(response.headers);
   headers.delete('content-length');
