@@ -207,6 +207,7 @@
     ramos: [],
     secoes: [],
     jovens: [],
+    historicoRamos: [],
     responsaveis: [],
     vinculos: [],
     chefes: [],
@@ -698,7 +699,7 @@
 
   async function loadMembersData() {
     membersMessage.textContent = 'Carregando jovens...';
-    const [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes] = await Promise.all([
+    const [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes, historicoRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').eq('ativo', true).order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true),
       client.from('jovens').select('id,nome_completo,registro_paxtu,validade_registro,data_nascimento,ramo_id,secao_id,ativo,data_acolhida,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta,equipe_id,data_pode_iniciar_caminho,data_inicio_caminho,data_passagem_ramo,data_limite_passagem_ramo').order('nome_completo'),
@@ -709,9 +710,10 @@
       client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta').order('nome_completo'),
       client.from('chefe_secoes').select('chefe_id,secao_id'),
       client.from('fichas_medicas').select('id,jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,responsavel_confirmou,confirmado_em,atualizado_em,dados_completos'),
-      client.from('visitas_proximo_ramo').select('id,jovem_id,secao_destino_id,data_visita,observacao,criado_em').order('data_visita')
+      client.from('visitas_proximo_ramo').select('id,jovem_id,secao_destino_id,data_visita,observacao,criado_em').order('data_visita'),
+      client.from('jovem_historico_ramos').select('id,jovem_id,ramo_id,data_ingresso,data_acolhida,data_promessa,data_inicio_caminho,data_passagem,origem,atualizado_em').order('ramo_id')
     ]);
-    const responses = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes];
+    const responses = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes, historicoRes];
     const firstError = responses.find((r) => r.error)?.error;
     if (firstError) {
       membersMessage.textContent = `Não foi possível carregar os jovens: ${firstError.message}`;
@@ -728,6 +730,7 @@
     state.chefeSecoes = chefeSecoesRes.data || [];
     state.fichasMedicas = fichasRes.data || [];
     state.visitasProximoRamo = visitasRes.data || [];
+    state.historicoRamos = historicoRes.data || [];
     state.ownChiefSectionIds = state.profile?.chefe_id
       ? state.chefeSecoes.filter((row) => Number(row.chefe_id) === Number(state.profile.chefe_id)).map((row) => Number(row.secao_id))
       : [];
@@ -979,34 +982,78 @@
   }
 
   // Edição imediata na ficha do jovem: sem aba ou janela adicional.
-  function inlineMilestoneField(label, key, value, editable) {
-    if (!editable) return detailValue(label, formatDateBR(value));
-    return '<div class="milestone-inline-field-v99">'
-      + '<label><span>' + escapeHtml(label) + '</span>'
-      + '<input type="date" data-milestone-field="' + escapeHtml(key) + '"'
-      + ' value="' + escapeHtml(value || '') + '" /></label>'
-      + '<button type="button" class="milestone-clear-v99" data-milestone-clear="'
-      + escapeHtml(key) + '">Limpar</button></div>';
+
+  function tempoNoRamo(hist, atual) {
+    if (!hist?.data_ingresso) return 'Tempo: informe o ingresso para calcular';
+    if (!hist.data_passagem && !atual) return 'Tempo: falta informar a passagem/saída';
+    const hoje = new Date();
+    const dataLocal = [hoje.getFullYear(), String(hoje.getMonth()+1).padStart(2,'0'), String(hoje.getDate()).padStart(2,'0')].join('-');
+    const fim = hist.data_passagem || dataLocal;
+    const dias = Math.round((Date.parse(fim) - Date.parse(hist.data_ingresso)) / 86400000);
+    if (!Number.isFinite(dias) || dias < 0) return 'Confira as datas';
+    const anos = Math.floor(dias / 365.2425);
+    const meses = Math.floor((dias - anos * 365.2425) / 30.436875);
+    return 'Permanência: ' + dias + ' dias' +
+      (anos ? ' (aprox. ' + anos + ' ano(s) e ' + meses + ' mês(es))' :
+        meses ? ' (aprox. ' + meses + ' mês(es))' : '') +
+      (hist.data_passagem ? '' : ' • em andamento');
   }
 
-  function currentMilestoneValues(row, scope) {
-    const input = (name, fallback) => {
-      const node = scope.querySelector('[data-milestone-field="' + name + '"]');
-      return node ? node.value : (fallback || '');
-    };
-    const ramoId = Number(row.ramo_id);
-    return {
-      acolhida: input('acolhida', row.data_acolhida),
-      promise: input('promise', ramoId === 2 ? row.data_promessa_lobinho :
-        [3,4,5].includes(ramoId) ? row.data_promessa_escoteira : ''),
-      start: input('start', row.data_inicio_caminho),
-      passage: input('passage', row.data_passagem_ramo),
-      canStart: input('canStart', row.data_pode_iniciar_caminho),
-      limit: input('limit', row.data_limite_passagem_ramo),
-      historyLobinho: input('historyLobinho', row.data_promessa_lobinho),
-      historyEscoteira: input('historyEscoteira', row.data_promessa_escoteira),
-      promiseAdulta: input('promiseAdulta', row.data_promessa_adulta)
-    };
+  function ramoHistoricoField(label, key, value, editable) {
+    if (!editable) return detailValue(label, formatDateBR(value));
+    return '<div class="milestone-inline-field-v99"><label><span>' +
+      escapeHtml(label) + '</span><input type="date" data-history-field="' +
+      escapeHtml(key) + '" value="' + escapeHtml(value || '') + '" /></label>' +
+      '<button type="button" class="milestone-clear-v99" data-history-clear="' +
+      escapeHtml(key) + '">Limpar</button></div>';
+  }
+
+  function renderHistoricoRamo(jovem, ramo, editable) {
+    const row = state.historicoRamos.find((h) =>
+      Number(h.jovem_id) === Number(jovem.id) && Number(h.ramo_id) === Number(ramo.id));
+    const atual = Number(jovem.ramo_id) === Number(ramo.id);
+    const next = [...state.ramos]
+      .filter(r => Number(r.ordem) > Number(ramo.ordem))
+      .sort((a,b) => Number(a.ordem) - Number(b.ordem))[0];
+    const labelPassagem = next
+      ? (Number(ramo.id) === 1 ? 'Saída para ' : 'Passagem para ') + next.nome
+      : 'Conclusão / saída do ramo';
+    const hasDate = Boolean(row && ['data_ingresso','data_acolhida','data_promessa','data_inicio_caminho','data_passagem'].some(k => row[k]));
+    const fields = [
+      ramoHistoricoField('Ingresso neste ramo','data_ingresso',row?.data_ingresso,editable),
+      ramoHistoricoField('Acolhida neste ramo','data_acolhida',row?.data_acolhida,editable),
+      ...(Number(ramo.id) === 1 ? [] : [
+        ramoHistoricoField(Number(ramo.id) === 2 ? 'Promessa de Lobinho'
+          : Number(ramo.id) === 3 ? 'Promessa Escoteira'
+          : 'Promessa / renovação no ramo','data_promessa',row?.data_promessa,editable)
+      ]),
+      ramoHistoricoField('Início real do Caminho','data_inicio_caminho',row?.data_inicio_caminho,editable),
+      ramoHistoricoField(labelPassagem,'data_passagem',row?.data_passagem,editable)
+    ].join('');
+    return '<details class="history-branch-v101" data-ramo-historico="' + ramo.id
+      + '" data-version="' + escapeHtml(row?.atualizado_em || '') + '" '
+      + (atual || hasDate ? 'open' : '') + '>'
+      + '<summary><span><strong>' + escapeHtml(ramo.nome) + '</strong>'
+      + (atual ? '<em>Ramo atual</em>' : '')
+      + '</span><small>' + escapeHtml(tempoNoRamo(row,atual)) + '</small></summary>'
+      + '<div class="history-content-v101">'
+      + (row?.origem === 'legado_a_conferir'
+        ? '<p class="history-legacy-v101">Datas importadas do cadastro anterior: confira se pertencem a este ramo.</p>' : '')
+      + '<div class="milestone-inline-grid-v99">' + fields + '</div>'
+      + (editable ? '<div class="milestone-inline-actions-v99">'
+        + '<button type="button" class="save-button" data-history-save>Salvar datas de '
+        + escapeHtml(ramo.nome) + '</button>'
+        + '<p class="form-message" data-history-status role="status"></p></div>' : '')
+      + '</div></details>';
+  }
+
+  function inlineMilestoneField(label,key,value,editable) {
+    if (!editable) return detailValue(label,formatDateBR(value));
+    return '<div class="milestone-inline-field-v99"><label><span>' +
+      escapeHtml(label) + '</span><input type="date" data-planning-field="' +
+      key + '" value="' + escapeHtml(value || '') + '" /></label>' +
+      '<button type="button" class="milestone-clear-v99" data-planning-clear="' +
+      key + '">Limpar</button></div>';
   }
 
   function openMemberDetail(jovemId) {
@@ -1023,8 +1070,6 @@
     const canManage = canManageJourney(m);
     const isMilestoneAdmin = state.profile?.tipo === 'administrador';
     const ramoId = Number(m.ramo_id);
-    const canSetPromise = [2,3,4,5].includes(ramoId);
-    const isLobinho = ramoId === 2;
     const phone = m.responsavel?.telefone || '';
     const phoneHref = normalizePhone(phone);
 
@@ -1071,33 +1116,33 @@
       </section>
 
       <section class="detail-card">
-        <h3>Histórico escoteiro</h3>
-        <p class="milestone-info-v97">Registre aqui, na própria ficha, as datas dos acontecimentos realizados.</p>
-        <div class="milestone-inline-grid-v99">
-          ${inlineMilestoneField('Acolhida', 'acolhida', m.data_acolhida, canManage)}
-          ${canSetPromise
-            ? inlineMilestoneField(isLobinho ? 'Promessa de Lobinho' : 'Promessa Escoteira',
-                'promise', isLobinho ? m.data_promessa_lobinho : m.data_promessa_escoteira, canManage)
-            : ''}
-          ${isLobinho
-            ? (isMilestoneAdmin || m.data_promessa_escoteira
-              ? inlineMilestoneField('Promessa Escoteira (histórico)', 'historyEscoteira', m.data_promessa_escoteira, isMilestoneAdmin) : '')
-            : (isMilestoneAdmin || m.data_promessa_lobinho
-              ? inlineMilestoneField('Promessa de Lobinho (histórico)', 'historyLobinho', m.data_promessa_lobinho, isMilestoneAdmin) : '')}
-          ${isMilestoneAdmin || m.data_promessa_adulta
-            ? inlineMilestoneField('Promessa Adulta (histórico)', 'promiseAdulta', m.data_promessa_adulta, isMilestoneAdmin) : ''}
-          ${inlineMilestoneField('Início real do Caminho', 'start', m.data_inicio_caminho, canManage)}
-          ${inlineMilestoneField('Passagem de ramo', 'passage', m.data_passagem_ramo, canManage)}
+        <h3>Histórico escoteiro por ramo</h3>
+        <p class="milestone-info-v97">Acolhida, promessa, ingresso e passagem são independentes em cada ramo. Abra o ramo e registre as datas aqui na ficha. Sem data de ingresso, não é possível calcular a permanência.</p>
+        <div class="history-timeline-v101">
+          ${[...state.ramos].sort((x,y) => Number(x.ordem)-Number(y.ordem))
+            .map(ramo => renderHistoricoRamo(m,ramo,canManage)).join('')}
         </div>
         <div class="milestone-alerts-v97">
-          <h4>Alertas de planejamento ${isMilestoneAdmin ? '• administração' : '• somente consulta'}</h4>
-          <p class="milestone-info-v97">Datas previstas para orientar a chefia. Não representam acontecimentos realizados.</p>
+          <h4>Alertas de planejamento ${isMilestoneAdmin ? '• administração' : '• consulta da chefia'}</h4>
+          <p class="milestone-info-v97">Prazos previstos do ramo atual, editáveis só pelo administrador.</p>
           <div class="milestone-inline-grid-v99">
-            ${inlineMilestoneField('Pode iniciar o Caminho a partir de', 'canStart', m.data_pode_iniciar_caminho, isMilestoneAdmin)}
-            ${inlineMilestoneField('Data limite prevista para passagem', 'limit', m.data_limite_passagem_ramo, isMilestoneAdmin)}
+            ${inlineMilestoneField('Pode iniciar o Caminho a partir de','canStart',m.data_pode_iniciar_caminho,isMilestoneAdmin)}
+            ${inlineMilestoneField('Data limite prevista para passagem','limit',m.data_limite_passagem_ramo,isMilestoneAdmin)}
           </div>
+          ${isMilestoneAdmin ? '<div class="milestone-inline-actions-v99"><button type="button" class="save-button" data-planning-save>Salvar alertas</button><p class="form-message" data-planning-status role="status"></p></div>' : ''}
         </div>
-        ${canManage ? '<div class="milestone-inline-actions-v99"><button type="button" class="save-button" data-milestone-save>Salvar registros</button><p class="form-message milestone-inline-status-v99" data-milestone-status role="status" aria-live="polite"></p></div>' : ''}
+        <details class="history-legacy-reference-v101">
+          <summary>Dados antigos do cadastro • referência para conferência</summary>
+          <p class="milestone-info-v97">Algumas datas antigas não indicavam o ramo. Elas continuam guardadas e não foram atribuídas a um ramo incerto.</p>
+          <div class="detail-grid">
+            ${detailValue('Acolhida anterior',formatDateBR(m.data_acolhida))}
+            ${detailValue('Promessa de Lobinho anterior',formatDateBR(m.data_promessa_lobinho))}
+            ${detailValue('Promessa Escoteira anterior',formatDateBR(m.data_promessa_escoteira))}
+            ${m.data_promessa_adulta ? detailValue('Promessa Adulta anterior',formatDateBR(m.data_promessa_adulta)) : ''}
+            ${detailValue('Início do Caminho anterior',formatDateBR(m.data_inicio_caminho))}
+            ${detailValue('Passagem anterior',formatDateBR(m.data_passagem_ramo))}
+          </div>
+        </details>
         <div class="detail-card-heading visits-heading"><h4>Visitas ao próximo ramo</h4>${canManage ? '<button type="button" class="mini-primary" data-add-visit="1">＋ Registrar visita</button>' : ''}</div>
         <div class="visits-list">${visitHtml}</div>
       </section>
@@ -1110,47 +1155,92 @@
     `;
 
     memberDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
-    memberDetailBody.querySelectorAll('[data-milestone-clear]').forEach((button) => {
+    memberDetailBody.querySelectorAll('[data-history-clear]').forEach(button => {
       button.addEventListener('click', () => {
-        const input = memberDetailBody.querySelector('[data-milestone-field="' + button.dataset.milestoneClear + '"]');
-        if (input) { input.value = ''; input.focus(); }
+        const scope = button.closest('[data-ramo-historico]');
+        const field = scope?.querySelector('[data-history-field="' + button.dataset.historyClear + '"]');
+        if (field) { field.value = ''; field.focus(); }
       });
     });
-    memberDetailBody.querySelector('[data-milestone-save]')?.addEventListener('click', async (event) => {
+    memberDetailBody.querySelectorAll('[data-history-save]').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (!canManageJourney(m) || button.disabled) return;
+        const scope = button.closest('[data-ramo-historico]');
+        const status = scope?.querySelector('[data-history-status]');
+        const ram = Number(scope?.dataset.ramoHistorico || 0);
+        const input = key => scope?.querySelector('[data-history-field="' + key + '"]')?.value || null;
+        if (!ram || !status) return;
+        if (input('data_ingresso') && input('data_passagem') &&
+            input('data_passagem') < input('data_ingresso')) {
+          status.textContent = 'Passagem anterior ao ingresso: confira as datas.';
+          return;
+        }
+        button.disabled = true;
+        button.textContent = 'Salvando...';
+        status.textContent = '';
+        try {
+          const { error } = await client.rpc('salvar_historico_ramo_jovem_v101', {
+            p_jovem_id: m.id,
+            p_ramo_id: ram,
+            p_data_ingresso: input('data_ingresso'),
+            p_data_acolhida: input('data_acolhida'),
+            p_data_promessa: input('data_promessa'),
+            p_data_inicio_caminho: input('data_inicio_caminho'),
+            p_data_passagem: input('data_passagem'),
+            p_versao_esperada: scope.dataset.version || null
+          });
+          if (error) throw error;
+          const beforeScroll = memberDetailDialog.scrollTop;
+          await refreshMemberDetail(m.id);
+          memberDetailDialog.scrollTop = beforeScroll;
+          const after = memberDetailBody.querySelector('[data-ramo-historico="' + ram + '"] [data-history-status]');
+          if (after) {
+            after.textContent = 'Histórico do ramo salvo.';
+            after.classList.add('milestone-inline-success-v99');
+          }
+        } catch(error) {
+          status.textContent = 'Não foi possível salvar: ' + error.message;
+        } finally {
+          if (button.isConnected) {
+            button.disabled = false;
+            button.textContent = 'Salvar datas do ramo';
+          }
+        }
+      });
+    });
+    memberDetailBody.querySelectorAll('[data-planning-clear]').forEach(button => {
+      button.addEventListener('click', () => {
+        const field = memberDetailBody.querySelector('[data-planning-field="' + button.dataset.planningClear + '"]');
+        if (field) { field.value = ''; field.focus(); }
+      });
+    });
+    memberDetailBody.querySelector('[data-planning-save]')?.addEventListener('click',async (event) => {
+      if (state.profile?.tipo !== 'administrador') return;
       const button = event.currentTarget;
-      const status = memberDetailBody.querySelector('[data-milestone-status]');
-      if (!canManageJourney(m) || button.disabled) return;
+      const status = memberDetailBody.querySelector('[data-planning-status]');
+      const input = key => memberDetailBody.querySelector('[data-planning-field="' + key + '"]')?.value || null;
       button.disabled = true;
-      button.textContent = 'Salvando...';
       status.textContent = '';
       try {
-        // Evita sobrescrever silenciosamente atualizações de outro chefe.
-        const watched = ['data_acolhida','data_promessa_lobinho','data_promessa_escoteira',
-          'data_promessa_adulta','data_inicio_caminho','data_passagem_ramo',
-          'data_pode_iniciar_caminho','data_limite_passagem_ramo'];
-        const { data: latest, error: loadError } = await client.from('jovens')
-          .select(watched.join(',')).eq('id', m.id).single();
-        if (loadError) throw loadError;
-        if (watched.some((key) => String(latest[key] || '') !== String(m[key] || '')))
-          throw new Error('Outra pessoa atualizou estas datas. Feche e abra novamente a ficha antes de salvar.');
-        const values = currentMilestoneValues(m, memberDetailBody);
-        await saveJourneyValues(m.id, values);
-        const position = memberDetailDialog.scrollTop;
+        const { data: latest, error: lookupError } = await client.from('jovens')
+          .select('data_pode_iniciar_caminho,data_limite_passagem_ramo').eq('id',m.id).single();
+        if (lookupError) throw lookupError;
+        if (latest.data_pode_iniciar_caminho !== m.data_pode_iniciar_caminho ||
+            latest.data_limite_passagem_ramo !== m.data_limite_passagem_ramo)
+          throw new Error('Os alertas mudaram. Reabra a ficha.');
+        const { error } = await client.from('jovens')
+          .update({data_pode_iniciar_caminho:input('canStart'),
+            data_limite_passagem_ramo:input('limit')}).eq('id',m.id);
+        if (error) throw error;
         await refreshMemberDetail(m.id);
-        memberDetailDialog.scrollTop = position;
-        const nextStatus = memberDetailBody.querySelector('[data-milestone-status]');
-        if (nextStatus) {
-          nextStatus.textContent = 'Registros salvos com sucesso.';
-          nextStatus.classList.add('milestone-inline-success-v99');
+        const after=memberDetailBody.querySelector('[data-planning-status]');
+        if (after) {
+          after.textContent='Alertas atualizados.';
+          after.classList.add('milestone-inline-success-v99');
         }
-      } catch (error) {
-        status.textContent = 'Não foi possível salvar: ' + error.message;
-      } finally {
-        if (button.isConnected) {
-          button.disabled = false;
-          button.textContent = 'Salvar registros';
-        }
-      }
+      } catch(error) {
+        status.textContent='Não foi possível salvar: '+error.message;
+      } finally {if(button.isConnected) button.disabled=false;}
     });
     memberDetailBody.querySelector('[data-add-visit]')?.addEventListener('click', () => openVisitDialog(m.id));
     memberDetailBody.querySelectorAll('[data-edit-visit]').forEach((button) => button.addEventListener('click', () => openVisitDialog(m.id, Number(button.dataset.editVisit))));
