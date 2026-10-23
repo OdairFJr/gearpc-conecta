@@ -342,6 +342,8 @@
     return true;
   }
 
+  runtime.publishDmeComment = publishDmeComment;
+
   function ensureProgrammingPanel() {
     const view = $('programmingView');
     if (!view) return null;
