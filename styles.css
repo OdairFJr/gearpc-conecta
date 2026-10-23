@@ -1290,3 +1290,73 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   color: #5e6974;
   opacity: 1;
 }
+
+
+/* Registros escoteiros v99 — edição na própria ficha, sem formulário adicional. */
+.milestone-inline-grid-v99 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.milestone-inline-field-v99 {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: end;
+  gap: 6px;
+  padding: 9px;
+  background: #f7fafc;
+  border-radius: 11px;
+  border: 1px solid #e0e9f0;
+}
+.milestone-inline-field-v99 label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #53697e;
+}
+.milestone-inline-field-v99 label span {
+  display: block;
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+.milestone-inline-field-v99 input[type="date"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 8px 5px;
+  border: 1px solid #c3d4e3;
+  border-radius: 9px;
+  background: white;
+  color: #233f56;
+  font-size: 13px;
+}
+.milestone-clear-v99 {
+  min-height: 42px;
+  padding: 7px 8px;
+  border: 1px solid #d9e1e9;
+  border-radius: 9px;
+  color: #53697e;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.milestone-inline-actions-v99 {
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.milestone-inline-status-v99 {margin: 0;}
+.milestone-inline-success-v99 {color:#22653b;}
+.milestone-alerts-v97 .milestone-inline-field-v99 {
+  background: #fff;
+}
+@media (max-width:680px) {
+  .milestone-inline-grid-v99 {grid-template-columns: 1fr;}
+}

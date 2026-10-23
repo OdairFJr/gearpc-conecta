@@ -89,30 +89,6 @@
   const deleteMedicalButton = $('deleteMedicalButton');
   const closeMedicalDialog = $('closeMedicalDialog');
   const cancelMedicalButton = $('cancelMedicalButton');
-  const journeyDialog = $('journeyDialog');
-  const journeyForm = $('journeyForm');
-  const journeyMemberId = $('journeyMemberId');
-  const journeyMemberName = $('journeyMemberName');
-  const journeyAcolhida = $('journeyAcolhida');
-  const journeyPromise = $('journeyPromise');
-  const journeyPromiseLabel = $('journeyPromiseLabel');
-  const journeyPromiseWrap = $('journeyPromiseWrap');
-  const journeyPromiseHistoryAdmin = $('journeyPromiseHistoryAdmin');
-  const journeyHistoryLobinhoWrap = $('journeyHistoryLobinhoWrap');
-  const journeyHistoryEscoteiraWrap = $('journeyHistoryEscoteiraWrap');
-  const journeyHistoryLobinho = $('journeyHistoryLobinho');
-  const journeyHistoryEscoteira = $('journeyHistoryEscoteira');
-  const journeyPromiseAdulta = $('journeyPromiseAdulta');
-  const journeyAdminFields = $('journeyAdminFields');
-  const journeyCanStart = $('journeyCanStart');
-  const journeyStart = $('journeyStart');
-  const journeyPassage = $('journeyPassage');
-  const journeyLimit = $('journeyLimit');
-  const journeyMessage = $('journeyMessage');
-  const saveJourneyButton = $('saveJourneyButton');
-  const clearJourneyButton = $('clearJourneyButton');
-  const closeJourneyDialog = $('closeJourneyDialog');
-  const cancelJourneyButton = $('cancelJourneyButton');
   const visitDialog = $('visitDialog');
   const visitForm = $('visitForm');
   const visitId = $('visitId');
@@ -1002,6 +978,37 @@
     if (memberDetailDialog.open) memberDetailDialog.close();
   }
 
+  // Edição imediata na ficha do jovem: sem aba ou janela adicional.
+  function inlineMilestoneField(label, key, value, editable) {
+    if (!editable) return detailValue(label, formatDateBR(value));
+    return '<div class="milestone-inline-field-v99">'
+      + '<label><span>' + escapeHtml(label) + '</span>'
+      + '<input type="date" data-milestone-field="' + escapeHtml(key) + '"'
+      + ' value="' + escapeHtml(value || '') + '" /></label>'
+      + '<button type="button" class="milestone-clear-v99" data-milestone-clear="'
+      + escapeHtml(key) + '">Limpar</button></div>';
+  }
+
+  function currentMilestoneValues(row, scope) {
+    const input = (name, fallback) => {
+      const node = scope.querySelector('[data-milestone-field="' + name + '"]');
+      return node ? node.value : (fallback || '');
+    };
+    const ramoId = Number(row.ramo_id);
+    return {
+      acolhida: input('acolhida', row.data_acolhida),
+      promise: input('promise', ramoId === 2 ? row.data_promessa_lobinho :
+        [3,4,5].includes(ramoId) ? row.data_promessa_escoteira : ''),
+      start: input('start', row.data_inicio_caminho),
+      passage: input('passage', row.data_passagem_ramo),
+      canStart: input('canStart', row.data_pode_iniciar_caminho),
+      limit: input('limit', row.data_limite_passagem_ramo),
+      historyLobinho: input('historyLobinho', row.data_promessa_lobinho),
+      historyEscoteira: input('historyEscoteira', row.data_promessa_escoteira),
+      promiseAdulta: input('promiseAdulta', row.data_promessa_adulta)
+    };
+  }
+
   function openMemberDetail(jovemId) {
     const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
     if (!m) return;
@@ -1014,6 +1021,10 @@
     const med = medicalForMember(m.id);
     const visits = visitsForMember(m.id);
     const canManage = canManageJourney(m);
+    const isMilestoneAdmin = state.profile?.tipo === 'administrador';
+    const ramoId = Number(m.ramo_id);
+    const canSetPromise = [2,3,4,5].includes(ramoId);
+    const isLobinho = ramoId === 2;
     const phone = m.responsavel?.telefone || '';
     const phoneHref = normalizePhone(phone);
 
@@ -1060,24 +1071,33 @@
       </section>
 
       <section class="detail-card">
-        <div class="detail-card-heading"><h3>Marcos do Jovem</h3>${canManage ? '<button type="button" class="mini-primary" data-edit-journey="1">Registrar / corrigir datas</button>' : ''}</div>
-        <p class="milestone-info-v97">Datas reais de acontecimentos registrados pela chefia.</p>
-        <div class="detail-grid">
-          ${detailValue('Acolhida', formatDateBR(m.data_acolhida))}
-          ${detailValue('Promessa de Lobinho', formatDateBR(m.data_promessa_lobinho))}
-          ${detailValue('Promessa Escoteira', formatDateBR(m.data_promessa_escoteira))}
-          ${m.data_promessa_adulta ? detailValue('Promessa Adulta (histórico)', formatDateBR(m.data_promessa_adulta)) : ''}
-          ${detailValue('Início do Caminho', formatDateBR(m.data_inicio_caminho))}
-          ${detailValue('Passagem de ramo', formatDateBR(m.data_passagem_ramo))}
+        <h3>Histórico escoteiro</h3>
+        <p class="milestone-info-v97">Registre aqui, na própria ficha, as datas dos acontecimentos realizados.</p>
+        <div class="milestone-inline-grid-v99">
+          ${inlineMilestoneField('Acolhida', 'acolhida', m.data_acolhida, canManage)}
+          ${canSetPromise
+            ? inlineMilestoneField(isLobinho ? 'Promessa de Lobinho' : 'Promessa Escoteira',
+                'promise', isLobinho ? m.data_promessa_lobinho : m.data_promessa_escoteira, canManage)
+            : ''}
+          ${isLobinho
+            ? (isMilestoneAdmin || m.data_promessa_escoteira
+              ? inlineMilestoneField('Promessa Escoteira (histórico)', 'historyEscoteira', m.data_promessa_escoteira, isMilestoneAdmin) : '')
+            : (isMilestoneAdmin || m.data_promessa_lobinho
+              ? inlineMilestoneField('Promessa de Lobinho (histórico)', 'historyLobinho', m.data_promessa_lobinho, isMilestoneAdmin) : '')}
+          ${isMilestoneAdmin || m.data_promessa_adulta
+            ? inlineMilestoneField('Promessa Adulta (histórico)', 'promiseAdulta', m.data_promessa_adulta, isMilestoneAdmin) : ''}
+          ${inlineMilestoneField('Início real do Caminho', 'start', m.data_inicio_caminho, canManage)}
+          ${inlineMilestoneField('Passagem de ramo', 'passage', m.data_passagem_ramo, canManage)}
         </div>
         <div class="milestone-alerts-v97">
-          <h4>Alertas de planejamento • definidos pela administração</h4>
-          <p class="milestone-info-v97">Estas datas servem como referência para a chefia. Não substituem os registros dos acontecimentos realizados.</p>
-          <div class="detail-grid">
-            ${detailValue('Pode iniciar o Caminho a partir de', formatDateBR(m.data_pode_iniciar_caminho))}
-            ${detailValue('Data limite prevista para passagem', formatDateBR(m.data_limite_passagem_ramo))}
+          <h4>Alertas de planejamento ${isMilestoneAdmin ? '• administração' : '• somente consulta'}</h4>
+          <p class="milestone-info-v97">Datas previstas para orientar a chefia. Não representam acontecimentos realizados.</p>
+          <div class="milestone-inline-grid-v99">
+            ${inlineMilestoneField('Pode iniciar o Caminho a partir de', 'canStart', m.data_pode_iniciar_caminho, isMilestoneAdmin)}
+            ${inlineMilestoneField('Data limite prevista para passagem', 'limit', m.data_limite_passagem_ramo, isMilestoneAdmin)}
           </div>
         </div>
+        ${canManage ? '<div class="milestone-inline-actions-v99"><button type="button" class="save-button" data-milestone-save>Salvar registros</button><p class="form-message milestone-inline-status-v99" data-milestone-status role="status" aria-live="polite"></p></div>' : ''}
         <div class="detail-card-heading visits-heading"><h4>Visitas ao próximo ramo</h4>${canManage ? '<button type="button" class="mini-primary" data-add-visit="1">＋ Registrar visita</button>' : ''}</div>
         <div class="visits-list">${visitHtml}</div>
       </section>
@@ -1090,7 +1110,48 @@
     `;
 
     memberDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
-    memberDetailBody.querySelector('[data-edit-journey]')?.addEventListener('click', () => openJourneyDialog(m.id));
+    memberDetailBody.querySelectorAll('[data-milestone-clear]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const input = memberDetailBody.querySelector('[data-milestone-field="' + button.dataset.milestoneClear + '"]');
+        if (input) { input.value = ''; input.focus(); }
+      });
+    });
+    memberDetailBody.querySelector('[data-milestone-save]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const status = memberDetailBody.querySelector('[data-milestone-status]');
+      if (!canManageJourney(m) || button.disabled) return;
+      button.disabled = true;
+      button.textContent = 'Salvando...';
+      status.textContent = '';
+      try {
+        // Evita sobrescrever silenciosamente atualizações de outro chefe.
+        const watched = ['data_acolhida','data_promessa_lobinho','data_promessa_escoteira',
+          'data_promessa_adulta','data_inicio_caminho','data_passagem_ramo',
+          'data_pode_iniciar_caminho','data_limite_passagem_ramo'];
+        const { data: latest, error: loadError } = await client.from('jovens')
+          .select(watched.join(',')).eq('id', m.id).single();
+        if (loadError) throw loadError;
+        if (watched.some((key) => String(latest[key] || '') !== String(m[key] || '')))
+          throw new Error('Outra pessoa atualizou estas datas. Feche e abra novamente a ficha antes de salvar.');
+        const values = currentMilestoneValues(m, memberDetailBody);
+        await saveJourneyValues(m.id, values);
+        const position = memberDetailDialog.scrollTop;
+        await refreshMemberDetail(m.id);
+        memberDetailDialog.scrollTop = position;
+        const nextStatus = memberDetailBody.querySelector('[data-milestone-status]');
+        if (nextStatus) {
+          nextStatus.textContent = 'Registros salvos com sucesso.';
+          nextStatus.classList.add('milestone-inline-success-v99');
+        }
+      } catch (error) {
+        status.textContent = 'Não foi possível salvar: ' + error.message;
+      } finally {
+        if (button.isConnected) {
+          button.disabled = false;
+          button.textContent = 'Salvar registros';
+        }
+      }
+    });
     memberDetailBody.querySelector('[data-add-visit]')?.addEventListener('click', () => openVisitDialog(m.id));
     memberDetailBody.querySelectorAll('[data-edit-visit]').forEach((button) => button.addEventListener('click', () => openVisitDialog(m.id, Number(button.dataset.editVisit))));
     memberDetailBody.querySelectorAll('[data-delete-visit]').forEach((button) => button.addEventListener('click', () => deleteVisit(Number(button.dataset.deleteVisit), m.id)));
@@ -1559,42 +1620,6 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     }
   }
 
-  function openJourneyDialog(jovemId) {
-    const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
-    if (!m || !canManageJourney(m)) return;
-    journeyForm.reset();
-    journeyMessage.textContent = '';
-    journeyMemberId.value = String(m.id);
-    journeyMemberName.textContent = m.nome_completo;
-    const isAdmin = state.profile?.tipo === 'administrador';
-    const isLobinho = Number(m.ramo_id) === 2;
-    const hasPromise = [2,3,4,5].includes(Number(m.ramo_id));
-    journeyAcolhida.value = m.data_acolhida || '';
-    journeyPromiseWrap.classList.toggle('hidden', !hasPromise);
-    journeyPromiseLabel.textContent = isLobinho ? 'Data da Promessa de Lobinho' : 'Data da Promessa Escoteira';
-    journeyPromise.value = hasPromise
-      ? (isLobinho ? m.data_promessa_lobinho : m.data_promessa_escoteira) || ''
-      : '';
-    journeyPromiseHistoryAdmin.classList.toggle('hidden', !isAdmin);
-    journeyHistoryLobinhoWrap.classList.toggle('hidden', isLobinho);
-    journeyHistoryEscoteiraWrap.classList.toggle('hidden', [3,4,5].includes(Number(m.ramo_id)));
-    journeyHistoryLobinho.value = m.data_promessa_lobinho || '';
-    journeyHistoryEscoteira.value = m.data_promessa_escoteira || '';
-    journeyPromiseAdulta.value = m.data_promessa_adulta || '';
-    journeyStart.value = m.data_inicio_caminho || '';
-    journeyPassage.value = m.data_passagem_ramo || '';
-    journeyCanStart.value = m.data_pode_iniciar_caminho || '';
-    journeyLimit.value = m.data_limite_passagem_ramo || '';
-    journeyAdminFields.querySelectorAll('input,button').forEach((control) => {
-      control.disabled = !isAdmin;
-    });
-    journeyDialog.showModal();
-  }
-
-  function closeJourneyForm() {
-    if (journeyDialog.open) journeyDialog.close();
-  }
-
   async function saveJourneyValues(jovemId, values) {
     const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
     if (!m || !canManageJourney(m)) {
@@ -1619,30 +1644,6 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   async function refreshMemberDetail(jovemId) {
     await loadMembersData();
     if (memberDetailDialog.open) openMemberDetail(jovemId);
-  }
-
-  async function clearJourneyDates() {
-    const jovemId = Number(journeyMemberId.value || 0);
-    if (!jovemId) return;
-    if (!window.confirm('Apagar as quatro datas de acontecimentos (acolhida, promessa, início do Caminho e passagem)? Os dois alertas definidos pela administração serão mantidos.')) return;
-    clearJourneyButton.disabled = true;
-    try {
-      const m = memberRows().find((item) => Number(item.id) === jovemId);
-      await saveJourneyValues(jovemId, {
-        acolhida: '', promise: '', start: '', passage: '',
-        canStart: m?.data_pode_iniciar_caminho || '',
-        limit: m?.data_limite_passagem_ramo || '',
-        historyLobinho: m?.data_promessa_lobinho || '',
-        historyEscoteira: m?.data_promessa_escoteira || '',
-        promiseAdulta: m?.data_promessa_adulta || ''
-      });
-      closeJourneyForm();
-      await refreshMemberDetail(jovemId);
-    } catch (error) {
-      journeyMessage.textContent = `Não foi possível apagar as datas: ${error.message}`;
-    } finally {
-      clearJourneyButton.disabled = false;
-    }
   }
 
   function renderVisitDestinations(selected = '') {
@@ -2152,35 +2153,6 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     } finally {
       saveChiefMedicalButton.disabled = false;
       saveChiefMedicalButton.textContent = 'Salvar ficha médica';
-    }
-  });
-
-  journeyForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const jovemId = Number(journeyMemberId.value || 0);
-    if (!jovemId) return;
-    journeyMessage.textContent = '';
-    saveJourneyButton.disabled = true;
-    saveJourneyButton.textContent = 'Salvando...';
-    try {
-      await saveJourneyValues(jovemId, {
-        acolhida: journeyAcolhida.value,
-        promise: journeyPromiseWrap.classList.contains('hidden') ? '' : journeyPromise.value,
-        historyLobinho: journeyHistoryLobinho.value,
-        historyEscoteira: journeyHistoryEscoteira.value,
-        promiseAdulta: journeyPromiseAdulta.value,
-        canStart: journeyCanStart.value,
-        start: journeyStart.value,
-        passage: journeyPassage.value,
-        limit: journeyLimit.value
-      });
-      closeJourneyForm();
-      await refreshMemberDetail(jovemId);
-    } catch (error) {
-      journeyMessage.textContent = `Não foi possível salvar: ${error.message}`;
-    } finally {
-      saveJourneyButton.disabled = false;
-      saveJourneyButton.textContent = 'Salvar marcos';
     }
   });
 
@@ -2906,11 +2878,6 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   cancelChiefMedicalButton.addEventListener('click', closeChiefMedicalForm);
   deleteChiefMedicalButton.addEventListener('click', deleteChiefMedicalRecord);
   chiefMedicalDialog.addEventListener('click', (event) => { if (event.target === chiefMedicalDialog) closeChiefMedicalForm(); });
-
-  closeJourneyDialog.addEventListener('click', closeJourneyForm);
-  cancelJourneyButton.addEventListener('click', closeJourneyForm);
-  clearJourneyButton.addEventListener('click', clearJourneyDates);
-  journeyDialog.addEventListener('click', (event) => { if (event.target === journeyDialog) closeJourneyForm(); });
 
   closeVisitDialog.addEventListener('click', closeVisitForm);
   cancelVisitButton.addEventListener('click', closeVisitForm);
