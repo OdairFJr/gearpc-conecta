@@ -406,11 +406,58 @@
     }).join('');
   }
 
+  function renderDmePreviewNotes(program,notes) {
+    ui.previewDialog.querySelector('.dme-guidance-preview-v102')?.remove();
+    const messages=(notes||[]).map((note)=>{
+      const when=note.criado_em ? new Date(note.criado_em).toLocaleString('pt-BR',
+        {dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'}) : '';
+      return `<article class="dme-guidance-item-v102"><small>DME • ${escapeHtml(when)}</small><p>${escapeHtml(note.mensagem)}</p></article>`;
+    }).join('');
+    const editor=isAdmin() ? `<div class="dme-guidance-compose-v102">
+      <label for="dmePreviewTextV102">Nova orientação do DME (independe da aprovação)</label>
+      <textarea id="dmePreviewTextV102" maxlength="2000" rows="3" placeholder="Recomendações, cuidados, sugestões para a chefia..."></textarea>
+      <button type="button" class="save-button" data-dme-preview-post>Publicar orientação</button>
+      <p data-dme-preview-status role="status"></p>
+    </div>` : '';
+    ui.previewDialog.querySelector('.program-preview-review')?.insertAdjacentHTML('afterend',
+      '<section class="dme-guidance-preview-v102"><h3>Orientações e comentários do DME</h3>'
+      + (messages || '<p class="medical-note">Nenhuma orientação registrada.</p>')
+      + editor + '</section>');
+    ui.previewDialog.querySelector('[data-dme-preview-post]')?.addEventListener('click',async (event)=>{
+      const button=event.currentTarget;
+      const box=ui.previewDialog.querySelector('#dmePreviewTextV102');
+      const message=ui.previewDialog.querySelector('[data-dme-preview-status]');
+      const text=box?.value?.trim() || '';
+      if(!text) {if(message) message.textContent='Escreva uma orientação antes de publicar.';return;}
+      if(typeof runtime.publishDmeComment!=='function'){
+        if(message)message.textContent='Não foi possível acessar a área de orientações.';
+        return;
+      }
+      button.disabled=true;
+      try{
+        const ok=await runtime.publishDmeComment(program.secao_id,program.data_atividade,text);
+        if(!ok) return;
+        const {data:latest,error}=await client.from('programacao_orientacoes_dme')
+          .select('mensagem,criado_em')
+          .eq('secao_id',program.secao_id)
+          .eq('data_atividade',program.data_atividade)
+          .order('criado_em',{ascending:true});
+        if(error) throw error;
+        renderDmePreviewNotes(program,latest||[]);
+        const status=ui.previewDialog.querySelector('[data-dme-preview-status]');
+        if(status)status.textContent='Orientação registrada com sucesso.';
+      }catch(error){
+        if(message)message.textContent='Orientação publicada, mas houve erro ao atualizar a tela: '+error.message;
+      }finally{if(button.isConnected)button.disabled=false;}
+    });
+  }
+
   async function openProgramPreview(id) {
     await loadReferences();
     ui.previewMessage.textContent = 'Carregando programação...';
     ui.previewTimeline.innerHTML = '';
     ui.previewDialog.querySelector('.program-preview-review')?.remove();
+    ui.previewDialog.querySelector('.dme-guidance-preview-v102')?.remove();
     ui.previewNotes.classList.add('hidden');
     ui.previewEdit.classList.add('hidden');
     ui.previewDialog.showModal();
@@ -436,6 +483,15 @@
       : review?.status === 'nao_autorizada' ? '● Sugestões de ajuste' : '● Aguardando revisão';
     const reviewClass = review?.status === 'autorizada' ? 'ok' : review?.status === 'nao_autorizada' ? 'adjust' : 'pending';
     ui.previewMeta.insertAdjacentHTML('afterend', `<div class="program-preview-review ${reviewClass}">${reviewLabel}${review?.observacao ? `<span>${escapeHtml(review.observacao)}</span>` : ''}</div>`);
+    const { data: dmeNotes,error: dmeError } = await client
+      .from('programacao_orientacoes_dme')
+      .select('mensagem,criado_em')
+      .eq('secao_id',program.secao_id)
+      .eq('data_atividade',program.data_atividade)
+      .order('criado_em',{ascending:true});
+    if(!dmeError && (dmeNotes?.length || isAdmin())) {
+      renderDmePreviewNotes(program,dmeNotes || []);
+    }
     const rows = items || [];
     ui.previewTimeline.innerHTML = rows.length ? rows.map((item) => {
       const start = toMinutes(item.hora_inicio);

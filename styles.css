@@ -1392,3 +1392,69 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   .history-branch-v101 summary {align-items:flex-start;flex-direction:column}
   .history-content-v101 {padding:9px}
 }
+
+/* v102 • Orientações do DME: leitura dentro da programação, mesmo aprovada. */
+.dme-guidance-preview-v102 {
+  border: 1px solid #c9d8ea;
+  border-radius: 13px;
+  background: #f4f8ff;
+  padding: 13px;
+  margin: 12px 0;
+}
+.dme-guidance-preview-v102 h3 {
+  font-size: 14px;
+  color: #153f70;
+  margin: 0 0 9px;
+}
+.dme-guidance-item-v102 {
+  border: 1px solid #dce5ef;
+  border-radius: 9px;
+  padding: 11px;
+  background: #fff;
+  margin: 7px 0 0;
+}
+.dme-guidance-item-v102 small {
+  display: block;
+  font-size: 11px;
+  color: #547084;
+  margin-bottom: 5px;
+}
+.dme-guidance-item-v102 p {
+  margin: 0;
+  font-size: 13px;
+  color: #263f56;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.dme-guidance-compose-v102 {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  padding-top: 11px;
+  border-top: 1px solid #d8e5f1;
+}
+.dme-guidance-compose-v102 label {
+  font-weight: 800;
+  font-size: 12px;
+  color: #153f70;
+}
+.dme-guidance-compose-v102 textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #bacfe1;
+  border-radius: 9px;
+  padding: 10px;
+  font: inherit;
+  background: #fff;
+  color: #293f54;
+  resize: vertical;
+}
+.dme-guidance-compose-v102 button {justify-self: start;}
+.dme-guidance-compose-v102 p {
+  min-height: 12px;
+  font-size: 12px;
+  color: #315f4a;
+  margin: 0;
+}
