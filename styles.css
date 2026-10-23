@@ -1427,3 +1427,34 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.dme-guidance-compose-v102 {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+  padding-top: 11px;
+  border-top: 1px solid #d8e5f1;
+}
+.dme-guidance-compose-v102 label {
+  font-weight: 800;
+  font-size: 12px;
+  color: #153f70;
+}
+.dme-guidance-compose-v102 textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #bacfe1;
+  border-radius: 9px;
+  padding: 10px;
+  font: inherit;
+  background: #fff;
+  color: #293f54;
+  resize: vertical;
+}
+.dme-guidance-compose-v102 button {justify-self: start;}
+.dme-guidance-compose-v102 p {
+  min-height: 12px;
+  font-size: 12px;
+  color: #315f4a;
+  margin: 0;
+}
