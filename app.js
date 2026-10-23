@@ -986,7 +986,9 @@
   function tempoNoRamo(hist, atual) {
     if (!hist?.data_ingresso) return 'Tempo: informe o ingresso para calcular';
     if (!hist.data_passagem && !atual) return 'Tempo: falta informar a passagem/saída';
-    const fim = hist.data_passagem || new Date().toISOString().slice(0, 10);
+    const hoje = new Date();
+    const dataLocal = [hoje.getFullYear(), String(hoje.getMonth()+1).padStart(2,'0'), String(hoje.getDate()).padStart(2,'0')].join('-');
+    const fim = hist.data_passagem || dataLocal;
     const dias = Math.round((Date.parse(fim) - Date.parse(hist.data_ingresso)) / 86400000);
     if (!Number.isFinite(dias) || dias < 0) return 'Confira as datas';
     const anos = Math.floor(dias / 365.2425);
