@@ -1260,3 +1260,33 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 /* Contraste do botão de transferência de presenças para o Paxtu */
 #attendancePaxtuButton.attendance-paxtu-button:not(.hidden){background:#174d80!important;color:#ffffff!important;border:2px solid #123b63!important;opacity:1!important;font-weight:800!important;text-shadow:none!important;box-shadow:0 2px 6px rgba(0,0,0,.16)!important}
 #attendancePaxtuButton.attendance-paxtu-button:disabled{background:#d8e0e8!important;color:#34495e!important;border-color:#a7b7c7!important;opacity:1!important;box-shadow:none!important}
+
+
+/* Marcos do Jovem v97 — datas reais e prazos previstos visualmente distintos. */
+.milestone-info-v97 {
+  margin: 8px 0 12px;
+  font-size: .83rem;
+  line-height: 1.45;
+  color: #52677a;
+}
+.milestone-alerts-v97 {
+  margin-top: 16px;
+  padding: 13px;
+  border: 1px solid #e1cda5;
+  border-radius: 10px;
+  background: #fff9ed;
+}
+.milestone-alerts-v97 h4 {
+  margin: 0 0 7px;
+  font-size: .94rem;
+  color: #6d511b;
+}
+.milestone-alerts-v97 .detail-grid {
+  margin-top: 9px;
+}
+#journeyAdminFields[disabled] { opacity: .75; }
+#journeyAdminFields input:disabled {
+  background-color: #f4f5f6;
+  color: #5e6974;
+  opacity: 1;
+}
