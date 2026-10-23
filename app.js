@@ -63,10 +63,6 @@
   const memberEquipeWrap = $('memberEquipeWrap');
   const memberEquipeLabel = $('memberEquipeLabel');
   const memberEquipe = $('memberEquipe');
-  const memberAcolhida = $('memberAcolhida');
-  const memberPromiseLobinho = $('memberPromiseLobinho');
-  const memberPromiseEscoteira = $('memberPromiseEscoteira');
-  const memberPromiseAdulta = $('memberPromiseAdulta');
   const memberDetailDialog = $('memberDetailDialog');
   const memberDetailTitle = $('memberDetailTitle');
   const memberDetailBody = $('memberDetailBody');
@@ -101,6 +97,12 @@
   const journeyPromise = $('journeyPromise');
   const journeyPromiseLabel = $('journeyPromiseLabel');
   const journeyPromiseWrap = $('journeyPromiseWrap');
+  const journeyPromiseHistoryAdmin = $('journeyPromiseHistoryAdmin');
+  const journeyHistoryLobinhoWrap = $('journeyHistoryLobinhoWrap');
+  const journeyHistoryEscoteiraWrap = $('journeyHistoryEscoteiraWrap');
+  const journeyHistoryLobinho = $('journeyHistoryLobinho');
+  const journeyHistoryEscoteira = $('journeyHistoryEscoteira');
+  const journeyPromiseAdulta = $('journeyPromiseAdulta');
   const journeyAdminFields = $('journeyAdminFields');
   const journeyCanStart = $('journeyCanStart');
   const journeyStart = $('journeyStart');
@@ -798,10 +800,6 @@
       memberRegistrationValidity.value = m.validade_registro || '';
       memberSecao.value = String(m.secao?.id || m.secao_id || '');
       renderMemberTeamOptions(m.equipe_id || '');
-      memberAcolhida.value = m.data_acolhida || '';
-      memberPromiseLobinho.value = m.data_promessa_lobinho || '';
-      memberPromiseEscoteira.value = m.data_promessa_escoteira || '';
-      memberPromiseAdulta.value = m.data_promessa_adulta || '';
       responsibleName.value = m.responsavel?.nome_completo || '';
       responsibleRegistration.value = m.responsavel?.registro_paxtu || '';
       responsiblePhone.value = m.responsavel?.telefone || '';
@@ -870,10 +868,6 @@
       ramo_id: payload.ramoId,
       secao_id: payload.secaoId,
       equipe_id: payload.equipeId || null,
-      data_acolhida: payload.acolhida || null,
-      data_promessa_lobinho: payload.promiseLobinho || null,
-      data_promessa_escoteira: payload.promiseEscoteira || null,
-      data_promessa_adulta: payload.promiseAdulta || null,
       ativo: payload.active
     }).select('id').single();
     if (youngError) {
@@ -904,10 +898,6 @@
       ramo_id: payload.ramoId,
       secao_id: payload.secaoId,
       equipe_id: payload.equipeId || null,
-      data_acolhida: payload.acolhida || null,
-      data_promessa_lobinho: payload.promiseLobinho || null,
-      data_promessa_escoteira: payload.promiseEscoteira || null,
-      data_promessa_adulta: payload.promiseAdulta || null,
       ativo: payload.active
     }).eq('id', jovemId);
     if (youngError) throw youngError;
@@ -982,10 +972,6 @@
       secaoId: Number(memberSecao.value),
       ramoId: Number(state.secoes.find((s) => Number(s.id) === Number(memberSecao.value))?.ramo_id || 0),
       equipeId: Number(memberEquipe.value || 0) || null,
-      acolhida: memberAcolhida.value,
-      promiseLobinho: memberPromiseLobinho.value,
-      promiseEscoteira: memberPromiseEscoteira.value,
-      promiseAdulta: memberPromiseAdulta.value,
       responsibleName: responsibleName.value.trim(),
       responsibleRegistration: responsibleRegistration.value.trim(),
       responsiblePhone: responsiblePhone.value.trim(),
@@ -1589,6 +1575,12 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     journeyPromise.value = hasPromise
       ? (isLobinho ? m.data_promessa_lobinho : m.data_promessa_escoteira) || ''
       : '';
+    journeyPromiseHistoryAdmin.classList.toggle('hidden', !isAdmin);
+    journeyHistoryLobinhoWrap.classList.toggle('hidden', isLobinho);
+    journeyHistoryEscoteiraWrap.classList.toggle('hidden', [3,4,5].includes(Number(m.ramo_id)));
+    journeyHistoryLobinho.value = m.data_promessa_lobinho || '';
+    journeyHistoryEscoteira.value = m.data_promessa_escoteira || '';
+    journeyPromiseAdulta.value = m.data_promessa_adulta || '';
     journeyStart.value = m.data_inicio_caminho || '';
     journeyPassage.value = m.data_passagem_ramo || '';
     journeyCanStart.value = m.data_pode_iniciar_caminho || '';
@@ -1609,14 +1601,17 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       throw new Error('Sem permissão para alterar marcos deste jovem.');
     }
     const isAdmin = state.profile?.tipo === 'administrador';
-    const { error } = await client.rpc('salvar_marcos_jovem', {
+    const { error } = await client.rpc('salvar_marcos_jovem_unificado', {
       p_jovem_id: jovemId,
       p_data_acolhida: values.acolhida || null,
       p_data_promessa: values.promise || null,
       p_data_inicio_caminho: values.start || null,
       p_data_passagem_ramo: values.passage || null,
       p_data_pode_iniciar_caminho: isAdmin ? (values.canStart || null) : null,
-      p_data_limite_passagem_ramo: isAdmin ? (values.limit || null) : null
+      p_data_limite_passagem_ramo: isAdmin ? (values.limit || null) : null,
+      p_promessa_historica_lobinho: isAdmin ? (values.historyLobinho || null) : null,
+      p_promessa_historica_escoteira: isAdmin ? (values.historyEscoteira || null) : null,
+      p_promessa_adulta: isAdmin ? (values.promiseAdulta || null) : null
     });
     if (error) throw error;
   }
@@ -1636,7 +1631,10 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       await saveJourneyValues(jovemId, {
         acolhida: '', promise: '', start: '', passage: '',
         canStart: m?.data_pode_iniciar_caminho || '',
-        limit: m?.data_limite_passagem_ramo || ''
+        limit: m?.data_limite_passagem_ramo || '',
+        historyLobinho: m?.data_promessa_lobinho || '',
+        historyEscoteira: m?.data_promessa_escoteira || '',
+        promiseAdulta: m?.data_promessa_adulta || ''
       });
       closeJourneyForm();
       await refreshMemberDetail(jovemId);
@@ -2168,6 +2166,9 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       await saveJourneyValues(jovemId, {
         acolhida: journeyAcolhida.value,
         promise: journeyPromiseWrap.classList.contains('hidden') ? '' : journeyPromise.value,
+        historyLobinho: journeyHistoryLobinho.value,
+        historyEscoteira: journeyHistoryEscoteira.value,
+        promiseAdulta: journeyPromiseAdulta.value,
         canStart: journeyCanStart.value,
         start: journeyStart.value,
         passage: journeyPassage.value,
