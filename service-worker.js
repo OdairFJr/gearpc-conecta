@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v101-youth-branch-history';
+const CACHE_NAME = 'gearpc-conecta-offline-v102-dme-feedback';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -14,10 +14,10 @@ const APP_SHELL = [
   './index.html',
   './launcher-v24.html',
   './offline.html',
-  './styles.css?v=101.0',
+  './styles.css?v=102.0',
   './ideas-data.js?v=23.0',
   './app.js?v=101.0',
-  './programacao.js?v=48.0',
+  './programacao.js?v=102.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
@@ -27,7 +27,8 @@ const APP_SHELL = [
   './programming-transfer-paxtu-v42.js?v=42.1',
   './programming-permissions-v24.js',
   './programming-ai-fixes-v27-1.js',
-  './programming-review-v28.js?v=44.3',
+  './programming-review-v28.js?v=102.0',
+  './programming-review-home-v55.js?v=102.0',
   './programming-deadline-v28-1.js?v=28.2',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
@@ -92,7 +93,7 @@ async function withRuntimeModules(response) {
 
   let html = await response.text();
   const supabaseTag = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>';
-  const programmingTag = '<script src="programacao.js?v=48.0"></script>';
+  const programmingTag = '<script src="programacao.js?v=102.0"></script>';
 
   if (!html.includes('offline-bootstrap-v24.js')) {
     html = html.replace(supabaseTag, `${supabaseTag}\n  <script src="offline-bootstrap-v24.js"></script>`);
@@ -142,7 +143,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-activity-v27.js"></script>\n</body>');
   }
   if (!html.includes('programming-review-v28.js')) {
-    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=44.3"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programming-review-v28.js?v=102.0"></script>\n</body>');
   }
   if (!html.includes('programming-deadline-v28-1.js')) {
     html = html.replace('</body>', '  <script src="programming-deadline-v28-1.js"></script>\n</body>');
@@ -188,6 +189,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('section-chief-permissions-test-v94.js?v=100.0')) {
     html = html.replace('</body>', '  <script src="section-chief-permissions-test-v94.js?v=100.0"></script>\n</body>');
+  }
+  if (!html.includes('programming-review-home-v55.js')) {
+    html = html.replace('</body>', '  <script src="programming-review-home-v55.js?v=102.0"></script>\n</body>');
   }
   const headers = new Headers(response.headers);
   headers.delete('content-length');
