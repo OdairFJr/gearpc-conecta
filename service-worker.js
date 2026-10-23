@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v100-no-section-management';
+const CACHE_NAME = 'gearpc-conecta-offline-v101-youth-branch-history';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -14,9 +14,9 @@ const APP_SHELL = [
   './index.html',
   './launcher-v24.html',
   './offline.html',
-  './styles.css?v=100.0',
+  './styles.css?v=101.0',
   './ideas-data.js?v=23.0',
-  './app.js?v=99.0',
+  './app.js?v=101.0',
   './programacao.js?v=48.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
