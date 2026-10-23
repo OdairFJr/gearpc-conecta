@@ -107,6 +107,18 @@
     style.textContent = `
       .weekly-program-reminders{margin:14px 0 18px;display:grid;gap:10px}.weekly-program-reminder{background:#fff7d6;border:1px solid #e7c96a;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;box-shadow:0 4px 14px rgba(0,0,0,.05)}.weekly-program-reminder strong{display:block;color:#6d5200;margin-bottom:4px}.weekly-program-reminder p{margin:0;color:#5f532d;line-height:1.4}.weekly-program-reminder button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
       .program-weekly-review{margin:16px 0 20px;background:#fff;border:1px solid #d7e0eb;border-radius:18px;padding:16px;box-shadow:0 5px 18px rgba(10,55,108,.06)}.program-weekly-review h3{margin:0 0 5px;color:#0a376c}.program-weekly-review .review-intro{margin:0 0 14px;color:#546579}.program-weekly-grid{display:grid;gap:12px}.program-review-card{border:1px solid #dfe6ee;border-radius:14px;padding:14px;background:#fbfcfe}.program-review-card-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:9px}.program-review-card-head strong{font-size:1rem}.program-review-card-head small{display:block;color:#66788b;margin-top:3px}.program-review-state{font-size:.78rem;font-weight:800;border-radius:999px;padding:5px 9px;background:#eef2f6;color:#556575}.program-review-state.ok{background:#e6f6ec;color:#176b38}.program-review-state.no{background:#ffe9e7;color:#9d2c24}.program-review-state.cancel{background:#f4ece7;color:#7a4930}.program-review-state.noactivity{background:#e8f2ff;color:#174f86}.program-review-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.program-review-actions button{border:0;border-radius:10px;padding:9px 11px;font-weight:700;cursor:pointer}.review-authorize{background:#1f7a45;color:#fff}.review-deny{background:#a5322a;color:#fff}.review-cancel{background:#6b4b38;color:#fff}.review-no-activity{background:#0a376c;color:#fff}.review-clear{background:#e9eef4;color:#31475e}.program-review-note{margin:8px 0 0;color:#77443e;font-size:.9rem}.program-deadline-note{margin:14px 0;padding:12px 14px;border-radius:12px;background:#eef5ff;border:1px solid #c8dcf7;color:#173f70;font-weight:700}.program-editor-review-status{margin:12px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid #d9e1ea;background:#f7f9fb}.program-editor-review-status.ok{border-color:#b8dfc6;background:#edf8f1;color:#176b38}.program-editor-review-status.no{border-color:#f0c3bf;background:#fff0ee;color:#8f2d25}.program-editor-review-status.cancel{border-color:#d9c7bb;background:#f8f1ec;color:#724631}.program-editor-review-status.pending{color:#4f6173}
+      .program-dme-feedback{margin:12px 0;border:1px solid #c9d8ea;background:#f4f8ff;border-radius:11px;padding:10px 12px}
+      .program-dme-feedback summary{font-size:.9rem;font-weight:800;color:#173f70;cursor:pointer}
+      .program-dme-messages{display:grid;gap:8px;margin-top:9px}
+      .program-dme-item{padding:10px 12px;border-radius:9px;background:white;border:1px solid #dce5ef}
+      .program-dme-item small{display:block;color:#526b80;margin-bottom:5px;font-size:.73rem}
+      .program-dme-item p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#273d52;font-size:.88rem;line-height:1.5}
+      .program-dme-editor{display:grid;gap:7px;margin-top:10px}
+      .program-dme-editor label{font-size:.85rem;font-weight:800;color:#173f70}
+      .program-dme-editor textarea{box-sizing:border-box;width:100%;min-height:76px;border-radius:9px;padding:10px;border:1px solid #b9cbdc;font:inherit;color:#263d53;background:white;resize:vertical}
+      .program-dme-editor button{justify-self:start;border:0;border-radius:9px;padding:9px 12px;background:#0a376c;color:white;font-weight:800;cursor:pointer}
+      .program-dme-editor button:disabled{opacity:.55}
+      .program-dme-status{font-size:.78rem;color:#8d3931;min-height:1em}
       .program-feedbacks{margin:14px 0 18px;display:grid;gap:10px}.program-feedback{border:1px solid #b8dfc6;background:#edf8f1;border-radius:14px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between}.program-feedback.adjust{border-color:#edcf82;background:#fff9e8}.program-feedback strong{display:block;color:#176b38;margin-bottom:4px}.program-feedback.adjust strong{color:#76570b}.program-feedback p{margin:0;color:#435a4c;line-height:1.4}.program-feedback.adjust p{color:#635522}.program-feedback button{border:0;border-radius:10px;padding:9px 12px;background:#0a376c;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
       @media(max-width:640px){.weekly-program-reminder,.program-feedback{flex-direction:column}.weekly-program-reminder button,.program-feedback button{width:100%}.program-review-card-head{flex-direction:column}.program-review-actions button{flex:1 1 100%}}
     `;
@@ -226,7 +238,7 @@
     if (!state.user?.id || !isChief()) { host.innerHTML = ''; return; }
     const { data, error } = await client.from('notificacoes')
       .select('id,titulo,mensagem,secao_id,data_referencia,lida,criado_em')
-      .eq('user_id', state.user.id).eq('tipo', FEEDBACK_TYPE).eq('lida', false)
+      .eq('user_id', state.user.id).in('tipo', [FEEDBACK_TYPE,'orientacao_dme']).eq('lida', false)
       .order('criado_em', { ascending: false });
     if (error || !data?.length) { host.innerHTML = ''; return; }
     host.innerHTML = data.map((notice) => {
@@ -255,6 +267,81 @@
     return !insertError;
   }
 
+  function renderDmeComments(rows) {
+    if (!rows?.length) return '<p class="review-intro">Nenhuma orientação registrada pelo DME para esta programação.</p>';
+    return '<div class="program-dme-messages">' + rows.map((row) => {
+      const when = row.criado_em ? new Date(row.criado_em).toLocaleString('pt-BR',
+        { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }) : '';
+      return '<article class="program-dme-item"><small>DME • ' + escapeHtml(when)
+        + '</small><p>' + escapeHtml(row.mensagem || '') + '</p></article>';
+    }).join('') + '</div>';
+  }
+
+  function dmePanel(sectionId,date,notes,canPost) {
+    const list = renderDmeComments(notes);
+    const count = notes?.length || 0;
+    const editor = canPost
+      ? '<div class="program-dme-editor"><label for="dmeText_' + sectionId
+        + '">Nova orientação ou comentário</label><textarea id="dmeText_'
+        + sectionId + '" data-dme-note maxlength="2000" placeholder="Ex.: Programação aprovada. Na atividade externa, confirmar o local e o transporte com os responsáveis."></textarea>'
+        + '<button type="button" data-dme-post data-section-id="' + sectionId
+        + '" data-date="' + escapeHtml(date) + '">Publicar orientação</button>'
+        + '<span class="program-dme-status" data-dme-status role="status"></span></div>'
+      : '';
+    return '<section class="program-dme-feedback"><details ' + (count && !canPost ? 'open' : '')
+      + '><summary>Orientações e comentários do DME (' + count + ')</summary>'
+      + list + editor + '</details></section>';
+  }
+
+  async function notifyDmeComments(sectionId,date,message) {
+    const { data: links,error:linkError } = await client.from('chefe_secoes')
+      .select('chefe_id').eq('secao_id',Number(sectionId));
+    if (linkError) throw linkError;
+    const ids=[...new Set((links||[]).map(row=>Number(row.chefe_id)).filter(Boolean))];
+    if(!ids.length) return;
+    const { data: profiles,error:profileError } = await client.from('perfis_usuarios')
+      .select('user_id').in('chefe_id',ids).eq('tipo','chefia').eq('ativo',true);
+    if(profileError) throw profileError;
+    if(!profiles?.length) return;
+    const payload=profiles.map(profile=>({
+      user_id:profile.user_id,tipo:'orientacao_dme',
+      titulo:'Nova orientação do DME',
+      mensagem:'Programação de '+formatDate(date)+': '+message.slice(0,360),
+      secao_id:Number(sectionId),data_referencia:date,lida:false
+    }));
+    const {error}=await client.from('notificacoes').insert(payload);
+    if(error) throw error;
+  }
+
+  async function publishDmeComment(sectionId,date,message) {
+    if(!isAdmin() || !state.user?.id) return false;
+    const text=String(message||'').trim();
+    if(!text || text.length>2000) {
+      window.alert('Escreva uma orientação de até 2.000 caracteres.');
+      return false;
+    }
+    const {error}=await client.from('programacao_orientacoes_dme').insert({
+      secao_id:Number(sectionId),data_atividade:date,
+      mensagem:text,autor_id:state.user.id
+    });
+    if(error) {
+      console.error('Falha ao registrar orientação do DME:',error);
+      window.alert('A orientação não foi salva: '+(error.message||'erro desconhecido'));
+      return false;
+    }
+    try {await notifyDmeComments(sectionId,date,text);}
+    catch(error){
+      console.error('Orientação registrada, mas houve falha no aviso:',error);
+      window.alert('Orientação salva. Não foi possível enviar todos os avisos; a chefia poderá consultar o texto na programação.');
+    }
+    document.dispatchEvent(new CustomEvent('gearpc:dme-guidance-updated',{
+      detail:{sectionId:Number(sectionId),date}
+    }));
+    await refreshWeeklyPanel();
+    await refreshEditorReviewStatus();
+    return true;
+  }
+
   function ensureProgrammingPanel() {
     const view = $('programmingView');
     if (!view) return null;
@@ -269,18 +356,20 @@
   }
 
   async function fetchWeeklyData(date) {
-    const [sectionsRes, programsRes, reviewsRes, exceptionRes] = await Promise.all([
+    const [sectionsRes, programsRes, reviewsRes, exceptionRes, dmeRes] = await Promise.all([
       client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true).order('id'),
       client.from('programacoes').select('id,secao_id,data_atividade,horario_inicio,horario_termino,atualizado_em').eq('data_atividade', date),
       client.from('programacao_revisoes').select('id,secao_id,data_atividade,status,observacao,revisado_por,revisado_em,atualizado_em').eq('data_atividade', date),
-      client.from('ramo_servico_excecoes').select('data,situacao').eq('data', date).maybeSingle()
+      client.from('ramo_servico_excecoes').select('data,situacao').eq('data', date).maybeSingle(),
+      client.from('programacao_orientacoes_dme').select('id,secao_id,data_atividade,mensagem,criado_em').eq('data_atividade',date).order('criado_em',{ascending:true})
     ]);
-    const firstError = [sectionsRes, programsRes, reviewsRes, exceptionRes].find((r) => r.error)?.error;
+    const firstError = [sectionsRes, programsRes, reviewsRes, exceptionRes, dmeRes].find((r) => r.error)?.error;
     if (firstError) throw firstError;
     return {
       sections: sectionsRes.data || [],
       programs: programsRes.data || [],
       reviews: reviewsRes.data || [],
+      orientacoes: dmeRes.data || [],
       noHeadquartersActivity: exceptionRes.data?.situacao === 'nenhuma_secao_sede'
     };
   }
@@ -299,7 +388,7 @@
     panel.className = 'program-weekly-review';
 
     try {
-      const { sections, programs, reviews, noHeadquartersActivity } = await fetchWeeklyData(saturday);
+      const { sections, programs, reviews, orientacoes, noHeadquartersActivity } = await fetchWeeklyData(saturday);
 
       if (noHeadquartersActivity) {
         panel.innerHTML = `<h3>Próximo sábado</h3>
@@ -323,6 +412,7 @@
           const program = programs.find((p) => Number(p.secao_id) === Number(section.id));
           const review = reviews.find((r) => Number(r.secao_id) === Number(section.id));
           const noActivity = review?.status === 'sem_atividade';
+          const notes = orientacoes.filter((r)=>Number(r.secao_id)===Number(section.id));
           const stateInfo = review ? REVIEW_STATES[review.status] : null;
           const stateHtml = noActivity
             ? `<span class="program-review-state noactivity">Sem atividade neste sábado</span>`
@@ -342,6 +432,7 @@
 
           return `<article class="program-review-card">
             <div class="program-review-card-head"><div><strong>${escapeHtml(section.nome)}</strong><small>${escapeHtml(meta)}</small></div>${stateHtml}</div>
+            ${notes.length ? dmePanel(section.id,saturday,notes,false) : ''}
             <div class="program-review-actions">${actions}</div>
           </article>`;
         }).join('');
@@ -354,6 +445,7 @@
         const program = programs.find((p) => Number(p.secao_id) === Number(section.id));
         const review = reviews.find((r) => Number(r.secao_id) === Number(section.id));
         const noActivity = review?.status === 'sem_atividade';
+        const notes = orientacoes.filter((r)=>Number(r.secao_id)===Number(section.id));
         const reviewState = review ? REVIEW_STATES[review.status] : null;
         const stateHtml = reviewState
           ? `<span class="program-review-state ${reviewState.cls}">${escapeHtml(reviewState.label)}</span>`
@@ -379,6 +471,7 @@
         return `<article class="program-review-card">
           <div class="program-review-card-head"><div><strong>${escapeHtml(section.nome)}</strong><small>${escapeHtml(meta)}</small></div>${stateHtml}</div>
           ${note}
+          ${program ? dmePanel(section.id,saturday,notes,true) : ''}
           <div class="program-review-actions">${actions}${clear}</div>
         </article>`;
       }).join('');
@@ -403,12 +496,13 @@
     if (error) {
       window.alert('Não foi possível salvar a conferência da atividade.');
       console.error(error);
-      return;
+      return false;
     }
     const notified = await notifySectionChiefs(sectionId, date, status, observation);
     if (!notified) window.alert('O retorno foi salvo, mas não foi possível criar o aviso para a chefia.');
     await refreshWeeklyPanel();
     await refreshEditorReviewStatus();
+    return true;
   }
 
   async function clearReview(sectionId, date) {
@@ -431,7 +525,10 @@
     const date = button.dataset.date;
     if (!action || !sectionId || !date) return;
     if (action === 'authorize') {
-      await saveReview(sectionId, date, 'autorizada');
+      const optional = button.closest('.program-review-card')
+        ?.querySelector('[data-dme-note]')?.value?.trim() || '';
+      const approved = await saveReview(sectionId, date, 'autorizada');
+      if (approved && optional) await publishDmeComment(sectionId,date,optional);
       return;
     }
     if (action === 'deny') {
@@ -490,6 +587,11 @@
     const info = REVIEW_STATES[data.status] || { label: data.status, cls: 'pending' };
     box.className = `program-editor-review-status ${info.cls}`;
     box.innerHTML = `<strong>Status da conferência:</strong> ${escapeHtml(info.label)}${data.observacao ? `<br><span>${escapeHtml(data.observacao)}</span>` : ''}`;
+    const {data: notes,error:notesError}=await client.from('programacao_orientacoes_dme')
+      .select('mensagem,criado_em').eq('secao_id',sectionId)
+      .eq('data_atividade',date).order('criado_em',{ascending:true});
+    if(!notesError && notes?.length)
+      box.insertAdjacentHTML('beforeend',dmePanel(sectionId,date,notes,false));
   }
 
   function scheduleProgrammingRefresh() {
@@ -502,6 +604,17 @@
 
   function bindEvents() {
     document.addEventListener('click', async (event) => {
+      const post = event.target.closest('[data-dme-post]');
+      if(post){
+        const card=post.closest('.program-review-card');
+        const text=card?.querySelector('[data-dme-note]')?.value || '';
+        const status=card?.querySelector('[data-dme-status]');
+        if(!text.trim()){if(status)status.textContent='Escreva a orientação antes de publicar.';return;}
+        post.disabled=true;
+        try { await publishDmeComment(post.dataset.sectionId,post.dataset.date,text); }
+        finally {if(post.isConnected)post.disabled=false;}
+        return;
+      }
       const dismiss = event.target.closest('[data-dismiss-notice]');
       if (dismiss) {
         await dismissReminder(dismiss.dataset.dismissNotice);
