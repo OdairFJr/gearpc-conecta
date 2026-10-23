@@ -1392,3 +1392,38 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   .history-branch-v101 summary {align-items:flex-start;flex-direction:column}
   .history-content-v101 {padding:9px}
 }
+
+/* v102 • Orientações do DME: leitura dentro da programação, mesmo aprovada. */
+.dme-guidance-preview-v102 {
+  border: 1px solid #c9d8ea;
+  border-radius: 13px;
+  background: #f4f8ff;
+  padding: 13px;
+  margin: 12px 0;
+}
+.dme-guidance-preview-v102 h3 {
+  font-size: 14px;
+  color: #153f70;
+  margin: 0 0 9px;
+}
+.dme-guidance-item-v102 {
+  border: 1px solid #dce5ef;
+  border-radius: 9px;
+  padding: 11px;
+  background: #fff;
+  margin: 7px 0 0;
+}
+.dme-guidance-item-v102 small {
+  display: block;
+  font-size: 11px;
+  color: #547084;
+  margin-bottom: 5px;
+}
+.dme-guidance-item-v102 p {
+  margin: 0;
+  font-size: 13px;
+  color: #263f56;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
