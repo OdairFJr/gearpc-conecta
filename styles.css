@@ -1458,3 +1458,10 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
   color: #315f4a;
   margin: 0;
 }
+
+/* v103: datas próprias do Ramo Sênior e da etapa pioneira. */
+.history-branch-v101[data-ramo-historico="4"] [data-history-field="data_compromisso_senior"],
+.history-branch-v101[data-ramo-historico="5"] [data-history-field="data_investidura_pioneira"],
+.history-branch-v101[data-ramo-historico="5"] [data-history-field="data_partida_pioneira"] {
+  border-color: #87a7c5;
+}

@@ -711,7 +711,7 @@
       client.from('chefe_secoes').select('chefe_id,secao_id'),
       client.from('fichas_medicas').select('id,jovem_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,responsavel_confirmou,confirmado_em,atualizado_em,dados_completos'),
       client.from('visitas_proximo_ramo').select('id,jovem_id,secao_destino_id,data_visita,observacao,criado_em').order('data_visita'),
-      client.from('jovem_historico_ramos').select('id,jovem_id,ramo_id,data_ingresso,data_acolhida,data_promessa,data_inicio_caminho,data_passagem,origem,atualizado_em').order('ramo_id')
+      client.from('jovem_historico_ramos').select('id,jovem_id,ramo_id,data_ingresso,data_acolhida,data_promessa,data_inicio_caminho,data_passagem,data_compromisso_senior,data_investidura_pioneira,data_partida_pioneira,origem,atualizado_em').order('ramo_id')
     ]);
     const responses = [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes, historicoRes];
     const firstError = responses.find((r) => r.error)?.error;
@@ -985,10 +985,15 @@
 
   function tempoNoRamo(hist, atual) {
     if (!hist?.data_ingresso) return 'Tempo: informe o ingresso para calcular';
-    if (!hist.data_passagem && !atual) return 'Tempo: falta informar a passagem/saída';
+    const termino = Number(hist.ramo_id) === 5
+      ? (hist.data_partida_pioneira || hist.data_passagem)
+      : hist.data_passagem;
+    if (!termino && !atual) return Number(hist.ramo_id) === 5
+      ? 'Tempo: falta registrar a Partida'
+      : 'Tempo: falta informar a passagem/saída';
     const hoje = new Date();
     const dataLocal = [hoje.getFullYear(), String(hoje.getMonth()+1).padStart(2,'0'), String(hoje.getDate()).padStart(2,'0')].join('-');
-    const fim = hist.data_passagem || dataLocal;
+    const fim = termino || dataLocal;
     const dias = Math.round((Date.parse(fim) - Date.parse(hist.data_ingresso)) / 86400000);
     if (!Number.isFinite(dias) || dias < 0) return 'Confira as datas';
     const anos = Math.floor(dias / 365.2425);
@@ -996,7 +1001,7 @@
     return 'Permanência: ' + dias + ' dias' +
       (anos ? ' (aprox. ' + anos + ' ano(s) e ' + meses + ' mês(es))' :
         meses ? ' (aprox. ' + meses + ' mês(es))' : '') +
-      (hist.data_passagem ? '' : ' • em andamento');
+      (termino ? '' : ' • em andamento');
   }
 
   function ramoHistoricoField(label, key, value, editable) {
@@ -1018,7 +1023,9 @@
     const labelPassagem = next
       ? (Number(ramo.id) === 1 ? 'Saída para ' : 'Passagem para ') + next.nome
       : 'Conclusão / saída do ramo';
-    const hasDate = Boolean(row && ['data_ingresso','data_acolhida','data_promessa','data_inicio_caminho','data_passagem'].some(k => row[k]));
+    const hasDate = Boolean(row && ['data_ingresso','data_acolhida','data_promessa',
+      'data_inicio_caminho','data_passagem','data_compromisso_senior',
+      'data_investidura_pioneira','data_partida_pioneira'].some(k => row[k]));
     const fields = [
       ramoHistoricoField('Ingresso neste ramo','data_ingresso',row?.data_ingresso,editable),
       ramoHistoricoField('Acolhida neste ramo','data_acolhida',row?.data_acolhida,editable),
@@ -1027,8 +1034,18 @@
           : Number(ramo.id) === 3 ? 'Promessa Escoteira'
           : 'Promessa / renovação no ramo','data_promessa',row?.data_promessa,editable)
       ]),
+      ...(Number(ramo.id) === 4 ? [
+        ramoHistoricoField('Compromisso Sênior','data_compromisso_senior',row?.data_compromisso_senior,editable)
+      ] : []),
+      ...(Number(ramo.id) === 5 ? [
+        ramoHistoricoField('Investidura Pioneira','data_investidura_pioneira',row?.data_investidura_pioneira,editable)
+      ] : []),
       ramoHistoricoField('Início real do Caminho','data_inicio_caminho',row?.data_inicio_caminho,editable),
-      ramoHistoricoField(labelPassagem,'data_passagem',row?.data_passagem,editable)
+      ...(Number(ramo.id) === 5 ? [
+        ramoHistoricoField('Partida Pioneira','data_partida_pioneira',row?.data_partida_pioneira,editable)
+      ] : [
+        ramoHistoricoField(labelPassagem,'data_passagem',row?.data_passagem,editable)
+      ])
     ].join('');
     return '<details class="history-branch-v101" data-ramo-historico="' + ramo.id
       + '" data-version="' + escapeHtml(row?.atualizado_em || '') + '" '
@@ -1175,19 +1192,41 @@
           status.textContent = 'Passagem anterior ao ingresso: confira as datas.';
           return;
         }
+        if (ram === 4 && input('data_ingresso') && input('data_compromisso_senior') &&
+          input('data_compromisso_senior') < input('data_ingresso')) {
+          status.textContent = 'O Compromisso Sênior não pode anteceder o ingresso no ramo.';
+          return;
+        }
+        if (ram === 5) {
+          const ingresso = input('data_ingresso');
+          const investidura = input('data_investidura_pioneira');
+          const partida = input('data_partida_pioneira');
+          if ((ingresso && investidura && investidura < ingresso) ||
+              (ingresso && partida && partida < ingresso) ||
+              (investidura && partida && partida < investidura)) {
+            status.textContent = 'Confira a sequência das datas: ingresso, investidura e partida.';
+            return;
+          }
+        }
         button.disabled = true;
         button.textContent = 'Salvando...';
         status.textContent = '';
         try {
-          const { error } = await client.rpc('salvar_historico_ramo_jovem_v101', {
+          const record = state.historicoRamos.find(h =>
+            Number(h.jovem_id) === Number(m.id) && Number(h.ramo_id) === ram);
+          const { error } = await client.rpc('salvar_historico_ramo_jovem_v103', {
             p_jovem_id: m.id,
             p_ramo_id: ram,
             p_data_ingresso: input('data_ingresso'),
             p_data_acolhida: input('data_acolhida'),
             p_data_promessa: input('data_promessa'),
             p_data_inicio_caminho: input('data_inicio_caminho'),
-            p_data_passagem: input('data_passagem'),
-            p_versao_esperada: scope.dataset.version || null
+            // Partida é a conclusão do Pioneiro; preserva passagem antiga, se houver.
+            p_data_passagem: ram === 5 ? (record?.data_passagem || null) : input('data_passagem'),
+            p_versao_esperada: scope.dataset.version || null,
+            p_data_compromisso_senior: ram === 4 ? input('data_compromisso_senior') : null,
+            p_data_investidura_pioneira: ram === 5 ? input('data_investidura_pioneira') : null,
+            p_data_partida_pioneira: ram === 5 ? input('data_partida_pioneira') : null
           });
           if (error) throw error;
           const beforeScroll = memberDetailDialog.scrollTop;
