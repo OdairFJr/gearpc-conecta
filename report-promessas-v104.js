@@ -93,3 +93,109 @@
       .filter(r=>!o.period||(Boolean(r.date)&&r.date>=o.start&&r.date<=o.end))
       .sort((a,b)=>(sort[a.branch]-sort[b.branch])||a.name.localeCompare(b.name,'pt-BR'));
   }
+
+  function render(rows){
+    const host=$('promiseResultsV104');if(!host)return;
+    const missing=rows.filter(r=>!r.date).length,review=rows.filter(r=>r.review).length;
+    let html='<p class="promise-summary-v104"><strong>'+rows.length+'</strong> registro(s) • '+
+      (rows.length-missing)+' com data'+(missing?' • '+missing+' sem data':'')+
+      (review?' • '+review+' a conferir':'')+'</p>';
+    if(rows.length>100)html+='<p class="promise-hint-v104">Mostrando os primeiros 100 registros. O PDF e o CSV incluem todos os resultados.</p>';
+    if(rows.length){
+      html+='<div class="promise-table-scroll-v104"><table class="promise-table-v104"><thead><tr>'+
+        '<th>Ramo</th><th>Membro</th><th>Seção atual</th><th>Data</th><th>Origem</th>'+
+        '</tr></thead><tbody>';
+      html+=rows.slice(0,100).map(r=>'<tr><td>'+esc(r.label)+'</td><td>'+esc(r.name)+
+        ' <small>('+esc(r.kind)+')</small></td><td>'+esc(r.section)+'</td><td>'+
+        esc(fmt(r.date))+'</td><td>'+esc(r.origin)+'</td></tr>').join('');
+      html+='</tbody></table></div>';
+    }else html+='<p class="promise-hint-v104">Nenhum registro encontrado com estes filtros.</p>';
+    host.innerHTML=html;
+  }
+
+  function validatedOptions(){
+    const o=opts();if(o.period&&(!o.start||!o.end||o.start>o.end))
+      throw new Error('Informe datas válidas na seção "Período do relatório".');
+    return o;
+  }
+  async function lookup(){
+    if(state.profile?.tipo!=='administrador')throw new Error('Acesso restrito.');
+    const o=validatedOptions();
+    const data=await sources();
+    return {rows:rowsFrom(data,o),options:o};
+  }
+  async function search(){
+    const button=$('promiseSearchV104'),status=$('promiseStatusV104');
+    if(!button||button.disabled)return;
+    button.disabled=true;status.textContent='Consultando as datas...';
+    try{const found=await lookup();render(found.rows);
+      status.textContent='Consulta atualizada.';}
+    catch(e){status.textContent='Não foi possível consultar: '+e.message;
+      console.error('GEArPC: busca de promessas',e);}
+    finally{button.disabled=false;}
+  }
+
+  function injectCss(){
+    if($('promiseStylesV104'))return;
+    const style=document.createElement('style');style.id='promiseStylesV104';
+    style.textContent=[
+      '.promise-filters-v104{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}',
+      '.promise-filters-v104 label{display:grid;gap:5px;font-size:.78rem;font-weight:800;color:#456075}',
+      '.promise-filters-v104 input,.promise-filters-v104 select{width:100%;box-sizing:border-box;padding:10px;border:1px solid #bdcfdd;border-radius:9px;background:white;color:#203c54}',
+      '.promise-options-v104{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}',
+      '.promise-options-v104 label{display:flex;align-items:center;gap:5px;color:#4b647b;font-size:.77rem;font-weight:700}',
+      '.promise-options-v104 input{flex-shrink:0}',
+      '.promise-actions-v104{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}',
+      '.promise-actions-v104 button{border:1px solid #b9cadb;border-radius:9px;background:#f6f9fc;color:#0a376c;padding:10px 12px;font-weight:800;cursor:pointer}',
+      '.promise-actions-v104 button:first-child{background:#0a376c;color:white}',
+      '.promise-actions-v104 button:disabled{opacity:.55;cursor:wait}',
+      '.promise-summary-v104{margin:12px 0 8px!important;color:#39536d;font-size:.8rem}',
+      '.promise-hint-v104{margin:10px 0!important;font-size:.76rem;color:#78602a;line-height:1.5}',
+      '.promise-table-scroll-v104{overflow-x:auto;border:1px solid #dbe5ee;border-radius:10px;margin-top:9px}',
+      '.promise-table-v104{width:100%;min-width:620px;border-collapse:collapse;font-size:.75rem}',
+      '.promise-table-v104 th,.promise-table-v104 td{padding:9px;border-bottom:1px solid #e8edf3;text-align:left;vertical-align:top}',
+      '.promise-table-v104 th{background:#edf4fa;color:#0a376c;font-weight:800}',
+      '.promise-table-v104 small{color:#60798c}',
+      '#promiseStatusV104{font-size:.76rem;color:#536d80;min-height:15px}',
+      '@media(max-width:650px){.promise-filters-v104{grid-template-columns:1fr}}'
+    ].join('');
+    document.head.appendChild(style);
+  }
+
+  function makePanel(){
+    const view=$('reportsView');
+    if(!view||$('promisePanelV104'))return;
+    const panel=document.createElement('section');panel.id='promisePanelV104';
+    panel.className='reports-card';
+    panel.innerHTML=
+      '<h3>Consulta de promessas de todos os ramos</h3>'+
+      '<p>Consulte a data de promessa de cada jovem em todos os ramos pelos quais passou. Inclui também as promessas dos adultos. Gere um PDF ou CSV separado para controle.</p>'+
+      '<div class="promise-filters-v104">'+
+      '<label>Ramo / tipo de promessa<select id="promiseBranchV104">'+
+      '<option value="todos">Todos os ramos e adultos</option>'+
+      '<option value="2">Lobinho</option><option value="3">Escoteiro</option>'+
+      '<option value="4">Sênior</option><option value="5">Pioneiro</option>'+
+      '<option value="adulto">Promessa adulta</option>'+
+      '<option value="pendente">Antigas sem ramo identificado</option></select></label>'+
+      '<label>Buscar pelo nome do membro<input id="promiseNameV104" type="search" autocomplete="off" placeholder="Nome ou parte do nome"></label>'+
+      '</div><div class="promise-options-v104">'+
+      '<label><input id="promiseMissingV104" type="checkbox"> Incluir sem data registrada</label>'+
+      '<label><input id="promisePeriodV104" type="checkbox"> Filtrar pelo período acima</label>'+
+      '<label><input id="promiseInactiveV104" type="checkbox"> Incluir inativos</label></div>'+
+      '<p class="promise-hint-v104">Filhotes não possuem promessa. Compromisso Sênior, Investidura e Partida são marcos diferentes. Datas antigas sem ramo conhecido ficam sinalizadas para conferência.</p>'+
+      '<div class="promise-actions-v104">'+
+      '<button type="button" id="promiseSearchV104">Consultar datas</button>'+
+      '<button type="button" id="promisePdfV104">Gerar PDF das promessas</button>'+
+      '<button type="button" id="promiseCsvV104">Exportar CSV</button></div>'+
+      '<p id="promiseStatusV104" role="status"></p>'+
+      '<div id="promiseResultsV104" aria-live="polite"></div>';
+    const first=view.querySelector('.reports-card');
+    if(first)first.insertAdjacentElement('afterend',panel);
+    else view.appendChild(panel);
+    $('promiseSearchV104').addEventListener('click',search);
+    $('promisePdfV104').addEventListener('click',()=>download('pdf'));
+    $('promiseCsvV104').addEventListener('click',()=>download('csv'));
+    $('promiseNameV104').addEventListener('keydown',event=>{
+      if(event.key==='Enter'){event.preventDefault();search();}
+    });
+  }
