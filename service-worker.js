@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v103-senior-pioneiro';
+const CACHE_NAME = 'gearpc-conecta-offline-v104-promise-reports';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -32,8 +32,9 @@ const APP_SHELL = [
   './programming-deadline-v28-1.js?v=28.2',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
-  './admin-reports-v29.js',
-  './admin-reports-access-v29-1.js',
+  './admin-reports-v29.js?v=29.0',
+  './admin-reports-access-v29-1.js?v=29.1',
+  './report-promessas-v104.js?v=104.0',
   './first-access-v25.js',
   './mandatory-password-v26.js',
   './admin-password-v51.js',
@@ -192,6 +193,9 @@ async function withRuntimeModules(response) {
   }
   if (!html.includes('programming-review-home-v55.js')) {
     html = html.replace('</body>', '  <script src="programming-review-home-v55.js?v=102.0"></script>\n</body>');
+  }
+  if (!html.includes('report-promessas-v104.js')) {
+    html = html.replace('</body>', '  <script src="report-promessas-v104.js?v=104.0"></script>\n</body>');
   }
   const headers = new Headers(response.headers);
   headers.delete('content-length');
