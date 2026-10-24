@@ -199,3 +199,123 @@
       if(event.key==='Enter'){event.preventDefault();search();}
     });
   }
+
+  function addScript(src,id){
+    return new Promise((resolve,reject)=>{
+      const previous=$(id);
+      if(previous){
+        if(previous.dataset.loaded==='1')return resolve();
+        previous.addEventListener('load',resolve,{once:true});
+        previous.addEventListener('error',()=>reject(new Error('Não foi possível carregar o gerador PDF.')),{once:true});
+        return;
+      }
+      const element=document.createElement('script');
+      element.id=id;element.src=src;
+      element.onload=()=>{element.dataset.loaded='1';resolve();};
+      element.onerror=()=>reject(new Error('Não foi possível carregar o gerador PDF.'));
+      document.head.appendChild(element);
+    });
+  }
+  async function pdfReady(){
+    if(!window.jspdf?.jsPDF)await addScript(PDF_JS,'promiseJsPdfLibV104');
+    if(typeof (new window.jspdf.jsPDF()).autoTable!=='function')
+      await addScript(PDF_TABLE,'promiseAutoTableLibV104');
+  }
+  function stamp(){
+    const parts=new Intl.DateTimeFormat('en-CA',{
+      timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'
+    }).formatToParts(new Date());
+    const get=x=>parts.find(p=>p.type===x)?.value||'';
+    return get('year')+'-'+get('month')+'-'+get('day');
+  }
+  function downloadBlob(blob,filename){
+    const url=URL.createObjectURL(blob),anchor=document.createElement('a');
+    anchor.href=url;anchor.download=filename;
+    document.body.appendChild(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }
+  async function pdf(rows,o){
+    await pdfReady();
+    const doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+    doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(10,55,108);
+    doc.text('Relatório de promessas por ramo',14,18);
+    doc.setFontSize(10);doc.text('Grupo Escoteiro do Ar Paulo Carzino',14,25);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80);
+    doc.text('Gerado em: '+fmt(stamp()),14,32);
+    doc.text(o.period?'Promessas de '+fmt(o.start)+' a '+fmt(o.end)
+      :'Histórico completo: todas as datas registradas',14,38);
+    const branch=$('promiseBranchV104')?.selectedOptions?.[0]?.textContent||'Todos os ramos';
+    doc.text('Filtro: '+branch.slice(0,84),14,44);
+    if(o.name)doc.text('Busca: '+String($('promiseNameV104')?.value||'').slice(0,75),14,50);
+    const body=rows.map(r=>[r.label,r.name,r.kind,r.section,
+      r.date?fmt(r.date):'Sem data',r.origin]);
+    doc.autoTable({
+      startY:o.name?55:49,
+      head:[['Ramo/tipo','Membro','Vínculo','Seção atual','Data','Origem']],
+      body:body.length?body:[['Sem resultados','','','','','']],
+      theme:'grid',
+      styles:{fontSize:7,cellPadding:1.5,overflow:'linebreak',valign:'top'},
+      headStyles:{fillColor:[10,55,108],textColor:255},
+      alternateRowStyles:{fillColor:[247,249,252]},
+      margin:{left:10,right:10,bottom:17},
+      columnStyles:{0:{cellWidth:28},1:{cellWidth:44},2:{cellWidth:19},
+        3:{cellWidth:29},4:{cellWidth:25},5:{cellWidth:45}}
+    });
+    if(rows.some(r=>r.review)){
+      let y=doc.lastAutoTable.finalY+8;
+      if(y>269){doc.addPage();y=18;}
+      doc.setFont('helvetica','normal');doc.setTextColor(125,89,35);doc.setFontSize(8);
+      doc.text(doc.splitTextToSize(
+        'Registros importados ou com ramo indefinido exigem conferência. Não atribuir promessas de um ramo a outro por suposição.',185),12,y);
+    }
+    const count=doc.getNumberOfPages();
+    for(let i=1;i<=count;i++){
+      doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100);
+      doc.text('GEArPC Conecta - uso administrativo - página '+i+' de '+count,105,291,{align:'center'});
+    }
+    // Evita o wrapper de outros relatórios que estende doc.save e adiciona anexos.
+    downloadBlob(doc.output('blob'),'GEArPC_Promessas_'+stamp()+'.pdf');
+  }
+  function csv(rows){
+    const safe=v=>{
+      let value=String(v??'');
+      if(/^\s*[=+\-@]/.test(value))value="'"+value;
+      return '"'+value.replaceAll('"','""')+'"';
+    };
+    const heading=['Ramo','Membro','Tipo','Seção atual','Data da promessa',
+      'Origem','A conferir','Situação cadastral'];
+    const body=rows.map(r=>[r.label,r.name,r.kind,r.section,
+      r.date?fmt(r.date):'',r.origin,r.review?'Sim':'Não',r.active?'Ativo':'Inativo']);
+    const data='\uFEFF'+[heading,...body].map(r=>r.map(safe).join(';')).join('\r\n');
+    downloadBlob(new Blob([data],{type:'text/csv;charset=utf-8'}),
+      'GEArPC_Promessas_'+stamp()+'.csv');
+  }
+  async function download(kind){
+    const button=$(kind==='pdf'?'promisePdfV104':'promiseCsvV104');
+    const status=$('promiseStatusV104');
+    if(!button||button.disabled)return;
+    button.disabled=true;status.textContent='Consultando dados e preparando arquivo...';
+    try{
+      const result=await lookup();render(result.rows);
+      if(kind==='pdf')await pdf(result.rows,result.options);
+      else csv(result.rows);
+      status.textContent=result.rows.length+' registro(s) incluído(s) no arquivo.';
+    }catch(error){
+      console.error('GEArPC: exportação de promessas',error);
+      status.textContent='Não foi possível gerar o arquivo: '+error.message;
+    }finally{button.disabled=false;}
+  }
+  async function boot(){
+    for(let i=0;i<100;i++){
+      if(state.profile?.tipo==='administrador'&&$('reportsView')){
+        injectCss();makePanel();return;
+      }
+      if(state.profile&&state.profile.tipo!=='administrador')return;
+      await new Promise(resolve=>setTimeout(resolve,200));
+    }
+    if(state.profile?.tipo==='administrador'&&$('reportsView')){
+      injectCss();makePanel();
+    }
+  }
+  void boot();
+})();
