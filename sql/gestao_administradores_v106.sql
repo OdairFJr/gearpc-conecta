@@ -71,14 +71,19 @@ begin
   select * into v_alvo from public.perfis_usuarios
   where user_id=p_usuario_id for update;
   if not found then raise exception 'Usuário não encontrado';end if;
-  if not v_alvo.ativo then
-    raise exception 'Não é possível alterar o acesso de conta inativa';
+  -- Contas inativas não podem receber poderes administrativos, mas é
+  -- permitido revogá-los para evitar restauração de acesso ao reativar a conta.
+  if not v_alvo.ativo and p_tornar_admin then
+    raise exception 'Não é possível conceder acesso a uma conta inativa';
   end if;
 
   v_antigo:=v_alvo.tipo;
   if p_tornar_admin then
     if v_antigo='administrador' then
       raise exception 'Esta pessoa já é administradora';
+    end if;
+    if v_alvo.eh_teste then
+      raise exception 'Contas de teste não podem receber acesso administrativo';
     end if;
     if v_antigo<>'chefia' or v_alvo.chefe_id is null then
       raise exception 'A concessão administrativa está limitada a chefes cadastrados';
