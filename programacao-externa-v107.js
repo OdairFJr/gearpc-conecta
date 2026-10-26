@@ -135,3 +135,236 @@
      '<button type="button" data-external-open="'+Number(row.id)+'">Abrir roteiro</button></article>';
   }).join(''):'<p>Nenhuma programação externa cadastrada. Use “Nova programação externa” para começar.</p>';
  }
+
+ function textField(label,key,value='',long=false,full=false,required=false){
+  const id='external_'+key+'_v107';
+  const field=long?
+    '<textarea id="'+id+'" rows="2" '+(required?'required':'')+'>'+esc(value)+'</textarea>':
+    '<input id="'+id+'" type="text" value="'+esc(value)+'" '+(required?'required':'')+' />';
+  return '<label class="'+(full?'full':'')+'">'+esc(label)+field+'</label>';
+ }
+ function dateField(label,key,value,required=false){
+  return '<label>'+esc(label)+'<input id="external_'+key+'_v107" type="datetime-local" value="'+esc(value||'')+
+   '" '+(required?'required':'')+' /></label>';
+ }
+ function stageField(index,key,label,value,long=false){
+  const common='data-stage-idx="'+index+'" data-stage-key="'+key+'"';
+  const type=key==='inicio'||key==='fim'?'datetime-local':'text';
+  return '<label'+(long?' class="full"':'')+'>'+esc(label)+(long?
+   '<textarea '+common+' rows="2">'+esc(value||'')+'</textarea>':
+   '<input type="'+type+'" '+common+' value="'+esc(value||'')+'" />')+'</label>';
+ }
+ function collectSteps(){
+  if(!$('externalStagesV107'))return;
+  steps=[...$('externalStagesV107').querySelectorAll('.external-etapa-v107')].map((node)=>{
+   const row={};
+   node.querySelectorAll('[data-stage-key]').forEach(input=>{
+     row[input.dataset.stageKey]=input.value||'';
+   });
+   return row;
+  });
+ }
+ function renderSteps(){
+  const host=$('externalStagesV107');if(!host)return;
+  const edit=canEdit();
+  host.innerHTML=steps.length?steps.map((row,i)=>
+   '<article class="external-etapa-v107"><header><strong>Etapa '+(i+1)+'</strong>'+
+   (edit?'<button type="button" data-external-remove="'+i+'">Remover</button>':'')+
+   '</header><div class="external-grid-v107">'+
+   stageField(i,'inicio','Início',row.inicio)+stageField(i,'fim','Término',row.fim)+
+   stageField(i,'titulo','Atividade / etapa',row.titulo)+
+   stageField(i,'condutor','Quem conduz',row.condutor)+
+   stageField(i,'descricao','Descrição / dinâmica',row.descricao,true)+
+   stageField(i,'materiais','Materiais específicos',row.materiais,true)+
+   stageField(i,'cuidados','Segurança e cuidados da etapa',row.cuidados,true)+
+   '</div></article>').join(''):'<p>Nenhuma etapa adicionada. Monte o roteiro com os períodos da atividade.</p>';
+  if(!edit)host.querySelectorAll('input,textarea').forEach(el=>el.disabled=true);
+ }
+ function canEdit(){return (!editing||['rascunho','ajustes'].includes(editing.status))
+   &&manager(Number($('externalSectionV107')?.value||editing?.secao_id));}
+
+ async function openEditor(id){
+  if(!state.profile || state.profile.tipo==='responsavel')return;
+  formStatus('');
+  try{
+   const row=id?data.find(r=>Number(r.id)===Number(id)):null;
+   if(id&&!row){status('Programação não encontrada. Atualize a lista.');return;}
+   editing=row?{...row}:null;
+   steps=[];
+   if(id){
+    const {data:items,error}=await client.from('programacoes_externas_etapas')
+      .select('ordem,inicio,fim,titulo,descricao,condutor,materiais,cuidados')
+      .eq('programacao_id',Number(id)).order('ordem');
+    if(error)throw error;
+    steps=(items||[]).map(item=>({...item,inicio:dateLocal(item.inicio),fim:dateLocal(item.fim)}));
+   }
+   const permitted=admin()?sections:sections.filter(s=>own.includes(Number(s.id)));
+   if(!row&&!permitted.length){
+     status('Você não tem seção vinculada para criar esta programação.');return;
+   }
+   const select=sections.filter(s=>row?Number(s.id)===Number(row.secao_id):
+      permitted.some(p=>Number(p.id)===Number(s.id)));
+   const title=row?.titulo||'';
+   const existing=row?.status||'rascunho';
+   const editable=!row||['rascunho','ajustes'].includes(existing);
+   const disabledControls=!editable;
+   const types=Object.entries(TYPES).map(([key,value])=>
+     '<option value="'+key+'" '+(key===(row?.tipo||'externa')?'selected':'')+'>'+esc(value)+'</option>').join('');
+   const options=select.map(section=>'<option value="'+section.id+'">'+esc(section.nome)+'</option>').join('');
+   const note=row?.parecer_dme?
+      '<aside class="external-notes-v107"><strong>Orientações do DME</strong>'+esc(row.parecer_dme)+'</aside>':'';
+   $('externalEditorV107').innerHTML=
+    '<h3>'+(row?'Programação externa: '+esc(row.titulo):'Nova programação externa')+'</h3>'+
+    '<p>Tipo: '+esc(STATUS[existing]||existing)+
+      '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+note+
+    '<form id="externalFormV107"><div class="external-grid-v107">'+
+    '<label>Seção<select id="externalSectionV107" required>'+options+'</select></label>'+
+    '<label>Tipo de atividade<select id="externalTypeV107">'+types+'</select></label>'+
+    textField('Nome / título','title',title,false,true,true)+
+    textField('Objetivo educativo','objective',row?.objetivo,true,true)+
+    dateField('Início (data e hora)','from',dateLocal(row?.data_inicio),true)+
+    dateField('Término (data e hora)','to',dateLocal(row?.data_fim),true)+
+    textField('Local da atividade','place',row?.local,false,true,true)+
+    textField('Ponto de encontro e retorno','meeting',row?.ponto_encontro,false,true)+
+    textField('Chefe responsável / coordenação','leader',row?.responsavel_nome,false,true)+
+    textField('Transporte e deslocamentos','transport',row?.transporte,true,true)+
+    textField('Alimentação e água','food',row?.alimentacao,true,true)+
+    textField('Materiais gerais e equipamentos','materials',row?.materiais,true,true)+
+    '<label>Custo estimado por participante (R$)<input id="externalCostV107" type="number" min="0" step="0.01" value="'+
+     esc(row?.custo_estimado??'')+'" /></label>'+
+    '<label>Solicitar autorização? <select id="externalPermissionV107"><option value="true"'+
+     (row?.exige_autorizacao!==false?' selected':'')+
+     '>Sim</option><option value="false"'+(row?.exige_autorizacao===false?' selected':'')+
+     '>Não</option></select></label>'+
+    textField('Riscos identificados','risks',row?.riscos,true,true)+
+    textField('Prevenção e medidas de segurança','prevention',row?.prevencoes,true,true)+
+    textField('Plano alternativo / tempo ruim','backup',row?.plano_b,true,true)+
+    textField('Texto para a autorização dos responsáveis','permissionText',row?.texto_autorizacao,true,true)+
+    textField('Orientações e observações','notes',row?.observacoes,true,true)+
+    '</div><h3>Roteiro / linha do tempo</h3>'+
+    '<p>Inclua as etapas com horários reais; o roteiro pode atravessar vários dias.</p>'+
+    '<div id="externalStagesV107"></div>'+
+    '<div class="external-actions-v107"><button type="button" id="externalAddStageV107">＋ Adicionar etapa</button></div>'+
+    '<div class="external-form-actions-v107">'+
+    (editable?'<button class="external-primary-v107" type="submit" id="externalSaveV107">Salvar rascunho / alterações</button>':'')+
+    (editable?'<button type="button" id="externalSendV107">Salvar e enviar ao DME</button>':'')+
+    (admin()&&existing==='em_analise'?'<button type="button" id="externalApproveV107">Aprovar</button>'+
+      '<button type="button" id="externalAdjustV107">Solicitar ajustes</button>':'')+
+    (admin()&&existing==='aprovada'?'<button type="button" id="externalPublishV107">Publicar para responsáveis</button>':'')+
+    '<button type="button" id="externalCancelV107">Fechar</button>'+
+    '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
+    (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Para preservar autorizações e registros, ela não pode mais ser editada neste módulo.</p>':'')+
+    '</form>';
+   if(row)$('externalSectionV107').value=String(row.secao_id);
+   $('externalEditorV107').classList.remove('external-hidden-v107');
+   renderSteps();
+   if(disabledControls){
+     $('externalFormV107').querySelectorAll('input,textarea,select')
+       .forEach(el=>el.disabled=true);
+     $('externalAddStageV107')?.setAttribute('disabled','');
+   }
+   $('externalEditorV107').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(error){status('Não foi possível abrir o roteiro: '+error.message);}
+ }
+ function closeEditor(){
+   editing=null;steps=[];
+   $('externalEditorV107')?.classList.add('external-hidden-v107');
+ }
+
+ async function persist(){
+  if(busy)return null;
+  if(!canEdit()){formStatus('Essa programação não permite alterações no momento.');return null;}
+  collectSteps();
+  const value=k=>$('external_'+k+'_v107')?.value?.trim()||'';
+  const start=$('externalFromV107')?.value,end=$('externalToV107')?.value;
+  const section=Number($('externalSectionV107')?.value||0);
+  if(!section || !manager(section)){formStatus('Escolha uma seção autorizada.');return null;}
+  if(!start||!end||start>=end){formStatus('Informe início e término válidos.');return null;}
+  if(value('title').length<3 || !value('place')){formStatus('Informe título e local.');return null;}
+  if(steps.some(s=>!s.inicio||!s.fim||s.inicio>=s.fim||
+    s.inicio<start||s.fim>end||!String(s.titulo||'').trim())){
+      formStatus('Confira as datas, a ordem e o título de cada etapa.');return null;
+  }
+  const dados={
+   id:editing?.id||null,
+   atualizado_em:editing?.atualizado_em||null,
+   secao_id:section,tipo:$('externalTypeV107').value,
+   titulo:value('title'),objetivo:value('objective'),
+   local:value('place'),ponto_encontro:value('meeting'),
+   data_inicio:timestamp(start),data_fim:timestamp(end),
+   transporte:value('transport'),alimentacao:value('food'),
+   materiais:value('materials'),responsavel_nome:value('leader'),
+   riscos:value('risks'),prevencoes:value('prevention'),
+   plano_b:value('backup'),custo_estimado:$('externalCostV107').value||null,
+   exige_autorizacao:$('externalPermissionV107').value==='true',
+   texto_autorizacao:value('permissionText'),
+   observacoes:value('notes'),
+   etapas:steps.map((etapa)=>({
+      inicio:timestamp(etapa.inicio),fim:timestamp(etapa.fim),
+      titulo:etapa.titulo,descricao:etapa.descricao,
+      condutor:etapa.condutor,materiais:etapa.materiais,cuidados:etapa.cuidados
+   }))
+  };
+  busy=true;formStatus('Salvando roteiro...');
+  try{
+   const {data:result,error}=await client.rpc('salvar_programacao_externa_v107',{p_dados:dados});
+   if(error)throw error;
+   if(!result?.id)throw new Error('O servidor não confirmou o registro.');
+   await load();
+   editing=data.find(r=>Number(r.id)===Number(result.id))||{
+     ...dados,id:result.id,atualizado_em:result.atualizado_em,status:result.status};
+   formStatus('Roteiro salvo.');
+   return Number(result.id);
+  }catch(error){
+   formStatus('Não foi possível salvar: '+error.message);
+   return null;
+  }finally{busy=false;}
+ }
+ async function save(event){
+  event.preventDefault();
+  const id=await persist();if(id)await openEditor(id);
+ }
+ async function action(operation){
+  if(busy)return;
+  let id=editing?.id;
+  if(operation==='enviar'){
+   id=await persist();
+   if(!id)return;
+  }else if(!id){formStatus('Salve a programação primeiro.');return;}
+  let comment=null;
+  if(operation==='aprovar'){
+    comment=window.prompt('Comentários e orientações do DME (opcional):','');
+    if(comment===null)return;
+  }else if(operation==='ajustar'){
+    comment=window.prompt('Informe as orientações para correção:','');
+    if(!comment?.trim()){formStatus('Descreva quais ajustes são necessários.');return;}
+  }else if(operation==='publicar'){
+    if(!window.confirm('Publicar esta atividade aprovada para o cadastro usado pelos responsáveis? A programação será bloqueada para preservar os registros e autorizações.'))return;
+  }
+  busy=true;formStatus('Atualizando situação...');
+  try{
+    const {error}=await client.rpc('mudar_status_programacao_externa_v107',{
+      p_id:id,p_acao:operation,p_parecer:comment
+    });
+    if(error)throw error;
+    await load();await openEditor(id);
+    formStatus(operation==='enviar'?'Enviada para conferência do DME.':
+      operation==='aprovar'?'Atividade aprovada; ainda não publicada.':
+      operation==='ajustar'?'Ajustes solicitados à chefia.':'Atividade publicada para os responsáveis.');
+  }catch(error){formStatus('Não foi possível concluir: '+error.message);}
+  finally{busy=false;}
+ }
+ async function boot(){
+  for(let i=0;i<95;i++){
+   if(state.profile && $('programmingView')){
+     if(state.profile.tipo!=='responsavel'){
+       mount();
+       $('programmingButton')?.addEventListener('click',load);
+     }
+     return;
+   }
+   await new Promise(resolve=>setTimeout(resolve,200));
+  }
+ }
+ void boot();
+})();
