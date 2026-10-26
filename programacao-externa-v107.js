@@ -89,7 +89,7 @@
    if(remove){collectSteps();steps.splice(Number(remove.dataset.externalRemove),1);renderSteps();return;}
    if(e.target.closest('#externalAddStageV107')){collectSteps();steps.push({
      inicio:$('externalFromV107')?.value||nowLocal(),
-     fim:$('externalToV107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:'',cuidados:''
+     fim:$('externalToV107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:''
    });renderSteps();return;}
    if(e.target.closest('#externalCancelV107')){closeEditor();return;}
    if(e.target.closest('#externalSendV107'))await action('enviar');
@@ -110,7 +110,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,riscos,prevencoes,plano_b,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -177,7 +177,6 @@
    stageField(i,'condutor','Quem conduz',row.condutor)+
    stageField(i,'descricao','Descrição / dinâmica',row.descricao,true)+
    stageField(i,'materiais','Materiais específicos',row.materiais,true)+
-   stageField(i,'cuidados','Segurança e cuidados da etapa',row.cuidados,true)+
    '</div></article>').join(''):'<p>Nenhuma etapa adicionada. Monte o roteiro com os períodos da atividade.</p>';
   if(!edit)host.querySelectorAll('input,textarea').forEach(el=>el.disabled=true);
  }
@@ -271,9 +270,8 @@
      (row?.exige_autorizacao!==false?' selected':'')+
      '>Sim</option><option value="false"'+(row?.exige_autorizacao===false?' selected':'')+
      '>Não</option></select></label>'+
-    textField('Riscos identificados','risks',row?.riscos,true,true)+
-    textField('Prevenção e medidas de segurança','prevention',row?.prevencoes,true,true)+
-    textField('Plano alternativo / tempo ruim','backup',row?.plano_b,true,true)+
+    '<p class="full external-notes-v107"><strong>Segurança de Atividades</strong>'+
+    'Riscos, medidas preventivas, cuidados e plano alternativo são registrados apenas no Plano de Segurança. A atividade só poderá ser publicada após a aprovação do plano pelo DME.</p>'+
     textField('Texto para a autorização dos responsáveis','permissionText',row?.texto_autorizacao,true,true)+
     textField('Orientações e observações','notes',row?.observacoes,true,true)+
     '</div><h3>Roteiro / linha do tempo</h3>'+
@@ -332,15 +330,14 @@
    data_inicio:timestamp(start),data_fim:timestamp(end),
    transporte:value('transport'),alimentacao:value('food'),
    materiais:value('materials'),responsavel_nome:value('leader'),
-   riscos:value('risks'),prevencoes:value('prevention'),
-   plano_b:value('backup'),custo_estimado:$('externalCostV107').value||null,
+   custo_estimado:$('externalCostV107').value||null,
    exige_autorizacao:$('externalPermissionV107').value==='true',
    texto_autorizacao:value('permissionText'),
    observacoes:value('notes'),
    etapas:steps.map((etapa)=>({
       inicio:timestamp(etapa.inicio),fim:timestamp(etapa.fim),
       titulo:etapa.titulo,descricao:etapa.descricao,
-      condutor:etapa.condutor,materiais:etapa.materiais,cuidados:etapa.cuidados
+      condutor:etapa.condutor,materiais:etapa.materiais
    }))
   };
   busy=true;formStatus('Salvando roteiro...');
