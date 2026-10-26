@@ -220,6 +220,9 @@ begin
       nullif(btrim(coalesce(v.prevencoes,'')),'') is null then
       raise exception 'Programação sem medidas de segurança registradas';
    end if;
+   if v.tipo in('acampamento','acantonamento') and not v.exige_autorizacao then
+     raise exception 'Atividades com pernoite exigem autorização dos responsáveis';
+   end if;
    if v.exige_autorizacao and nullif(btrim(coalesce(v.texto_autorizacao,'')),'') is null then
      raise exception 'Preencha o texto da autorização dos responsáveis';
    end if;
