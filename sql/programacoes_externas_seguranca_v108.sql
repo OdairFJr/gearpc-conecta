@@ -152,7 +152,14 @@ begin
    insert into public.atividades
     (titulo,descricao,data_inicio,data_fim,local,atividade_geral,
      exige_autorizacao,texto_autorizacao)
-   values (v.titulo,coalesce(v.objetivo,'')||E'\n'||coalesce(v.observacoes,''),
+   values (v.titulo,concat_ws(E'\n',
+       nullif(v.objetivo,''),
+       case when nullif(v.ponto_encontro,'') is not null then 'Encontro e retorno: '||v.ponto_encontro end,
+       case when nullif(v.transporte,'') is not null then 'Transporte: '||v.transporte end,
+       case when nullif(v.alimentacao,'') is not null then 'Alimentação e água: '||v.alimentacao end,
+       case when nullif(v.materiais,'') is not null then 'Materiais necessários: '||v.materiais end,
+       case when v.custo_estimado is not null then 'Custo estimado por participante: R$ '||to_char(v.custo_estimado,'FM999999990D00') end,
+       nullif(v.observacoes,'')),
      v.data_inicio,v.data_fim,v.local,v.atividade_geral,v.exige_autorizacao,v.texto_autorizacao)
    returning id into v_atividade_id;
    if not v.atividade_geral then
