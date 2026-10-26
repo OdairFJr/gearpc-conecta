@@ -3,6 +3,7 @@
 create table if not exists public.programacoes_externas (
  id bigint generated always as identity primary key,
  secao_id bigint not null references public.secoes(id),
+ atividade_geral boolean not null default false,
  tipo text not null default 'externa'
    check(tipo in('externa','acampamento','acantonamento','jornada','visita','evento','especial')),
  titulo text not null check(char_length(btrim(titulo)) between 3 and 180),
@@ -33,6 +34,7 @@ create table if not exists public.programacoes_externas (
  atualizado_em timestamptz not null default now(),
  constraint programacoes_externas_periodo check(data_fim>data_inicio)
 );
+alter table public.programacoes_externas add column if not exists atividade_geral boolean not null default false;
 create index if not exists programacoes_externas_secao_periodo_idx
  on public.programacoes_externas(secao_id,data_inicio desc);
 create table if not exists public.programacoes_externas_etapas (
@@ -59,7 +61,7 @@ grant select on public.programacoes_externas_etapas to authenticated;
 drop policy if exists "programacao_externa_ver_equipe" on public.programacoes_externas;
 create policy "programacao_externa_ver_equipe"
 on public.programacoes_externas for select to authenticated
-using(private.sou_admin() or private.sou_dirigente() or private.sou_chefia_secao(secao_id));
+using(private.sou_admin() or private.sou_dirigente() or (not atividade_geral and private.sou_chefia_secao(secao_id)));
 drop policy if exists "programacao_externa_etapa_ver_equipe" on public.programacoes_externas_etapas;
 create policy "programacao_externa_etapa_ver_equipe"
 on public.programacoes_externas_etapas for select to authenticated
@@ -82,6 +84,7 @@ declare
  v_e_inicio timestamptz;v_e_fim timestamptz;
  v_esperado timestamptz := nullif(p_dados->>'atualizado_em','')::timestamptz;
  v_autorizacao boolean := coalesce((p_dados->>'exige_autorizacao')::boolean,true);
+ v_geral boolean := coalesce((p_dados->>'atividade_geral')::boolean,false);
 begin
  if auth.uid() is null then raise exception 'Faça login novamente' using errcode='42501';end if;
  if v_secao is null or not (private.sou_admin() or private.sou_chefia_secao(v_secao)) then
@@ -97,6 +100,9 @@ begin
  if p_dados->>'tipo' not in ('externa','acampamento','acantonamento','jornada','visita','evento','especial') then
    raise exception 'Tipo de atividade inválido';
  end if;
+ if v_geral and not private.sou_admin() then
+   raise exception 'Somente a administração pode programar atividades gerais do grupo' using errcode='42501';
+ end if;
  if jsonb_typeof(v_etapas)<>'array' or jsonb_array_length(v_etapas)>100 then
    raise exception 'Informe no máximo 100 etapas';
  end if;
@@ -106,6 +112,9 @@ begin
    if not (private.sou_admin() or private.sou_chefia_secao(v_antiga.secao_id)) then
      raise exception 'Sem permissão para alterar a programação' using errcode='42501';
    end if;
+   if v_antiga.atividade_geral and not private.sou_admin() then
+     raise exception 'Somente a administração pode alterar atividades gerais' using errcode='42501';
+   end if;
    if v_antiga.secao_id is distinct from v_secao then raise exception 'Não é permitido trocar a seção de uma programação já criada';end if;
    if v_antiga.status not in('rascunho','ajustes') then
      raise exception 'Programação em conferência, aprovada ou publicada: não editável';
@@ -114,7 +123,7 @@ begin
      raise exception 'A programação foi alterada por outra pessoa. Atualize antes de salvar' using errcode='40001';
    end if;
    update public.programacoes_externas set
-    tipo=p_dados->>'tipo',titulo=btrim(p_dados->>'titulo'),
+    atividade_geral=v_geral,tipo=p_dados->>'tipo',titulo=btrim(p_dados->>'titulo'),
     objetivo=nullif(btrim(p_dados->>'objetivo'),''),
     local=btrim(p_dados->>'local'),
     ponto_encontro=nullif(btrim(p_dados->>'ponto_encontro'),''),
@@ -135,11 +144,11 @@ begin
    delete from public.programacoes_externas_etapas where programacao_id=v_id;
  else
    insert into public.programacoes_externas
-    (secao_id,tipo,titulo,objetivo,local,ponto_encontro,data_inicio,data_fim,
+    (secao_id,atividade_geral,tipo,titulo,objetivo,local,ponto_encontro,data_inicio,data_fim,
      transporte,alimentacao,materiais,riscos,prevencoes,plano_b,responsavel_nome,
      custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,criado_por)
    values
-    (v_secao,p_dados->>'tipo',btrim(p_dados->>'titulo'),
+    (v_secao,v_geral,p_dados->>'tipo',btrim(p_dados->>'titulo'),
     nullif(btrim(p_dados->>'objetivo'),''),btrim(p_dados->>'local'),
     nullif(btrim(p_dados->>'ponto_encontro'),''),v_inicio,v_fim,
     nullif(btrim(p_dados->>'transporte'),''),nullif(btrim(p_dados->>'alimentacao'),''),
@@ -186,6 +195,9 @@ begin
  if auth.uid() is null then raise exception 'Faça login novamente' using errcode='42501';end if;
  select * into v from public.programacoes_externas where id=p_id for update;
  if not found then raise exception 'Programação não encontrada';end if;
+ if v.atividade_geral and not private.sou_admin() then
+   raise exception 'Somente a administração pode controlar atividades gerais' using errcode='42501';
+ end if;
  if p_acao='enviar' then
    if not (private.sou_admin() or private.sou_chefia_secao(v.secao_id)) then
      raise exception 'Sem permissão nesta seção' using errcode='42501';
@@ -232,10 +244,12 @@ begin
     (titulo,descricao,data_inicio,data_fim,local,atividade_geral,
      exige_autorizacao,texto_autorizacao)
    values (v.titulo,coalesce(v.objetivo,'')||E'\n'||coalesce(v.observacoes,''),
-     v.data_inicio,v.data_fim,v.local,false,v.exige_autorizacao,v.texto_autorizacao)
+     v.data_inicio,v.data_fim,v.local,v.atividade_geral,v.exige_autorizacao,v.texto_autorizacao)
    returning id into v_atividade_id;
-   insert into public.atividade_ramos(atividade_id,ramo_id)
-   values(v_atividade_id,v_ramo_id);
+   if not v.atividade_geral then
+      insert into public.atividade_ramos(atividade_id,ramo_id)
+      values(v_atividade_id,v_ramo_id);
+   end if;
    update public.programacoes_externas set
      status='publicada',atividade_id=v_atividade_id,atualizado_em=clock_timestamp()
    where id=p_id;
