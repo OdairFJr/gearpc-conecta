@@ -31,22 +31,29 @@ alter table public.autorizacao_eventos_v109 enable row level security;
 revoke all on public.autorizacao_eventos_v109 from public,anon,authenticated;
 grant select on public.autorizacao_eventos_v109 to authenticated;
 
+-- Checagem via SECURITY DEFINER evita que uma subconsulta com RLS no
+-- cadastro de jovens esconda a autorização dos chefes da seção (inclusive
+-- no teste responsável), sem expandir acesso a outras seções.
+create or replace function private.pode_ver_autorizacao_v109(p_jovem_id bigint)
+returns boolean language sql stable security definer set search_path=''
+as $fn$
+ select private.sou_admin() or private.sou_responsavel_jovem(p_jovem_id)
+ or exists(select 1 from public.jovens j
+   where j.id=p_jovem_id and private.sou_chefia_secao(j.secao_id));
+$fn$;
+revoke all on function private.pode_ver_autorizacao_v109(bigint)
+ from public,anon,authenticated;
+grant execute on function private.pode_ver_autorizacao_v109(bigint)
+ to authenticated;
+
 -- Visibilidade estrita à seção (além de admin, família e dirigentes já
 -- contemplados por suas políticas próprias de consulta geral).
 drop policy if exists "autorizacoes_ver" on public.autorizacoes_atividade;
 create policy "autorizacoes_ver" on public.autorizacoes_atividade
- for select to authenticated using(
- private.sou_admin() or private.sou_responsavel_jovem(jovem_id)
- or exists(select 1 from public.jovens j
-   where j.id=jovem_id and private.sou_chefia_secao(j.secao_id))
-);
+ for select to authenticated using(private.pode_ver_autorizacao_v109(jovem_id));
 drop policy if exists "autorizacao_eventos_v109_ver" on public.autorizacao_eventos_v109;
 create policy "autorizacao_eventos_v109_ver" on public.autorizacao_eventos_v109
- for select to authenticated using(
- private.sou_admin() or private.sou_responsavel_jovem(jovem_id)
- or exists(select 1 from public.jovens j
-   where j.id=jovem_id and private.sou_chefia_secao(j.secao_id))
-);
+ for select to authenticated using(private.pode_ver_autorizacao_v109(jovem_id));
 
 create or replace function public.assinar_autorizacao_eletronica_v109(
  p_atividade_id bigint,p_jovem_id bigint,p_status text,
