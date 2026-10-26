@@ -87,9 +87,9 @@ begin
  if not found or not v_atividade.exige_autorizacao then
    raise exception 'Esta atividade não exige autorização';
  end if;
- if exists(select 1 from public.programacoes_externas e
-   where e.atividade_id=p_atividade_id and e.status<>'publicada') then
-   raise exception 'Atividade externa ainda não publicada';
+ if not exists(select 1 from public.programacoes_externas e
+   where e.atividade_id=p_atividade_id and e.status='publicada') then
+   raise exception 'A autorização eletrônica está disponível somente para atividades externas publicadas';
  end if;
 
  insert into public.autorizacoes_atividade(
@@ -167,6 +167,10 @@ begin
  if not found or not v_atividade.exige_autorizacao then
    raise exception 'Esta atividade não exige autorização';
  end if;
+ if not exists(select 1 from public.programacoes_externas e
+   where e.atividade_id=p_atividade_id and e.status='publicada') then
+   raise exception 'Só é possível registrar a via impressa de uma atividade externa publicada';
+ end if;
  insert into public.autorizacoes_atividade (
    atividade_id,jovem_id,responsavel_id,status,versao_atividade,
    titulo_snapshot,data_inicio_snapshot,data_fim_snapshot,
@@ -212,3 +216,98 @@ revoke all on function public.receber_autorizacao_papel_v109(bigint,bigint,bigin
  from public,anon,authenticated;
 grant execute on function public.receber_autorizacao_papel_v109(bigint,bigint,bigint)
  to authenticated;
+
+
+-- Consulta concentrada com recorte autenticado. Família enxerga exclusivamente
+-- jovens vinculados; chefia enxerga exclusivamente sua seção.
+create or replace function public.listar_autorizacoes_familia_v109()
+returns jsonb language plpgsql stable security definer set search_path=''
+as $fn$
+declare result jsonb;
+begin
+ if auth.uid() is null or not exists(
+   select 1 from public.perfis_usuarios p
+   where p.user_id=auth.uid() and p.ativo and p.responsavel_id is not null
+ ) then
+   raise exception 'Acesso reservado aos responsáveis vinculados' using errcode='42501';
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'atividade_id',a.id,'titulo',a.titulo,'descricao',a.descricao,
+  'local',a.local,'inicio',a.data_inicio,'fim',a.data_fim,
+  'texto_autorizacao',a.texto_autorizacao,'versao',a.autorizacao_versao,
+  'jovem_id',j.id,'jovem_nome',j.nome_completo,'secao_nome',s.nome,
+  'responsavel_nome',r.nome_completo,
+  'status',aut.status,'meio',aut.meio_assinatura,
+  'nome_assinante',aut.nome_assinante,'assinado_em',aut.assinado_em,
+  'versao_assinada',aut.versao_atividade
+  ) order by a.data_inicio,j.nome_completo),'[]'::jsonb) into result
+ from public.perfis_usuarios p
+ join public.responsaveis r on r.id=p.responsavel_id
+ join public.jovem_responsaveis jr on jr.responsavel_id=p.responsavel_id
+ join public.jovens j on j.id=jr.jovem_id and j.ativo
+ join public.secoes s on s.id=j.secao_id
+ join public.programacoes_externas e on e.status='publicada'
+ join public.atividades a on a.id=e.atividade_id
+   and a.exige_autorizacao=true
+   and a.data_inicio::date >= current_date-30
+ left join public.autorizacoes_atividade aut
+   on aut.atividade_id=a.id and aut.jovem_id=j.id
+ where p.user_id=auth.uid() and p.ativo
+   and (a.atividade_geral or exists(select 1 from public.atividade_ramos ar
+     where ar.atividade_id=a.id and ar.ramo_id=j.ramo_id));
+ return coalesce(result,'[]'::jsonb);
+end $fn$;
+revoke all on function public.listar_autorizacoes_familia_v109()
+ from public,anon,authenticated;
+grant execute on function public.listar_autorizacoes_familia_v109() to authenticated;
+
+create or replace function public.listar_autorizacoes_chefia_v109(
+ p_secao_id bigint default null
+) returns jsonb language plpgsql stable security definer set search_path=''
+as $fn$
+declare result jsonb;
+begin
+ if auth.uid() is null or not(private.sou_admin() or exists(
+    select 1 from public.chefes c
+    join public.perfis_usuarios p on p.chefe_id=c.id
+    where p.user_id=auth.uid() and p.ativo
+ )) then
+   raise exception 'Acesso reservado à administração e chefia' using errcode='42501';
+ end if;
+ if p_secao_id is not null and not(private.sou_admin()
+    or private.sou_chefia_secao(p_secao_id)) then
+   raise exception 'Sem permissão para consultar esta seção' using errcode='42501';
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object(
+  'atividade_id',a.id,'titulo',a.titulo,'inicio',a.data_inicio,
+  'fim',a.data_fim,'local',a.local,'versao',a.autorizacao_versao,
+  'jovem_id',j.id,'jovem_nome',j.nome_completo,
+  'secao_id',j.secao_id,'secao_nome',s.nome,
+  'status',aut.status,'meio',aut.meio_assinatura,
+  'nome_assinante',aut.nome_assinante,
+  'assinado_em',aut.assinado_em,'versao_assinada',aut.versao_atividade,
+  'confirmado_por_chefia',aut.confirmado_por_chefia,
+  'responsaveis',coalesce((select jsonb_agg(jsonb_build_object(
+    'id',r.id,'nome',r.nome_completo) order by r.nome_completo)
+    from public.jovem_responsaveis jr
+    join public.responsaveis r on r.id=jr.responsavel_id
+    where jr.jovem_id=j.id),'[]'::jsonb)
+  ) order by a.data_inicio,j.nome_completo),'[]'::jsonb) into result
+ from public.jovens j
+ join public.secoes s on s.id=j.secao_id
+ join public.programacoes_externas e on e.status='publicada'
+ join public.atividades a on a.id=e.atividade_id
+    and a.exige_autorizacao=true
+    and a.data_inicio::date >= current_date-30
+ left join public.autorizacoes_atividade aut
+   on aut.jovem_id=j.id and aut.atividade_id=a.id
+ where j.ativo
+   and (p_secao_id is null or j.secao_id=p_secao_id)
+   and (private.sou_admin() or private.sou_chefia_secao(j.secao_id))
+   and (a.atividade_geral or exists(select 1 from public.atividade_ramos ar
+     where ar.atividade_id=a.id and ar.ramo_id=j.ramo_id));
+ return coalesce(result,'[]'::jsonb);
+end $fn$;
+revoke all on function public.listar_autorizacoes_chefia_v109(bigint)
+ from public,anon,authenticated;
+grant execute on function public.listar_autorizacoes_chefia_v109(bigint) to authenticated;
