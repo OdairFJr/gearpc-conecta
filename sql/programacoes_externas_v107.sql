@@ -191,6 +191,10 @@ begin
      raise exception 'Sem permissão nesta seção' using errcode='42501';
    end if;
    if v.status not in ('rascunho','ajustes') then raise exception 'Somente rascunhos ou ajustes podem ser enviados';end if;
+   if not exists (select 1 from public.programacoes_externas_etapas
+      where programacao_id=p_id) then
+      raise exception 'Inclua pelo menos uma etapa no roteiro antes de enviar ao DME';
+   end if;
    if nullif(btrim(coalesce(v.riscos,'')),'') is null or
       nullif(btrim(coalesce(v.prevencoes,'')),'') is null or
       nullif(btrim(coalesce(v.responsavel_nome,'')),'') is null then
@@ -212,6 +216,10 @@ begin
  elsif p_acao='publicar' then
    if not private.sou_admin() then raise exception 'Publicação reservada à administração' using errcode='42501';end if;
    if v.status<>'aprovada' then raise exception 'Somente programações aprovadas podem ser publicadas';end if;
+   if nullif(btrim(coalesce(v.riscos,'')),'') is null or
+      nullif(btrim(coalesce(v.prevencoes,'')),'') is null then
+      raise exception 'Programação sem medidas de segurança registradas';
+   end if;
    if v.exige_autorizacao and nullif(btrim(coalesce(v.texto_autorizacao,'')),'') is null then
      raise exception 'Preencha o texto da autorização dos responsáveis';
    end if;
