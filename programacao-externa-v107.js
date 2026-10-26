@@ -86,7 +86,7 @@
   });
   $('externalEditorV107').addEventListener('click',async e=>{
    const remove=e.target.closest('[data-external-remove]');
-   if(remove){steps.splice(Number(remove.dataset.externalRemove),1);renderSteps();return;}
+   if(remove){collectSteps();steps.splice(Number(remove.dataset.externalRemove),1);renderSteps();return;}
    if(e.target.closest('#externalAddStageV107')){collectSteps();steps.push({
      inicio:$('externalFromV107')?.value||nowLocal(),
      fim:$('externalToV107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:'',cuidados:''
@@ -96,6 +96,7 @@
    if(e.target.closest('#externalApproveV107'))await action('aprovar');
    if(e.target.closest('#externalAdjustV107'))await action('ajustar');
    if(e.target.closest('#externalPublishV107'))await action('publicar');
+   if(e.target.closest('#externalBindSafetyV108'))await attachSafety();
   });
   $('externalEditorV107').addEventListener('submit',save);
   box.addEventListener('toggle',()=>{if(box.open)void load();});
@@ -109,7 +110,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,atividade_geral,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,riscos,prevencoes,plano_b,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,riscos,prevencoes,plano_b,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -213,10 +214,41 @@
    const options=select.map(section=>'<option value="'+section.id+'">'+esc(section.nome)+'</option>').join('');
    const note=row?.parecer_dme?
       '<aside class="external-notes-v107"><strong>Orientações do DME</strong>'+esc(row.parecer_dme)+'</aside>':'';
+   let safetyOptions='';
+   if(admin() && row?.status==='aprovada') {
+     const {data:approved,error:plansError}=await client.rpc('listar_planos_seguranca_externa_v108');
+     if(plansError)throw plansError;
+     const targetDate=dateLocal(row.data_inicio).slice(0,10);
+     const sectionName=sections.find(s=>Number(s.id)===Number(row.secao_id))?.nome;
+     const eligible=(approved||[]).filter(plan=>{
+       const scopes=Array.isArray(plan.secoes)?plan.secoes:[];
+       return plan.data_plano===targetDate &&
+         (row.atividade_geral ? sections.every(sec=>scopes.includes(sec.nome)) :
+           scopes.includes(sectionName));
+     });
+     safetyOptions='<div class="external-notes-v107"><strong>Plano de segurança formal</strong>'+
+       (row.plano_seguranca_visit_id
+        ? 'Plano aprovado vinculado: '+esc(row.plano_seguranca_visit_id)+'.'
+        : 'Ainda não há plano de segurança vinculado. Não é possível publicar.')+
+       '<p>O documento deve estar aprovado no módulo Segurança em Atividades e corresponder à data e à(s) seção(ões) da atividade.</p>'+
+       '<label>Escolha o plano aprovado<select id="externalSafetyPlanV108">'+
+       '<option value="">Selecione o plano correspondente</option>'+
+       eligible.map(plan=>'<option value="'+esc(plan.visit_id)+'" '+
+         (row.plano_seguranca_visit_id===plan.visit_id?'selected':'')+'>'+
+         esc(plan.atividade)+' • '+esc(plan.data_plano)+'</option>').join('')+
+       '</select></label>'+
+       (eligible.length===0?'<p>Nenhum plano aprovado compatível foi encontrado. Preencha e envie o plano no módulo Segurança em Atividades, aguarde aprovação e reabra esta programação.</p>':'')+
+       '<div class="external-form-actions-v107">'+
+       '<button type="button" id="externalBindSafetyV108" '+
+       (!eligible.length?'disabled':'')+'>Vincular plano de segurança</button></div></div>';
+   } else if(row?.plano_seguranca_visit_id) {
+     safetyOptions='<aside class="external-notes-v107"><strong>Plano de segurança vinculado</strong>'+
+       esc(row.plano_seguranca_visit_id)+'</aside>';
+   }
    $('externalEditorV107').innerHTML=
     '<h3>'+(row?'Programação externa: '+esc(row.titulo):'Nova programação externa')+'</h3>'+
     '<p>Tipo: '+esc(STATUS[existing]||existing)+
-      '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+note+
+      '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+note+safetyOptions+
     '<form id="externalFormV107"><div class="external-grid-v107">'+
     '<label>Seção<select id="externalSectionV107" required>'+options+'</select></label>'+
     '<label>Tipo de atividade<select id="externalTypeV107">'+types+'</select></label>'+
@@ -253,7 +285,9 @@
     (editable?'<button type="button" id="externalSendV107">Salvar e enviar ao DME</button>':'')+
     (admin()&&existing==='em_analise'?'<button type="button" id="externalApproveV107">Aprovar</button>'+
       '<button type="button" id="externalAdjustV107">Solicitar ajustes</button>':'')+
-    (admin()&&existing==='aprovada'?'<button type="button" id="externalPublishV107">Publicar para responsáveis</button>':'')+
+    (admin()&&existing==='aprovada'?'<button type="button" id="externalPublishV107" '+
+     (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
+     '>Publicar para responsáveis</button>':'')+
     '<button type="button" id="externalCancelV107">Fechar</button>'+
     '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
     (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Para preservar autorizações e registros, ela não pode mais ser editada neste módulo.</p>':'')+
@@ -327,6 +361,23 @@
  async function save(event){
   event.preventDefault();
   const id=await persist();if(id)await openEditor(id);
+ }
+ async function attachSafety(){
+   if(!admin() || editing?.status!=='aprovada')return;
+   const id=editing?.id;
+   const visitId=$('externalSafetyPlanV108')?.value;
+   if(!id || !visitId){formStatus('Selecione um plano de segurança aprovado.');return;}
+   busy=true;formStatus('Vinculando o plano de segurança...');
+   try{
+     const {data:response,error}=await client.rpc('vincular_plano_seguranca_externa_v108',{
+       p_programacao_id:id,p_visit_id:visitId
+     });
+     if(error)throw error;
+     if(!response?.ok)throw new Error('O servidor não confirmou o vínculo.');
+     await load();await openEditor(id);
+     formStatus('Plano de segurança aprovado vinculado. A programação já pode ser publicada.');
+   }catch(error){formStatus('Não foi possível vincular o plano: '+error.message);}
+   finally{busy=false;}
  }
  async function action(operation){
   if(busy)return;
