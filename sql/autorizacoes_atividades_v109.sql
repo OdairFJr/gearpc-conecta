@@ -171,6 +171,11 @@ begin
    where e.atividade_id=p_atividade_id and e.status='publicada') then
    raise exception 'Só é possível registrar a via impressa de uma atividade externa publicada';
  end if;
+ if exists(select 1 from public.autorizacoes_atividade aut
+  where aut.atividade_id=p_atividade_id and aut.jovem_id=p_jovem_id
+    and aut.meio_assinatura='eletronica') then
+   raise exception 'A resposta eletrônica do responsável já foi registrada; o papel não pode substituí-la pela chefia';
+ end if;
  insert into public.autorizacoes_atividade (
    atividade_id,jovem_id,responsavel_id,status,versao_atividade,
    titulo_snapshot,data_inicio_snapshot,data_fim_snapshot,
@@ -311,3 +316,62 @@ end $fn$;
 revoke all on function public.listar_autorizacoes_chefia_v109(bigint)
  from public,anon,authenticated;
 grant execute on function public.listar_autorizacoes_chefia_v109(bigint) to authenticated;
+
+
+-- Evita que a RPC antiga sem evidência de assinatura contorne o controle
+-- das atividades externas. Mantém retrocompatibilidade nas demais atividades.
+create or replace function public.registrar_autorizacao(
+ p_atividade_id bigint,p_jovem_id bigint,p_status text
+) returns void language plpgsql security definer set search_path=''
+as $body$
+declare
+ v_responsavel_id bigint;v_atividade public.atividades%rowtype;
+begin
+ if p_status not in('autorizado','nao_autorizado') then
+   raise exception 'Resposta inválida';
+ end if;
+ if auth.uid() is null or not private.sou_responsavel_jovem(p_jovem_id) then
+   raise exception 'Usuário não é responsável por este jovem' using errcode='42501';
+ end if;
+ if not private.atividade_aplica_ao_jovem(p_atividade_id,p_jovem_id) then
+   raise exception 'Esta atividade não corresponde ao jovem';
+ end if;
+ if exists(select 1 from public.programacoes_externas e
+  where e.atividade_id=p_atividade_id) then
+   raise exception 'Para atividades externas, utilize a assinatura eletrônica registrada no app';
+ end if;
+ select * into v_atividade from public.atividades where id=p_atividade_id;
+ if not found or not v_atividade.exige_autorizacao then
+   raise exception 'Esta atividade não exige autorização';
+ end if;
+ v_responsavel_id:=private.meu_responsavel_id();
+ insert into public.autorizacoes_atividade(
+  atividade_id,jovem_id,responsavel_id,status,versao_atividade,
+  titulo_snapshot,data_inicio_snapshot,data_fim_snapshot,
+  local_snapshot,texto_autorizacao_snapshot,assinado_em,atualizado_em,
+  meio_assinatura,nome_assinante,assinante_user_id,
+  confirmado_por_chefia,recebido_pela_chefia_em
+ ) values(
+  p_atividade_id,p_jovem_id,v_responsavel_id,p_status,
+  v_atividade.autorizacao_versao,v_atividade.titulo,
+  v_atividade.data_inicio,v_atividade.data_fim,v_atividade.local,
+  v_atividade.texto_autorizacao,clock_timestamp(),clock_timestamp(),
+  null,null,null,null,null
+ )
+ on conflict(atividade_id,jovem_id) do update set
+  responsavel_id=excluded.responsavel_id,status=excluded.status,
+  versao_atividade=excluded.versao_atividade,
+  titulo_snapshot=excluded.titulo_snapshot,
+  data_inicio_snapshot=excluded.data_inicio_snapshot,
+  data_fim_snapshot=excluded.data_fim_snapshot,
+  local_snapshot=excluded.local_snapshot,
+  texto_autorizacao_snapshot=excluded.texto_autorizacao_snapshot,
+  assinado_em=excluded.assinado_em,
+  atualizado_em=excluded.atualizado_em,meio_assinatura=null,
+  nome_assinante=null,assinante_user_id=null,confirmado_por_chefia=null,
+  recebido_pela_chefia_em=null;
+end $body$;
+revoke all on function public.registrar_autorizacao(bigint,bigint,text)
+ from public,anon,authenticated;
+grant execute on function public.registrar_autorizacao(bigint,bigint,text)
+ to authenticated;
