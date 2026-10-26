@@ -109,7 +109,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,riscos,prevencoes,plano_b,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,secao_id,atividade_geral,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,riscos,prevencoes,plano_b,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -129,7 +129,7 @@
   const byId=new Map(sections.map(s=>[Number(s.id),s.nome]));
   $('externalListV107').innerHTML=data.length?data.map(row=>{
    return '<article class="external-card-v107"><div><strong>'+esc(row.titulo)+'</strong>'+
-     '<small>'+esc(TYPES[row.tipo]||row.tipo)+' • '+esc(byId.get(Number(row.secao_id))||'Seção')+
+     '<small>'+esc(TYPES[row.tipo]||row.tipo)+' • '+(row.atividade_geral?'Todo o grupo':esc(byId.get(Number(row.secao_id))||'Seção'))+
      ' • '+esc(dateFormat(row.data_inicio))+' até '+esc(dateFormat(row.data_fim))+
      '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+'</small></div>'+
      '<button type="button" data-external-open="'+Number(row.id)+'">Abrir roteiro</button></article>';
@@ -220,6 +220,9 @@
     '<form id="externalFormV107"><div class="external-grid-v107">'+
     '<label>Seção<select id="externalSectionV107" required>'+options+'</select></label>'+
     '<label>Tipo de atividade<select id="externalTypeV107">'+types+'</select></label>'+
+    (admin()?'<label class="full">Abrangência<select id="externalGeneralV107">'+
+      '<option value="false"'+(row?.atividade_geral!==true?' selected':'')+'>Somente a seção indicada</option>'+
+      '<option value="true"'+(row?.atividade_geral===true?' selected':'')+'>Todo o grupo (atividade geral)</option></select></label>':'')+
     textField('Nome / título','title',title,false,true,true)+
     textField('Objetivo educativo','objective',row?.objetivo,true,true)+
     dateField('Início (data e hora)','from',dateLocal(row?.data_inicio),true)+
@@ -288,7 +291,8 @@
   const dados={
    id:editing?.id||null,
    atualizado_em:editing?.atualizado_em||null,
-   secao_id:section,tipo:$('externalTypeV107').value,
+   secao_id:section,atividade_geral:admin()&&$('externalGeneralV107')?.value==='true',
+   tipo:$('externalTypeV107').value,
    titulo:value('title'),objetivo:value('objective'),
    local:value('place'),ponto_encontro:value('meeting'),
    data_inicio:timestamp(start),data_fim:timestamp(end),
