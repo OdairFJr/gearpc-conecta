@@ -40,6 +40,7 @@
       '.authorizations-v109 button{border-radius:9px;border:1px solid #b9cddb;padding:9px 11px;background:#fff;color:#143f6b;font-weight:800;font-size:.78rem;cursor:pointer}',
       '.authorizations-v109 button:disabled{opacity:.5;cursor:wait}',
       '.authorizations-sign-v109{margin-top:10px;border-top:1px solid #d8e5ee;padding-top:10px;display:grid;gap:10px}',
+      '.document-facts-v110{margin:12px 0;font-size:.79rem}.document-facts-v110 div{margin:3px 0}',
       '.authorizations-sign-v109 label{display:grid;gap:5px;font-size:.78rem;color:#425b71;font-weight:750}',
       '.authorizations-sign-v109 input[type=text],.authorizations-v109 select{padding:10px;box-sizing:border-box;width:100%;border:1px solid #bdcedd;border-radius:8px;background:#fff;color:#1c394f;font:inherit}',
       '.authorizations-sign-v109 label.check{display:flex;flex-direction:row;align-items:flex-start;gap:9px}',
@@ -52,6 +53,33 @@
       '@media (max-width:650px){.authorizations-v109{padding:10px}}'
     ].join('');
     document.head.appendChild(el);
+  }
+
+
+  // O mesmo conteúdo é apresentado na tela e impresso. Os dados são ligados
+  // à atividade efetivamente publicada, não ao modelo antigo de cada chefe.
+  function consentDocument(row){
+    const cpf='____________________________';
+    const reais=value=>value===null||value===undefined||value===''?
+      'A confirmar':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const chef=row.chefe_responsavel||'Chefe responsável pela atividade';
+    const lead='<p>Eu, <strong>'+esc(row.responsavel_nome||'Responsável legal')+
+      '</strong>, inscrito(a) no CPF sob nº '+cpf+
+      ', responsável legal de <strong>'+esc(row.jovem_nome)+
+      '</strong>, membro do <strong>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</strong>, '+
+      'autorizo sua participação na atividade especial descrita abaixo:</p>';
+    const item=(name,value)=>'<div><strong>'+esc(name)+': </strong>'+esc(value||'Não informado')+'</div>';
+    return lead+
+      '<div class="document-facts-v110">'+
+      item('Atividade',row.titulo)+
+      item('Data',when(row.inicio)+' até '+when(row.fim))+
+      item('Local',row.local)+
+      item('Transporte',row.transporte||'A confirmar')+
+      item('Ponto de encontro',row.ponto_encontro||'A confirmar')+
+      item('Responsável pela atividade',chef)+
+      item('Custo individual da atividade',reais(row.custo_individual))+
+      '</div>'+
+      '<p>'+esc(row.texto_autorizacao||'O responsável confirma ciência da participação na atividade acima.')+'</p>';
   }
 
   function mountFamily(){
@@ -85,7 +113,7 @@
         '<small>Jovem: '+esc(r.jovem_nome)+' • '+esc(r.secao_nome)+'</small>'+
         '<small>'+esc(when(r.inicio))+' até '+esc(when(r.fim))+' • '+esc(r.local||'Local a confirmar')+'</small>'+
         (r.descricao?'<p>'+esc(r.descricao)+'</p>':'')+
-        '<div class="authorizations-terms-v109">'+esc(r.texto_autorizacao||'Autorização para participar da atividade acima.')+'</div>'+
+        '<div class="authorizations-terms-v109">'+consentDocument(r)+'</div>'+
         '<p class="authorizations-status-v109">'+esc(statusLabel(r))+
         (current?' • '+esc(r.nome_assinante||'')+' • '+esc(when(r.assinado_em)):'')+'</p>'+
         '<div class="authorizations-actions-v109">'+
@@ -152,31 +180,26 @@
       $('familyAuthStatusV109').textContent='O navegador bloqueou a impressão. Autorize janelas para este site e tente novamente.';
       return;
     }
-    const doc='<!doctype html><html lang="pt-BR"><head>'+
-      '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
-      '<title>Autorização de atividade - GEArPC</title>'+
-      '<style>body{font:15px/1.55 Arial,sans-serif;max-width:760px;margin:26px auto;padding:15px;color:#222}'+
-      'h1{text-align:center;font-size:20px}h2{font-size:17px}p{margin:8px 0}.terms{white-space:pre-wrap;border:1px solid #ddd;padding:13px;margin:18px 0}'+
-      '.line{border-bottom:1px solid #222;height:27px;margin:22px 0 6px}.printbutton{padding:10px 16px}'+
-      '@media print{.printbutton{display:none}body{margin:10mm auto}}</style></head><body>'+
-      '<h1>Grupo Escoteiro do Ar Paulo Carzino</h1>'+
-      '<h2>Autorização para participação em atividade escoteira</h2>'+
-      '<p><strong>Atividade:</strong> '+esc(row.titulo)+'</p>'+
-      '<p><strong>Jovem:</strong> '+esc(row.jovem_nome)+'</p>'+
-      '<p><strong>Seção:</strong> '+esc(row.secao_nome)+'</p>'+
-      '<p><strong>Local:</strong> '+esc(row.local||'Não informado')+'</p>'+
-      '<p><strong>Início:</strong> '+esc(when(row.inicio))+'</p>'+
-      '<p><strong>Término:</strong> '+esc(when(row.fim))+'</p>'+
-      (row.descricao?'<p><strong>Informações:</strong> '+esc(row.descricao)+'</p>':'')+
-      '<div class="terms">'+esc(row.texto_autorizacao||'Autorizo a participação do jovem nesta atividade, nas condições acima.')+'</div>'+
-      '<p><strong>Responsável:</strong> '+esc(row.responsavel_nome)+'</p>'+
-      '<p>Declaro que li os dados acima e autorizo a participação do jovem na atividade informada.</p>'+
-      '<div class="line"></div><p>Assinatura do responsável</p>'+
-      '<div class="line"></div><p>Local e data</p>'+
-      '<p><small>Após assinar, entregue o original em papel à chefia da seção. A chefia registrará o recebimento no GEArPC Conecta.</small></p>'+
-      '<button class="printbutton" onclick="window.print()">Imprimir autorização</button>'+
-      '</body></html>';
-    w.document.open();w.document.write(doc);w.document.close();
+    const html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<title>Autorização especial - GEArPC</title>'+
+      '<style>body{font:14px/1.52 Arial,sans-serif;max-width:760px;margin:22px auto;padding:15px;color:#202020}'+
+      'header{border:1px solid #444;padding:12px;text-align:center;margin-bottom:26px}'+
+      'h1{font-size:18px;margin:0}h2{text-align:center;font-size:16px;margin:24px 0 18px}'+
+      'p{margin:8px 0}.document-facts-v110{margin:15px 0}.document-facts-v110 div{margin:2px 0}'+
+      '.signline{border-bottom:1px solid #333;height:36px;margin:22px 0 5px}'+
+      '.notice{margin-top:28px;font-size:11px}.actions{padding:12px}'+
+      '@media print{.actions{display:none}body{margin:0 auto;padding:5mm}}</style></head><body>'+
+      '<header><h1>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</h1>'+
+      '<div>Autorização de participação em atividade especial</div></header>'+
+      consentDocument(row)+
+      '<div class="signline"></div><p>Data: ____/____/______</p>'+
+      '<div class="signline"></div><p>Cidade</p>'+
+      '<div class="signline"></div><p>Assinatura do responsável</p>'+
+      '<p class="notice">O CPF deverá ser preenchido pelo responsável na via impressa, pois ainda não está registrado no Conecta. '+
+      'Entregue a autorização assinada à chefia. Não se trata de ficha médica.</p>'+
+      '<div class="actions"><button onclick="window.print()">Imprimir autorização</button></div></body></html>';
+    w.document.open();w.document.write(html);w.document.close();
   }
 
   function mountChief(){

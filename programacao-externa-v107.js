@@ -96,10 +96,20 @@
    if(e.target.closest('#externalApproveV107'))await action('aprovar');
    if(e.target.closest('#externalAdjustV107'))await action('ajustar');
    if(e.target.closest('#externalPublishV107'))await action('publicar');
+   if(e.target.closest('#externalCopyPaxtuV110'))await copyPaxtu();
    if(e.target.closest('#externalBindSafetyV108'))await attachSafety();
   });
   $('externalEditorV107').addEventListener('submit',save);
   box.addEventListener('toggle',()=>{if(box.open)void load();});
+  if(admin()){
+    const hint=document.createElement('p');hint.className='external-notes-v107';
+    hint.textContent='Transferência Paxtu100: após publicar, copie a atividade e use o favorito na tela Nova Atividade Especial. O salvamento final é manual. ';
+    const fav=document.createElement('a');
+    fav.textContent='GEArPC → Externa Paxtu100';
+    fav.className='attendance-paxtu-bookmark';
+    fav.href='javascript:('+paxtuExternalRunner.toString()+')()';
+    hint.appendChild(fav);box.appendChild(hint);
+  }
   const permitted=admin()||chief();
   $('externalNewV107').classList.toggle('external-hidden-v107',!permitted);
  }
@@ -110,7 +120,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,responsavel_nome,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -259,6 +269,7 @@
     dateField('Início (data e hora)','from',dateLocal(row?.data_inicio),true)+
     dateField('Término (data e hora)','to',dateLocal(row?.data_fim),true)+
     textField('Local da atividade','place',row?.local,false,true,true)+
+    textField('Link do mapa (Paxtu100)','map',row?.link_mapa,false,true)+
     textField('Ponto de encontro e retorno','meeting',row?.ponto_encontro,false,true)+
     textField('Chefe responsável / coordenação','leader',row?.responsavel_nome,false,true)+
     textField('Transporte e deslocamentos','transport',row?.transporte,true,true)+
@@ -266,13 +277,10 @@
     textField('Materiais gerais e equipamentos','materials',row?.materiais,true,true)+
     '<label>Custo estimado por participante (R$)<input id="externalCostV107" type="number" min="0" step="0.01" value="'+
      esc(row?.custo_estimado??'')+'" /></label>'+
-    '<label>Solicitar autorização? <select id="externalPermissionV107"><option value="true"'+
-     (row?.exige_autorizacao!==false?' selected':'')+
-     '>Sim</option><option value="false"'+(row?.exige_autorizacao===false?' selected':'')+
-     '>Não</option></select></label>'+
+    '<p class="full external-notes-v107">Autorização específica obrigatória para atividades externas.</p>'+
     '<p class="full external-notes-v107"><strong>Segurança de Atividades</strong>'+
     'Riscos, medidas preventivas, cuidados e plano alternativo são registrados apenas no Plano de Segurança. A atividade só poderá ser publicada após a aprovação do plano pelo DME.</p>'+
-    textField('Texto para a autorização dos responsáveis','permissionText',row?.texto_autorizacao,true,true)+
+    '<p class="full external-notes-v107"><strong>Autorização padronizada</strong>O Conecta gera a autorização segundo o modelo institucional. Nenhum texto precisa ser digitado pela chefia.</p>'+
     textField('Orientações e observações','notes',row?.observacoes,true,true)+
     '</div><h3>Roteiro / linha do tempo</h3>'+
     '<p>Inclua as etapas com horários reais; o roteiro pode atravessar vários dias.</p>'+
@@ -286,6 +294,7 @@
     (admin()&&existing==='aprovada'?'<button type="button" id="externalPublishV107" '+
      (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
      '>Publicar para responsáveis</button>':'')+
+    (admin()&&row&&existing==='publicada'?'<button type="button" id="externalCopyPaxtuV110">Copiar para Paxtu100</button>':'')+
     '<button type="button" id="externalCancelV107">Fechar</button>'+
     '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
     (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Para preservar autorizações e registros, ela não pode mais ser editada neste módulo.</p>':'')+
@@ -326,13 +335,12 @@
    secao_id:section,atividade_geral:admin()&&$('externalGeneralV107')?.value==='true',
    tipo:$('externalTypeV107').value,
    titulo:value('title'),objetivo:value('objective'),
-   local:value('place'),ponto_encontro:value('meeting'),
+   local:value('place'),ponto_encontro:value('meeting'),link_mapa:value('map'),
    data_inicio:timestamp(start),data_fim:timestamp(end),
    transporte:value('transport'),alimentacao:value('food'),
    materiais:value('materials'),responsavel_nome:value('leader'),
    custo_estimado:$('externalCostV107').value||null,
-   exige_autorizacao:$('externalPermissionV107').value==='true',
-   texto_autorizacao:value('permissionText'),
+   exige_autorizacao:true,
    observacoes:value('notes'),
    etapas:steps.map((etapa)=>({
       inicio:timestamp(etapa.inicio),fim:timestamp(etapa.fim),
@@ -375,6 +383,83 @@
      formStatus('Plano de segurança aprovado vinculado. A programação já pode ser publicada.');
    }catch(error){formStatus('Não foi possível vincular o plano: '+error.message);}
    finally{busy=false;}
+ }
+
+ // Transfere campos preenchidos, sem salvar automaticamente no Paxtu100.
+ function paxtuExternalRunner(){
+   const norm=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+   const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&!e.disabled;};
+   function label(e){return norm((e.labels?.[0]?.textContent||'')+' '+
+       (e.getAttribute('aria-label')||e.getAttribute('placeholder')||e.name||e.id||''));}
+   function set(e,v){
+     if(!e||v===null||v===undefined||v==='')return false;
+     if(e.tagName==='SELECT'){
+       const o=[...e.options].find(x=>norm(x.textContent)===norm(v))||
+           [...e.options].find(x=>norm(x.textContent).includes(norm(v)));
+       if(!o)return false;v=o.value;
+     }
+     const p=e.tagName==='SELECT'?HTMLSelectElement.prototype:
+       e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+     Object.getOwnPropertyDescriptor(p,'value').set.call(e,String(v));
+     e.dispatchEvent(new Event('input',{bubbles:true}));
+     e.dispatchEvent(new Event('change',{bubbles:true}));return true;
+   }
+   async function run(){
+     if(!/paxtu(?:100)?\.escoteiros\.org\.br$/i.test(location.hostname)){
+       alert('Abra a página de Nova Atividade Especial no Paxtu100.');return;
+     }
+     let raw;try{raw=await navigator.clipboard.readText();}
+     catch(_){raw=prompt('Cole os dados copiados do GEArPC Conecta:')||'';}
+     let data;try{data=JSON.parse(raw);}catch(_){alert('Os dados copiados não são JSON válido.');return;}
+     if(data?.origem!=='gearpc-conecta-externa-v110')return alert('Copie primeiro uma atividade externa do GEArPC Conecta.');
+     if(!confirm('Preencher os campos disponíveis no Paxtu100? O salvamento final será manual.'))return;
+     const fields=[...document.querySelectorAll('input,textarea,select')].filter(e=>visible(e)&&!['hidden','checkbox','radio','file'].includes(e.type));
+     let count=0;const missing=[];
+     const mapping=[
+       [['nome da atividade','nome'],data.nome],
+       [['local da atividade','local'],data.local],
+       [['link do mapa','link da localizacao'],data.link_mapa],
+       [['coordenador','chefe responsavel'],data.coordenador],
+       [['tipo de atividade','tipo'],data.tipo],
+       [['transporte'],data.transporte],
+       [['custo individual','valor','custo'],data.custo]
+     ];
+     for(const [names,value]of mapping){
+       if(!value)continue;
+       const field=fields.find(f=>names.some(n=>label(f)===norm(n)||label(f).startsWith(norm(n)+' ')));
+       if(field&&set(field,value))count++;else missing.push(names[0]);
+     }
+     const dates=fields.filter(x=>x.type==='date'),times=fields.filter(x=>x.type==='time');
+     for(const [e,v] of [[dates[0],data.data_inicio],[dates[1],data.data_fim],
+       [times[0],data.hora_inicio],[times[1],data.hora_fim]])if(set(e,v))count++;
+     alert(count+' campo(s) preenchido(s). Confira todos os dados, a seção, os participantes e os horários. '+
+       (missing.length?'Campos para conferir: '+missing.join(', ')+'. ':'')+
+       'O registro ainda NÃO foi salvo.');
+   }void run();
+ }
+ async function copyPaxtu(){
+   if(!admin()||editing?.status!=='publicada')return;
+   const r=editing,dt=x=>dateLocal(x);
+   const d1=dt(r.data_inicio),d2=dt(r.data_fim);
+   const payload={
+     origem:'gearpc-conecta-externa-v110',versao:1,
+     id_conecta:r.id,nome:r.titulo,tipo:TYPES[r.tipo]||r.tipo,
+     secao:r.atividade_geral?'Todo o grupo':sections.find(s=>Number(s.id)===Number(r.secao_id))?.nome||'',
+     local:r.local,link_mapa:r.link_mapa||'',coordenador:r.responsavel_nome,
+     transporte:r.transporte||'',custo:r.custo_estimado??'',
+     data_inicio:d1.slice(0,10),hora_inicio:d1.slice(11,16),
+     data_fim:d2.slice(0,10),hora_fim:d2.slice(11,16),
+     encontro:r.ponto_encontro,objetivo:r.objetivo,
+     alimentacao:r.alimentacao,materiais:r.materiais,observacoes:r.observacoes,
+     etapas:steps.map(e=>({...e}))
+   };
+   try{
+     await navigator.clipboard.writeText(JSON.stringify(payload));
+     formStatus('Atividade copiada. No Paxtu100 abra Nova Atividade Especial, use o favorito GEArPC → Externa e confira antes de salvar.');
+   }catch(e){
+     window.prompt('Copie os dados para usar no Paxtu100:',JSON.stringify(payload));
+     formStatus('Copie o conteúdo acima para usar no Paxtu100.');
+   }
  }
  async function action(operation){
   if(busy)return;
