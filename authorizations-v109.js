@@ -145,3 +145,153 @@
       $('familyAuthStatusV109').textContent='Não foi possível assinar: '+err.message;
     }finally{busy=false;controls.forEach(el=>{if(el.isConnected)el.disabled=false;});}
   }
+
+  function printSheet(row){
+    const w=window.open('','_blank');
+    if(!w){
+      $('familyAuthStatusV109').textContent='O navegador bloqueou a impressão. Autorize janelas para este site e tente novamente.';
+      return;
+    }
+    const doc='<!doctype html><html lang="pt-BR"><head>'+
+      '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<title>Autorização de atividade - GEArPC</title>'+
+      '<style>body{font:15px/1.55 Arial,sans-serif;max-width:760px;margin:26px auto;padding:15px;color:#222}'+
+      'h1{text-align:center;font-size:20px}h2{font-size:17px}p{margin:8px 0}.terms{white-space:pre-wrap;border:1px solid #ddd;padding:13px;margin:18px 0}'+
+      '.line{border-bottom:1px solid #222;height:27px;margin:22px 0 6px}.printbutton{padding:10px 16px}'+
+      '@media print{.printbutton{display:none}body{margin:10mm auto}}</style></head><body>'+
+      '<h1>Grupo Escoteiro do Ar Paulo Carzino</h1>'+
+      '<h2>Autorização para participação em atividade escoteira</h2>'+
+      '<p><strong>Atividade:</strong> '+esc(row.titulo)+'</p>'+
+      '<p><strong>Jovem:</strong> '+esc(row.jovem_nome)+'</p>'+
+      '<p><strong>Seção:</strong> '+esc(row.secao_nome)+'</p>'+
+      '<p><strong>Local:</strong> '+esc(row.local||'Não informado')+'</p>'+
+      '<p><strong>Início:</strong> '+esc(when(row.inicio))+'</p>'+
+      '<p><strong>Término:</strong> '+esc(when(row.fim))+'</p>'+
+      (row.descricao?'<p><strong>Informações:</strong> '+esc(row.descricao)+'</p>':'')+
+      '<div class="terms">'+esc(row.texto_autorizacao||'Autorizo a participação do jovem nesta atividade, nas condições acima.')+'</div>'+
+      '<p><strong>Responsável:</strong> '+esc(row.responsavel_nome)+'</p>'+
+      '<p>Declaro que li os dados acima e autorizo a participação do jovem na atividade informada.</p>'+
+      '<div class="line"></div><p>Assinatura do responsável</p>'+
+      '<div class="line"></div><p>Local e data</p>'+
+      '<p><small>Após assinar, entregue o original em papel à chefia da seção. A chefia registrará o recebimento no GEArPC Conecta.</small></p>'+
+      '<button class="printbutton" onclick="window.print()">Imprimir autorização</button>'+
+      '</body></html>';
+    w.document.open();w.document.write(doc);w.document.close();
+  }
+
+  function mountChief(){
+    if(!canChief()||$('chiefAuthBoxV109'))return;
+    const view=$('programmingView'),note=view?.querySelector('#programmingRoleNote');
+    if(!view||!note)return;
+    style();
+    const panel=document.createElement('details');panel.id='chiefAuthBoxV109';
+    panel.className='authorizations-v109 authorizations-chief-v109';
+    panel.innerHTML='<summary>📋 Autorizações das atividades externas</summary>'+
+      '<p>Acompanhe as respostas eletrônicas e as autorizações impressas da sua seção. Registre o papel somente depois de receber o original assinado.</p>'+
+      '<p id="chiefAuthStatusV109" role="status"></p>'+
+      '<div id="chiefAuthListV109" class="authorizations-list-v109"></div>'+
+      '<div class="authorizations-actions-v109"><button id="chiefAuthRefreshV109" type="button">Atualizar autorizações</button></div>';
+    note.insertAdjacentElement('afterend',panel);
+    $('chiefAuthRefreshV109').addEventListener('click',loadChief);
+    panel.addEventListener('toggle',()=>{if(panel.open)void loadChief();});
+    panel.addEventListener('click',async event=>{
+      const recv=event.target.closest('[data-receive-paper]');
+      if(recv)await receivePaper(Number(recv.dataset.receivePaper));
+    });
+  }
+  function drawChief(){
+    const host=$('chiefAuthListV109');if(!host)return;
+    const rows=chiefRows;
+    const signed=rows.filter(r=>validAuthorization(r)&&r.status==='autorizado').length;
+    const declined=rows.filter(r=>validAuthorization(r)&&r.status==='nao_autorizado').length;
+    const pending=rows.length-signed-declined;
+    let html='<p class="authorizations-summary-v109"><strong>'+
+      rows.length+'</strong> participação(ões) • <strong>'+signed+'</strong> autorizada(s) • '+
+      declined+' não autorizada(s) • <strong>'+pending+'</strong> pendente(s).</p>';
+    if(rows.length){
+      html+='<div class="authorizations-list-v109">';
+      for(let i=0;i<rows.length;i++){
+        const r=rows[i],complete=validAuthorization(r);
+        const guardians=Array.isArray(r.responsaveis)?r.responsaveis:[];
+        const canReceive=!complete;
+        html+='<article class="authorizations-card-v109" data-chief-authorization="'+i+'">'+
+          '<strong>'+esc(r.jovem_nome)+'</strong>'+
+          '<small>'+esc(r.secao_nome)+' • '+esc(r.titulo)+'</small>'+
+          '<small>'+esc(when(r.inicio))+' • '+esc(r.local||'Local não informado')+'</small>'+
+          '<p class="authorizations-status-v109">'+esc(statusLabel(r))+
+          (complete?' • '+esc(r.nome_assinante||'')+' • '+esc(when(r.assinado_em)):'')+'</p>';
+        if(canReceive && guardians.length){
+          html+='<div class="authorizations-sign-v109">'+
+            '<label>Responsável que assinou o papel'+
+            '<select data-paper-guardian><option value="">Escolher responsável vinculado</option>'+
+            guardians.map(g=>'<option value="'+Number(g.id)+'">'+esc(g.nome)+'</option>').join('')+
+            '</select></label>'+
+            '<div class="authorizations-actions-v109">'+
+            '<button type="button" data-receive-paper="'+i+'">Registrar via impressa recebida</button>'+
+            '</div></div>';
+        }
+        html+='</article>';
+      }
+      html+='</div>';
+    }else html+='<p>Não há autorizações de atividades externas publicadas para as seções disponíveis.</p>';
+    host.innerHTML=html;
+  }
+  async function loadChief(){
+    if(!canChief()||!$('chiefAuthStatusV109'))return;
+    const node=$('chiefAuthStatusV109');node.textContent='Consultando autorizações das seções...';
+    try{
+      const {data,error}=await client.rpc('listar_autorizacoes_chefia_v109',{p_secao_id:null});
+      if(error)throw error;
+      chiefRows=Array.isArray(data)?data:[];
+      drawChief();
+      node.textContent='Autorizações atualizadas.';
+    }catch(e){node.textContent='Não foi possível consultar autorizações: '+e.message;}
+  }
+  async function receivePaper(index){
+    if(busy||!canChief())return;
+    const row=chiefRows[index];
+    const card=$('chiefAuthListV109')?.querySelector('[data-chief-authorization="'+index+'"]');
+    if(!row||!card||validAuthorization(row))return;
+    const guardian=Number(card.querySelector('[data-paper-guardian]')?.value||0);
+    if(!guardian){
+      $('chiefAuthStatusV109').textContent='Selecione o responsável que assinou a via entregue.';
+      return;
+    }
+    if(!window.confirm('Você conferiu fisicamente a autorização impressa e assinada para '+
+      row.jovem_nome+' na atividade '+row.titulo+'? O app registrará o recebimento e a chefia deverá manter o original.'))return;
+    busy=true;
+    const controls=[...card.querySelectorAll('button,select')];
+    controls.forEach(el=>el.disabled=true);
+    $('chiefAuthStatusV109').textContent='Registrando recebimento da autorização impressa...';
+    try{
+      const {data,error}=await client.rpc('receber_autorizacao_papel_v109',{
+        p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,p_responsavel_id:guardian
+      });
+      if(error)throw error;
+      if(!data?.ok)throw new Error('O servidor não confirmou o recebimento.');
+      await loadChief();
+      $('chiefAuthStatusV109').textContent='Autorização física registrada. Guarde o documento assinado no arquivo do grupo.';
+    }catch(err){$('chiefAuthStatusV109').textContent='Não foi possível registrar: '+err.message;}
+    finally{busy=false;controls.forEach(el=>{if(el.isConnected)el.disabled=false;});}
+  }
+
+  async function boot(){
+    for(let i=0;i<110;i++){
+      if(state.profile && $('dashboardView') && $('programmingView')){
+        mountFamily();mountChief();
+        if(showFamily())void loadFamily();
+        $('programmingButton')?.addEventListener('click',()=>{
+          if($('chiefAuthBoxV109')?.open)void loadChief();
+        });
+        window.addEventListener('focus',()=>{
+          if(showFamily()&&!$('dashboardView')?.classList.contains('hidden'))void loadFamily();
+          if(canChief()&&!$('programmingView')?.classList.contains('hidden')&&
+            $('chiefAuthBoxV109')?.open)void loadChief();
+        });
+        return;
+      }
+      await new Promise(resolve=>setTimeout(resolve,200));
+    }
+  }
+  void boot();
+})();
