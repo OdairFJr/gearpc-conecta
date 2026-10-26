@@ -10,6 +10,10 @@ $fn$;
 revoke all on function private.termo_autorizacao_externa_v110(text)
  from public,anon,authenticated;
 
+alter table public.programacoes_externas add column if not exists link_mapa text;
+comment on column public.programacoes_externas.link_mapa is
+ 'Link do mapa para transferência e consulta da atividade especial no Paxtu100';
+
 -- Rascunhos não aceitam mais texto próprio; autorização é gerada pelo
 -- servidor somente após publicação, do modelo versionado.
 create or replace function public.salvar_programacao_externa_v107(p_dados jsonb)
@@ -70,6 +74,7 @@ begin
     objetivo=nullif(btrim(p_dados->>'objetivo'),''),
     local=btrim(p_dados->>'local'),
     ponto_encontro=nullif(btrim(p_dados->>'ponto_encontro'),''),
+    link_mapa=nullif(btrim(p_dados->>'link_mapa'),''),
     data_inicio=v_inicio,data_fim=v_fim,
     transporte=nullif(btrim(p_dados->>'transporte'),''),
     alimentacao=nullif(btrim(p_dados->>'alimentacao'),''),
@@ -87,13 +92,13 @@ begin
    delete from public.programacoes_externas_etapas where programacao_id=v_id;
  else
    insert into public.programacoes_externas
-    (secao_id,atividade_geral,tipo,titulo,objetivo,local,ponto_encontro,data_inicio,data_fim,
+    (secao_id,atividade_geral,tipo,titulo,objetivo,local,ponto_encontro,link_mapa,data_inicio,data_fim,
      transporte,alimentacao,materiais,responsavel_nome,
      custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,criado_por)
    values
     (v_secao,v_geral,p_dados->>'tipo',btrim(p_dados->>'titulo'),
     nullif(btrim(p_dados->>'objetivo'),''),btrim(p_dados->>'local'),
-    nullif(btrim(p_dados->>'ponto_encontro'),''),v_inicio,v_fim,
+    nullif(btrim(p_dados->>'ponto_encontro'),''),nullif(btrim(p_dados->>'link_mapa'),''),v_inicio,v_fim,
     nullif(btrim(p_dados->>'transporte'),''),nullif(btrim(p_dados->>'alimentacao'),''),
     nullif(btrim(p_dados->>'materiais'),''),nullif(btrim(p_dados->>'responsavel_nome'),''),
     nullif(p_dados->>'custo_estimado','')::numeric,v_autorizacao,
@@ -187,6 +192,7 @@ begin
    values (v.titulo,concat_ws(E'\n',
        nullif(v.objetivo,''),
        case when nullif(v.ponto_encontro,'') is not null then 'Encontro e retorno: '||v.ponto_encontro end,
+       case when nullif(v.link_mapa,'') is not null then 'Mapa: '||v.link_mapa end,
        case when nullif(v.transporte,'') is not null then 'Transporte: '||v.transporte end,
        case when nullif(v.alimentacao,'') is not null then 'Alimentação e água: '||v.alimentacao end,
        case when nullif(v.materiais,'') is not null then 'Materiais necessários: '||v.materiais end,
