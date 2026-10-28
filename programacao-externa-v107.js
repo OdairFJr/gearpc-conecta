@@ -781,6 +781,7 @@
        'Jovens selecionados no Conecta ('+youth.length+'): '+youth.join('; ')+'. '+
        'Escotistas selecionados ('+chiefs.length+'): '+chiefs.join('; ')+'. '+
        (missing.length?'Campos para completar manualmente: '+missing.join(', ')+'. ':'')+
+       (data.roteiro_em_anexo?'Há um roteiro em PDF/Word vinculado no Conecta: baixe o arquivo pelo Conecta e faça o upload manual no Paxtu100. ':'')+
        'Nenhum registro foi salvo automaticamente.');
    }void run();
  }
@@ -810,12 +811,16 @@
      data_inicio:d1.slice(0,10),hora_inicio:d1.slice(11,16),
      data_fim:d2.slice(0,10),hora_fim:d2.slice(11,16),
      encontro:r.ponto_encontro,objetivo:r.objetivo,
+     documento_roteiro:r.roteiro_arquivo_nome||null,
+     roteiro_em_anexo:!!r.roteiro_arquivo_path,
      alimentacao:r.alimentacao,materiais:r.materiais,observacoes:r.observacoes,
      etapas:steps.map(e=>({...e}))
    };
    try{
      await navigator.clipboard.writeText(JSON.stringify(payload));
-     formStatus('Atividade, seções e lista final de participantes copiadas. No Paxtu100 abra Nova Atividade Especial e use o favorito GEArPC → Externa. Confira todas as seleções antes de salvar.');
+     formStatus('Atividade, seções e participantes copiados. Abra o Paxtu100 e use o favorito GEArPC → Externa. '+
+       (r.roteiro_arquivo_path?'Baixe também o PDF/Word pelo botão "Baixar roteiro" e faça upload do documento na área correspondente do Paxtu100. ':'')+
+       'Confira todas as informações antes de salvar.');
    }catch(e){
      window.prompt('Copie os dados para usar no Paxtu100:',JSON.stringify(payload));
      formStatus('Copie o conteúdo acima para usar no Paxtu100.');
