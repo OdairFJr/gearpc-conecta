@@ -51,7 +51,7 @@
  let data=[],sections=[],own=[],editing=null,steps=[],busy=false;
  let people={jovens:[],chefes:[],chefes_secoes:[]};
  let chosenSections=new Set(),chosenYouth=new Set(),chosenChiefs=new Set();
- let sectionFilter='',chiefFilter='';
+ let sectionFilter='',chiefFilter='',selectedDirector=false;
  const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
   .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
  const admin=()=>state.profile?.tipo==='administrador';
@@ -103,6 +103,12 @@
     '.external-form-actions-v107{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}',
     '.external-form-actions-v107 button{padding:10px 12px;border:1px solid #b6cad8;border-radius:9px;background:#fff;color:#0a376c;font-weight:800;cursor:pointer}',
     '.external-status-v107{min-height:1em;color:#4a657d;font-size:.78rem}',
+    '.ext-member-list-v111{display:grid;gap:5px;max-height:280px;overflow:auto;padding:10px;background:#fff;border:1px solid #d4e0eb;border-radius:10px}',
+    '.ext-member-option-v111{display:flex!important;align-items:center;gap:8px;padding:4px;font-size:.79rem;color:#34516b;cursor:pointer}',
+    '.ext-member-option-v111 input{width:auto!important;flex-shrink:0}',
+    '.ext-rosters-v111{margin:12px 0}.ext-rosters-v111 h4{color:#1c4565;margin:8px 0}',
+    '.ext-flagline-v111{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}.ext-flagline-v111 label{display:flex;gap:6px;align-items:center}',
+    '.ext-flagline-v111 input{width:auto!important}',
     '.external-hidden-v107{display:none!important}',
     '@media(max-width:650px){.external-grid-v107{grid-template-columns:1fr}.external-card-v107{align-items:flex-start;flex-direction:column}}'
   ].join('');
@@ -172,6 +178,8 @@
       const id=Number(el.dataset.extChief);
       if(el.checked)chosenChiefs.add(id);else chosenChiefs.delete(id);
       renderPeople();
+    }else if(el.id==='externalDirV111'){
+      selectedDirector=el.checked;
     }else if(el.id==='externalSectionV107'){
       if(!chosenSections.has(Number(el.value))){
         chosenSections.add(Number(el.value));
@@ -311,7 +319,7 @@
        (chosenSections.has(Number(s.id))?'checked ':'')+
        (!editable||Number(s.id)===sid?'disabled ':'')+' />'+esc(s.nome)+'</label>').join('')+
      (admin()?'<label class="ext-member-option-v111"><input id="externalDirV111" type="checkbox" '+
-       (editing?.incluir_diretoria?'checked ':'')+(editable?'':'disabled ')+
+       (selectedDirector?'checked ':'')+(editable?'':'disabled ')+
        '/> Diretoria (sem membros automáticos)</label>':'');
    // Only people from selected sections can be chosen as juvenile participants.
    const youth=people.jovens.filter(j=>chosenSections.has(Number(j.secao_id))&&
@@ -342,7 +350,12 @@
    const row=id?data.find(r=>Number(r.id)===Number(id)):null;
    if(id&&!row){status('Programação não encontrada. Atualize a lista.');return;}
    editing=row?{...row}:null;
-   steps=[];
+   steps=[];sectionFilter='';chiefFilter='';selectedDirector=Boolean(row?.incluir_diretoria);
+   await ensureCandidates();
+   const permitted=admin()?sections:sections.filter(s=>own.includes(Number(s.id)));
+   if(!row&&!permitted.length){
+     status('Você não tem seção vinculada para criar esta programação.');return;
+   }
    if(id){
     const {data:items,error}=await client.from('programacoes_externas_etapas')
       .select('ordem,inicio,fim,titulo,descricao,condutor,materiais,cuidados')
@@ -350,9 +363,32 @@
     if(error)throw error;
     steps=(items||[]).map(item=>({...item,inicio:dateLocal(item.inicio),fim:dateLocal(item.fim)}));
    }
-   const permitted=admin()?sections:sections.filter(s=>own.includes(Number(s.id)));
-   if(!row&&!permitted.length){
-     status('Você não tem seção vinculada para criar esta programação.');return;
+   chosenSections=new Set(row?[Number(row.secao_id)]:[Number(permitted[0].id)]);
+   chosenYouth=new Set();chosenChiefs=new Set();
+   if(id){
+     const [sx,jx,cx]=await Promise.all([
+       client.from('programacao_externa_secoes_v111').select('secao_id').eq('programacao_id',id),
+       client.from('programacao_externa_jovens_v111').select('jovem_id').eq('programacao_id',id),
+       client.from('programacao_externa_chefes_v111').select('chefe_id').eq('programacao_id',id)
+     ]);
+     if(sx.error||jx.error||cx.error)throw sx.error||jx.error||cx.error;
+     if(sx.data?.length){
+       chosenSections=new Set(sx.data.map(x=>Number(x.secao_id)));
+       chosenYouth=new Set((jx.data||[]).map(x=>Number(x.jovem_id)));
+       chosenChiefs=new Set((cx.data||[]).map(x=>Number(x.chefe_id)));
+     }else{
+       for(const j of people.jovens)
+         if(chosenSections.has(Number(j.secao_id))&&!j.eh_teste)chosenYouth.add(Number(j.id));
+       for(const x of people.chefes_secoes)
+         if(chosenSections.has(Number(x.secao_id))&&!people.chefes.find(c=>Number(c.id)===Number(x.chefe_id))?.eh_teste)
+           chosenChiefs.add(Number(x.chefe_id));
+     }
+   }else{
+     for(const j of people.jovens)
+       if(chosenSections.has(Number(j.secao_id))&&!j.eh_teste)chosenYouth.add(Number(j.id));
+     for(const x of people.chefes_secoes)
+       if(chosenSections.has(Number(x.secao_id))&&!people.chefes.find(c=>Number(c.id)===Number(x.chefe_id))?.eh_teste)
+         chosenChiefs.add(Number(x.chefe_id));
    }
    const select=sections.filter(s=>row?Number(s.id)===Number(row.secao_id):
       permitted.some(p=>Number(p.id)===Number(s.id)));
@@ -363,6 +399,17 @@
    const types=Object.entries(TYPES).map(([key,value])=>
      '<option value="'+key+'" '+(key===(row?.tipo||'externa')?'selected':'')+'>'+esc(value)+'</option>').join('');
    const options=select.map(section=>'<option value="'+section.id+'">'+esc(section.nome)+'</option>').join('');
+   const selectedPaxtuType=row?.tipo_paxtu||({
+     externa:'Atividade de Grupo',acampamento:'Acampamento',
+     acantonamento:'Acantonamento',jornada:'Jornada',visita:'Excursão',
+     evento:'Atividade de Grupo',especial:'Atividade de Grupo'
+   }[row?.tipo||'externa']||'Atividade de Grupo');
+   const chiefOptions=people.chefes.map(c=>
+     '<option value="'+c.id+'" '+(Number(row?.responsavel_chefe_id)===Number(c.id)?'selected':'')+'>'+
+     esc(c.nome)+'</option>').join('');
+   const transportVal=row?.transporte||'';
+   const transportOptions=TRANSPORT_OPTIONS.map(t=>
+     '<option value="'+esc(t)+'" '+(t===transportVal?'selected':'')+'>'+esc(t)+'</option>').join('');
    const note=row?.parecer_dme?
       '<aside class="external-notes-v107"><strong>Orientações do DME</strong>'+esc(row.parecer_dme)+'</aside>':'';
    let safetyOptions='';
@@ -370,12 +417,11 @@
      const {data:approved,error:plansError}=await client.rpc('listar_planos_seguranca_externa_v108');
      if(plansError)throw plansError;
      const targetDate=dateLocal(row.data_inicio).slice(0,10);
-     const sectionName=sections.find(s=>Number(s.id)===Number(row.secao_id))?.nome;
+     const requiredNames=[...chosenSections].map(id=>sections.find(s=>Number(s.id)===id)?.nome).filter(Boolean);
      const eligible=(approved||[]).filter(plan=>{
        const scopes=Array.isArray(plan.secoes)?plan.secoes:[];
        return plan.data_plano===targetDate &&
-         (row.atividade_geral ? sections.every(sec=>scopes.includes(sec.nome)) :
-           scopes.includes(sectionName));
+         requiredNames.every(name=>scopes.includes(name));
      });
      safetyOptions='<div class="external-notes-v107"><strong>Plano de segurança formal</strong>'+
        (row.plano_seguranca_visit_id
@@ -401,8 +447,12 @@
     '<p>Tipo: '+esc(STATUS[existing]||existing)+
       '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+note+safetyOptions+
     '<form id="externalFormV107"><div class="external-grid-v107">'+
-    '<label>Seção<select id="externalSectionV107" required>'+options+'</select></label>'+
-    '<label>Tipo de atividade<select id="externalTypeV107">'+types+'</select></label>'+
+    '<label>Seção de referência (chefia organizadora)<select id="externalSectionV107" required>'+options+'</select></label>'+
+    '<label>Tipo interno da atividade<select id="externalTypeV107">'+types+'</select></label>'+
+    '<label class="full">Tipo no Paxtu100<input id="externalPaxtuTypeV111" list="externalPaxtuTypeOptionsV111" value="'+
+      esc(selectedPaxtuType)+'" required />'+
+      '<datalist id="externalPaxtuTypeOptionsV111">'+PAxtuTypes.map(t=>
+        '<option value="'+esc(t)+'"></option>').join('')+'</datalist></label>'+
     (admin()?'<label class="full">Abrangência<select id="externalGeneralV107">'+
       '<option value="false"'+(row?.atividade_geral!==true?' selected':'')+'>Somente a seção indicada</option>'+
       '<option value="true"'+(row?.atividade_geral===true?' selected':'')+'>Todo o grupo (atividade geral)</option></select></label>':'')+
@@ -412,9 +462,25 @@
     dateField('Término (data e hora)','to',dateLocal(row?.data_fim),true)+
     textField('Local da atividade','place',row?.local,false,true,true)+
     textField('Link do mapa (Paxtu100)','map',row?.link_mapa,false,true)+
-    textField('Ponto de encontro e retorno','meeting',row?.ponto_encontro,false,true)+
-    textField('Chefe responsável / coordenação','leader',row?.responsavel_nome,false,true)+
-    textField('Transporte e deslocamentos','transport',row?.transporte,true,true)+
+    textField('Local de saída','departure',row?.local_saida||row?.ponto_encontro,false,true)+
+    textField('Local de chegada','arrival',row?.local_chegada||row?.ponto_encontro,false,true)+
+    '<label class="full">Chefe responsável pela atividade<select id="externalLeaderV111" required>'+
+      '<option value="">Selecione um escotista do grupo</option>'+chiefOptions+'</select></label>'+
+    '<label>Meio de transporte<select id="externalTransportV111" required>'+
+      '<option value="">Selecione</option>'+transportOptions+'</select></label>'+
+    textField('Detalhes do transporte','transportDetails',row?.transporte_detalhes||(
+       !TRANSPORT_OPTIONS.includes(transportVal)?transportVal:''),true,true)+
+    textField('Descreva brevemente a atividade (Paxtu100)','brief',row?.descricao_breve||'',true,true)+
+    '<label class="full">Marcação especial no Paxtu100'+
+      '<span class="ext-flagline-v111">'+
+        '<label><input type="checkbox" id="externalOnlineV111" '+
+          (row?.online?'checked':'')+'/> Atividade on-line</label>'+
+        '<label><input type="checkbox" id="externalNightsV111" '+
+          ((row?.noites_acampadas||['acampamento','acantonamento'].includes(row?.tipo))?'checked':'')+
+          '/> Atividade com noites acampadas</label>'+
+        '<label><input type="checkbox" id="externalIndabaV111" '+
+          (row?.indaba?'checked':'')+'/> Atividade Indaba</label>'+
+      '</span></label>'+
     textField('Alimentação e água','food',row?.alimentacao,true,true)+
     textField('Materiais gerais e equipamentos','materials',row?.materiais,true,true)+
     '<label>Custo estimado por participante (R$)<input id="externalCostV107" type="number" min="0" step="0.01" value="'+
@@ -424,6 +490,16 @@
     'Riscos, medidas preventivas, cuidados e plano alternativo são registrados apenas no Plano de Segurança. A atividade só poderá ser publicada após a aprovação do plano pelo DME.</p>'+
     '<p class="full external-notes-v107"><strong>Autorização padronizada</strong>O Conecta gera a autorização segundo o modelo institucional. Nenhum texto precisa ser digitado pela chefia.</p>'+
     textField('Orientações e observações','notes',row?.observacoes,true,true)+
+    '</div><h3>Seções e participantes</h3>'+
+    '<p>Ao marcar uma seção, todos os seus jovens e escotistas ativos são selecionados automaticamente.'+
+    ' Desmarque quem não irá participar ou acrescente um escotista de outra seção.</p>'+
+    '<div id="externalChosenSectionsV111" class="ext-member-list-v111"></div>'+
+    '<div class="external-grid-v107">'+
+      '<label>Buscar jovem por nome<input id="externalPeopleSearchV111" type="search" placeholder="Filtrar jovens"></label>'+
+      '<label>Buscar escotista por nome<input id="externalChiefSearchV111" type="search" placeholder="Filtrar escotistas"></label>'+
+    '</div><div class="external-grid-v107 ext-rosters-v111">'+
+      '<section><h4>Jovens</h4><div id="externalYouthV111" class="ext-member-list-v111"></div></section>'+
+      '<section><h4>Escotistas</h4><div id="externalAdultsV111" class="ext-member-list-v111"></div></section>'+
     '</div><h3>Roteiro / linha do tempo</h3>'+
     '<p>Inclua as etapas com horários reais; o roteiro pode atravessar vários dias.</p>'+
     '<div id="externalStagesV107"></div>'+
@@ -443,7 +519,7 @@
     '</form>';
    if(row)$('externalSectionV107').value=String(row.secao_id);
    $('externalEditorV107').classList.remove('external-hidden-v107');
-   renderSteps();
+   renderSteps();renderPeople();
    if(disabledControls){
      $('externalFormV107').querySelectorAll('input,textarea,select')
        .forEach(el=>el.disabled=true);
@@ -453,7 +529,7 @@
   }catch(error){status('Não foi possível abrir o roteiro: '+error.message);}
  }
  function closeEditor(){
-   editing=null;steps=[];
+   editing=null;steps=[];chosenSections.clear();chosenYouth.clear();chosenChiefs.clear();
    $('externalEditorV107')?.classList.add('external-hidden-v107');
  }
 
