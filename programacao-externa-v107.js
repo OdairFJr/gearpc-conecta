@@ -596,6 +596,13 @@
   if(!($('externalPaxtuTypeV111')?.value.trim())){
     formStatus('Informe o tipo de atividade utilizado no Paxtu100.');return null;
   }
+  const attachedFile=$('externalDocumentFileV112')?.files?.[0]||null;
+  if(attachedFile){
+    const ext=attachedFile.name.split('.').pop()?.toLowerCase();
+    if(!['pdf','doc','docx'].includes(ext)||!attachedFile.size||attachedFile.size>15728640){
+      formStatus('O documento precisa ser PDF, DOC ou DOCX e ter até 15 MB.');return null;
+    }
+  }
   if(steps.some(s=>!s.inicio||!s.fim||s.inicio>=s.fim||
     s.inicio<start||s.fim>end||!String(s.titulo||'').trim())){
       formStatus('Confira as datas, a ordem e o título de cada etapa.');return null;
@@ -634,15 +641,65 @@
    const {data:result,error}=await client.rpc('salvar_programacao_externa_v111',{p_dados:dados});
    if(error)throw error;
    if(!result?.id)throw new Error('O servidor não confirmou o registro.');
+   if(attachedFile){
+     formStatus('Dados salvos. Enviando documento PDF/Word...');
+     const extension=attachedFile.name.split('.').pop().toLowerCase();
+     const mimeTypes={
+       pdf:'application/pdf',doc:'application/msword',
+       docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+     };
+     const path=String(result.id)+'/'+crypto.randomUUID()+'.'+extension;
+     const {error:uploadError}=await client.storage.from('gearpc-roteiros-externos')
+       .upload(path,attachedFile,{contentType:mimeTypes[extension],upsert:false});
+     if(uploadError)throw new Error('O rascunho foi salvo, mas o envio do documento falhou: '+uploadError.message);
+     const {error:linkError}=await client.rpc('vincular_roteiro_documento_externo_v112',{
+       p_id:Number(result.id),p_path:path,p_nome:attachedFile.name,
+       p_atualizado_em:result.atualizado_em
+     });
+     if(linkError){
+       await client.storage.from('gearpc-roteiros-externos').remove([path]);
+       throw new Error('O rascunho foi salvo, mas o documento não foi vinculado: '+linkError.message);
+     }
+   }
    await load();
    editing=data.find(r=>Number(r.id)===Number(result.id))||{
      ...dados,id:result.id,atualizado_em:result.atualizado_em,status:result.status};
-   formStatus('Roteiro salvo.');
+   formStatus(attachedFile?'Rascunho e documento salvos.':'Roteiro salvo.');
    return Number(result.id);
   }catch(error){
    formStatus('Não foi possível salvar: '+error.message);
    return null;
   }finally{busy=false;}
+ }
+ async function downloadScheduleDocument(){
+   const row=editing;
+   if(!row?.roteiro_arquivo_path){formStatus('Esta atividade ainda não tem documento.');return;}
+   formStatus('Baixando roteiro...');
+   try{
+     const {data:blob,error}=await client.storage.from('gearpc-roteiros-externos')
+       .download(row.roteiro_arquivo_path);
+     if(error)throw error;
+     const url=URL.createObjectURL(blob);
+     const link=document.createElement('a');
+     link.href=url;link.download=row.roteiro_arquivo_nome||'roteiro-externo.pdf';
+     document.body.appendChild(link);link.click();link.remove();
+     setTimeout(()=>URL.revokeObjectURL(url),60000);
+     formStatus('Documento pronto para ser aberto ou enviado ao Paxtu100.');
+   }catch(err){formStatus('Não foi possível baixar o documento: '+err.message);}
+ }
+ async function unlinkScheduleDocument(){
+   if(busy||!editing?.id||!editing?.roteiro_arquivo_path||!canEdit())return;
+   if(!window.confirm('Retirar o documento desta programação? Enquanto for rascunho, você poderá enviar outro.'))return;
+   busy=true;formStatus('Retirando documento...');
+   try{
+     const id=editing.id,old=editing.roteiro_arquivo_path;
+     const {error}=await client.rpc('desvincular_roteiro_documento_externo_v112',{p_id:id});
+     if(error)throw error;
+     await client.storage.from('gearpc-roteiros-externos').remove([old]);
+     await load();await openEditor(id);
+     formStatus('Documento retirado. Envie outro ou preencha o roteiro no aplicativo.');
+   }catch(err){formStatus('Não foi possível retirar o documento: '+err.message);}
+   finally{busy=false;}
  }
  async function save(event){
   event.preventDefault();
