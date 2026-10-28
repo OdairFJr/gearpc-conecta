@@ -4,11 +4,54 @@
  window.__GEARPC_EXTERNAL_PROGRAM_V107__=true;
  const rt=window.GEARPC_RUNTIME;if(!rt?.client||!rt?.state)return;
  const {client,state}=rt,$=id=>document.getElementById(id);
+ const PAxtuTypes=[
+ 'Acampamento','Acampamento de Férias Escoteiro (AFE)','Acampamento de grupo',
+ 'Acampamento de patrulha','Acampamento de seção','Acantonamento',
+ 'Arrecadação de donativos','ASEC','Assembleia','Atividade Aquática',
+ 'Atividade Cívica','Atividade Comunitária','Atividade Cultural',
+ 'Atividade da Modalidade do Ar','Atividade da Modalidade do Mar',
+ 'Atividade de acessibilidade, diversidade e inclusão','Atividade de Alcateia',
+ 'Atividade de Clã','Atividade de Divulgação','Atividade de Grupo',
+ 'Atividade de modalidade','Atividade de Patrulha','Atividade de Ramo',
+ 'Atividade Distrital','Atividade Ecológica','Atividade Embarcada',
+ 'Atividade Espiritual','Atividade Esportiva','Atividade Internacional',
+ 'Atividade Regional','Atividade Religiosa','Atividade Social',
+ 'Atividades de especialidade','Aventura Sênior','Bivaque','Boa ação',
+ 'Caçada Nacional','Caminhada','Campanha Financeira',
+ 'Campeões da Natureza - Escoteiro','Campeões da Natureza - Lobinho',
+ 'Campeões da Natureza - Sênior','Certificado de funcionamento',
+ 'Certificado de funcionamento 2','Congresso','Corpus Christi',
+ 'Corrida de Aventura','CQWS HF','Cruzeiro Marítimo','Curso','Debate',
+ 'Dia do amigo','Dia do Sênior e do Pioneiro','Dia Internacional da Juventude',
+ 'Dia Mundial da Limpeza','Dia Mundial do Meio Ambiente','Echolink DMR',
+ 'EducAÇÃO escoteira','Educação para Gentileza e Generosidade',
+ 'Elo Nacional','Escalada','Escoteiros contra a COVID-19',
+ 'Escoteiros do Mundo','Espeleologia (visita a caverna)','Excursão',
+ 'Festa','Fogo de Conselho','Fórum','Gincana',
+ 'Gincana Cultural 2016/2017 - 2ª fase',
+ 'Gincana Cultural Nacional Escoteira','Grande Jogo',
+ 'Grande Jogo Aéreo','Grande Jogo Naval','Hora do Planeta','Indaba',
+ 'Inovadores de Impacto','Insígnia HeforShe','Insígnia Mares Limpos',
+ 'Jamboree','Jogo da cidade','Jornada','Jornada X',
+ 'JOTA','Jota/Joti','JOTI','JOTI - Edição especial',
+ 'Junho Laranja','Lamparada','Luz da Paz de Belém',
+ 'Maio Amarelo','Março Roxo','Mensageiros da Paz (MoP)',
+ 'Módulo','MUTCOM','MUTECO','Mutirão de Doação de Sangue e REDOME',
+ 'Mutirão Nacional de Voluntariado','Mutirão Pioneiro',
+ 'Oficina','Palestras','Parceiros / Campanhas Nacionais',
+ 'Parceiros da UEL','Páscoa do Senhor','Passeio',
+ 'Programa Ambiental da Base Escoteira','Quilômetros pela Paz',
+ 'Radioescotismo','Regata','Restaura Natureza','Reunião especial'
+ ];
+ const TRANSPORT_OPTIONS=['A pé','Avião','Barco','Bicicleta','Carro','Metrô','Ônibus','Outros','Trem'];
  const TYPES={externa:'Atividade externa',acampamento:'Acampamento',acantonamento:'Acantonamento',
   jornada:'Jornada',visita:'Visita educativa',evento:'Evento',especial:'Atividade especial'};
  const STATUS={rascunho:'Rascunho',em_analise:'Aguardando DME',ajustes:'Ajustes solicitados',
   aprovada:'Aprovada',publicada:'Publicada para responsáveis'};
  let data=[],sections=[],own=[],editing=null,steps=[],busy=false;
+ let people={jovens:[],chefes:[],chefes_secoes:[]};
+ let chosenSections=new Set(),chosenYouth=new Set(),chosenChiefs=new Set();
+ let sectionFilter='',chiefFilter='';
  const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
   .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
  const admin=()=>state.profile?.tipo==='administrador';
@@ -101,6 +144,58 @@
   });
   $('externalEditorV107').addEventListener('submit',save);
   box.addEventListener('toggle',()=>{if(box.open)void load();});
+  $('externalEditorV107').addEventListener('change',ev=>{
+    const el=ev.target;
+    if(el.matches('[data-ext-section]')){
+      const id=Number(el.dataset.extSection),checked=el.checked;
+      if(checked){
+        chosenSections.add(id);
+        for(const j of people.jovens)if(Number(j.secao_id)===id&&!j.eh_teste)chosenYouth.add(Number(j.id));
+        for(const link of people.chefes_secoes)
+          if(Number(link.secao_id)===id&&!people.chefes.find(c=>Number(c.id)===Number(link.chefe_id))?.eh_teste)
+            chosenChiefs.add(Number(link.chefe_id));
+      }else{
+        if(chosenSections.size===1){el.checked=true;formStatus('Selecione pelo menos uma seção.');return;}
+        chosenSections.delete(id);
+        for(const j of people.jovens)if(Number(j.secao_id)===id)chosenYouth.delete(Number(j.id));
+        for(const link of people.chefes_secoes)
+          if(Number(link.secao_id)===id&&!people.chefes_secoes.some(l=>
+            Number(l.chefe_id)===Number(link.chefe_id)&&chosenSections.has(Number(l.secao_id))))
+            chosenChiefs.delete(Number(link.chefe_id));
+      }
+      renderPeople();
+    }else if(el.matches('[data-ext-youth]')){
+      const id=Number(el.dataset.extYouth);
+      if(el.checked)chosenYouth.add(id);else chosenYouth.delete(id);
+      renderPeople();
+    }else if(el.matches('[data-ext-chief]')){
+      const id=Number(el.dataset.extChief);
+      if(el.checked)chosenChiefs.add(id);else chosenChiefs.delete(id);
+      renderPeople();
+    }else if(el.id==='externalSectionV107'){
+      if(!chosenSections.has(Number(el.value))){
+        chosenSections.add(Number(el.value));
+        renderPeople();
+      }
+    }else if(el.id==='externalTypeV107'){
+      if(['acampamento','acantonamento'].includes(el.value)){
+        const nights=$('externalNightsV111');if(nights)nights.checked=true;
+      }
+      const typesMap={acampamento:'Acampamento',acantonamento:'Acantonamento',
+        jornada:'Jornada',visita:'Excursão',evento:'Atividade de Grupo',
+        especial:'Atividade de Grupo'};
+      const field=$('externalPaxtuTypeV111');
+      if(field&&typesMap[el.value])field.value=typesMap[el.value];
+    }
+  });
+  $('externalEditorV107').addEventListener('input',ev=>{
+    if(ev.target.id==='externalPeopleSearchV111'){
+      sectionFilter=ev.target.value;renderPeople();
+    }
+    if(ev.target.id==='externalChiefSearchV111'){
+      chiefFilter=ev.target.value;renderPeople();
+    }
+  });
   if(admin()){
     const hint=document.createElement('p');hint.className='external-notes-v107';
     hint.textContent='Transferência Paxtu100: após publicar, copie a atividade e use o favorito na tela Nova Atividade Especial. O salvamento final é manual. ';
@@ -120,7 +215,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,titulo,local,ponto_encontro,data_inicio,data_fim,objetivo,transporte,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -193,6 +288,53 @@
  function canEdit(){return (!editing||['rascunho','ajustes'].includes(editing.status))
    &&manager(Number($('externalSectionV107')?.value||editing?.secao_id));}
 
+
+ const normPerson=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().trim();
+ async function ensureCandidates(){
+   if(people.chefes.length||people.jovens.length)return;
+   const {data:c,error}=await client.rpc('candidatos_programacao_externa_v111');
+   if(error)throw error;
+   people={jovens:c?.jovens||[],chefes:c?.chefes||[],
+     chefes_secoes:c?.chefes_secoes||[]};
+ }
+ function sectionNames(){return [...chosenSections].map(id=>
+   sections.find(s=>Number(s.id)===id)?.nome||'Seção não identificada');}
+ function renderPeople(){
+   const sectionsHost=$('externalChosenSectionsV111'),you=$('externalYouthV111'),
+     adults=$('externalAdultsV111');
+   if(!sectionsHost||!you||!adults)return;
+   const editable=canEdit();
+   const sid=Number($('externalSectionV107')?.value||0);
+   sectionsHost.innerHTML=sections.map(s=>
+     '<label class="ext-member-option-v111"><input type="checkbox" data-ext-section="'+s.id+'" '+
+       (chosenSections.has(Number(s.id))?'checked ':'')+
+       (!editable||Number(s.id)===sid?'disabled ':'')+' />'+esc(s.nome)+'</label>').join('')+
+     (admin()?'<label class="ext-member-option-v111"><input id="externalDirV111" type="checkbox" '+
+       (editing?.incluir_diretoria?'checked ':'')+(editable?'':'disabled ')+
+       '/> Diretoria (sem membros automáticos)</label>':'');
+   // Only people from selected sections can be chosen as juvenile participants.
+   const youth=people.jovens.filter(j=>chosenSections.has(Number(j.secao_id))&&
+      normPerson(j.nome).includes(normPerson(sectionFilter)));
+   you.innerHTML='<p>'+chosenYouth.size+' jovem(ns) selecionado(s).</p>'+
+     (youth.length?youth.map(j=>
+       '<label class="ext-member-option-v111"><input type="checkbox" data-ext-youth="'+j.id+'" '+
+       (chosenYouth.has(Number(j.id))?'checked ':'')+(editable?'':'disabled ')+
+       '/>'+esc(j.nome)+(j.eh_teste?' <small>(teste)</small>':'')+'</label>').join('')
+       :'<p>Nenhum jovem corresponde à pesquisa nas seções selecionadas.</p>');
+   const available=people.chefes.filter(c=>normPerson(c.nome).includes(normPerson(chiefFilter)));
+   adults.innerHTML='<p>'+chosenChiefs.size+' escotista(s) selecionado(s). '+
+     'Você pode acrescentar chefes de outras seções.</p>'+
+     available.map(c=>
+       '<label class="ext-member-option-v111"><input type="checkbox" data-ext-chief="'+c.id+'" '+
+       (chosenChiefs.has(Number(c.id))?'checked ':'')+(editable?'':'disabled ')+
+       '/>'+esc(c.nome)+(c.eh_teste?' <small>(teste)</small>':'')+'</label>').join('');
+ }
+ function selectedIds(){return {
+   secoes:[...chosenSections].sort((a,b)=>a-b),
+   jovens:[...chosenYouth].sort((a,b)=>a-b),
+   chefes:[...chosenChiefs].sort((a,b)=>a-b)
+ };}
  async function openEditor(id){
   if(!state.profile || state.profile.tipo==='responsavel')return;
   formStatus('');
