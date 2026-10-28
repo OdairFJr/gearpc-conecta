@@ -195,7 +195,7 @@ as $fn$
  select exists(
   select 1 from public.programacoes_externas e
   where e.atividade_id=p_atividade_id and e.status='publicada'
-   and (not exists(select 1 from public.programacao_externa_jovens_v111 ej0
+   and (not exists(select 1 from public.programacao_externa_secoes_v111 ej0
            where ej0.programacao_id=e.id)
      or exists(select 1 from public.programacao_externa_jovens_v111 ej
            where ej.programacao_id=e.id and ej.jovem_id=p_jovem_id))
@@ -370,7 +370,7 @@ begin
  where p.user_id=auth.uid() and p.ativo
    and (a.atividade_geral or exists(select 1 from public.atividade_ramos ar
      where ar.atividade_id=a.id and ar.ramo_id=j.ramo_id))
-   and (not exists(select 1 from public.programacao_externa_jovens_v111 ep0 where ep0.programacao_id=e.id)
+   and (not exists(select 1 from public.programacao_externa_secoes_v111 ep0 where ep0.programacao_id=e.id)
         or exists(select 1 from public.programacao_externa_jovens_v111 ep
            where ep.programacao_id=e.id and ep.jovem_id=j.id));
  return coalesce(result,'[]'::jsonb);
@@ -423,7 +423,7 @@ begin
    and (private.sou_admin() or private.sou_chefia_secao(j.secao_id))
    and (a.atividade_geral or exists(select 1 from public.atividade_ramos ar
      where ar.atividade_id=a.id and ar.ramo_id=j.ramo_id))
-   and (not exists(select 1 from public.programacao_externa_jovens_v111 ep0 where ep0.programacao_id=e.id)
+   and (not exists(select 1 from public.programacao_externa_secoes_v111 ep0 where ep0.programacao_id=e.id)
         or exists(select 1 from public.programacao_externa_jovens_v111 ep
            where ep.programacao_id=e.id and ep.jovem_id=j.id));
  return coalesce(result,'[]'::jsonb);
@@ -604,3 +604,6 @@ begin
 end $body$;
 revoke all on function public.receber_autorizacao_papel_v109(bigint,bigint,bigint) from public,anon,authenticated;
 grant execute on function public.receber_autorizacao_papel_v109(bigint,bigint,bigint) to authenticated;
+
+-- O editor antigo não pode contornar as listas estruturadas v111.
+revoke execute on function public.salvar_programacao_externa_v107(jsonb) from authenticated;
