@@ -265,3 +265,14 @@ revoke all on function public.mudar_status_programacao_externa_v107(bigint,text,
  from public,anon,authenticated;
 grant execute on function public.mudar_status_programacao_externa_v107(bigint,text,text)
  to authenticated;
+
+
+-- A limpeza de anexos substituídos precisa de SELECT + DELETE do próprio objeto
+-- órfão; os documentos já vinculados seguem acessíveis apenas à equipe autorizada.
+drop policy if exists "gearpcc_v112_roteiro_orfao_proprio" on storage.objects;
+create policy "gearpcc_v112_roteiro_orfao_proprio"
+ on storage.objects for select to authenticated using (
+  bucket_id='gearpc-roteiros-externos'
+  and owner_id=auth.uid()::text
+  and private.pode_excluir_roteiro_orfao_v112(name)
+ );
