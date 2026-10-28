@@ -543,6 +543,21 @@
   if(!section || !manager(section)){formStatus('Escolha uma seção autorizada.');return null;}
   if(!start||!end||start>=end){formStatus('Informe início e término válidos.');return null;}
   if(value('title').length<3 || !value('place')){formStatus('Informe título e local.');return null;}
+  if(!chosenSections.has(section) || !chosenSections.size){
+    formStatus('Inclua a seção organizadora entre as participantes.');return null;
+  }
+  if(!chosenYouth.size&&!chosenChiefs.size){
+    formStatus('Selecione pelo menos um jovem ou escotista participante.');return null;
+  }
+  if(!$('externalLeaderV111')?.value){
+    formStatus('Escolha um chefe responsável.');return null;
+  }
+  if(!($('externalTransportV111')?.value)){
+    formStatus('Selecione o meio de transporte conforme o Paxtu100.');return null;
+  }
+  if(!($('externalPaxtuTypeV111')?.value.trim())){
+    formStatus('Informe o tipo de atividade utilizado no Paxtu100.');return null;
+  }
   if(steps.some(s=>!s.inicio||!s.fim||s.inicio>=s.fim||
     s.inicio<start||s.fim>end||!String(s.titulo||'').trim())){
       formStatus('Confira as datas, a ordem e o título de cada etapa.');return null;
@@ -551,12 +566,22 @@
    id:editing?.id||null,
    atualizado_em:editing?.atualizado_em||null,
    secao_id:section,atividade_geral:admin()&&$('externalGeneralV107')?.value==='true',
-   tipo:$('externalTypeV107').value,
+   tipo:$('externalTypeV107').value,tipo_paxtu:$('externalPaxtuTypeV111').value.trim(),
    titulo:value('title'),objetivo:value('objective'),
-   local:value('place'),ponto_encontro:value('meeting'),link_mapa:value('map'),
+   secoes_participantes:[...chosenSections],
+   jovens_participantes:[...chosenYouth],
+   chefes_participantes:[...chosenChiefs],
+   incluir_diretoria:admin()&&selectedDirector,
+   responsavel_chefe_id:Number($('externalLeaderV111').value),
+   descricao_breve:value('brief'),local_saida:value('departure'),
+   local_chegada:value('arrival'),transporte_detalhes:value('transportDetails'),
+   online:$('externalOnlineV111').checked,
+   noites_acampadas:$('externalNightsV111').checked,
+   indaba:$('externalIndabaV111').checked,
+   local:value('place'),ponto_encontro:value('departure'),link_mapa:value('map'),
    data_inicio:timestamp(start),data_fim:timestamp(end),
-   transporte:value('transport'),alimentacao:value('food'),
-   materiais:value('materials'),responsavel_nome:value('leader'),
+   transporte:$('externalTransportV111').value,alimentacao:value('food'),
+   materiais:value('materials'),
    custo_estimado:$('externalCostV107').value||null,
    exige_autorizacao:true,
    observacoes:value('notes'),
@@ -568,7 +593,7 @@
   };
   busy=true;formStatus('Salvando roteiro...');
   try{
-   const {data:result,error}=await client.rpc('salvar_programacao_externa_v107',{p_dados:dados});
+   const {data:result,error}=await client.rpc('salvar_programacao_externa_v111',{p_dados:dados});
    if(error)throw error;
    if(!result?.id)throw new Error('O servidor não confirmou o registro.');
    await load();
@@ -639,7 +664,10 @@
        [['link do mapa','link da localizacao'],data.link_mapa],
        [['coordenador','chefe responsavel'],data.coordenador],
        [['tipo de atividade','tipo'],data.tipo],
-       [['transporte'],data.transporte],
+       [['local de saída','local da saida'],data.local_saida],
+       [['local de chegada'],data.local_chegada],
+       [['descreva brevemente a atividade','descrição breve'],data.descricao_breve],
+       [['transporte','meio de transporte'],data.transporte],
        [['custo individual','valor','custo'],data.custo]
      ];
      for(const [names,value]of mapping){
@@ -650,9 +678,15 @@
      const dates=fields.filter(x=>x.type==='date'),times=fields.filter(x=>x.type==='time');
      for(const [e,v] of [[dates[0],data.data_inicio],[dates[1],data.data_fim],
        [times[0],data.hora_inicio],[times[1],data.hora_fim]])if(set(e,v))count++;
-     alert(count+' campo(s) preenchido(s). Confira todos os dados, a seção, os participantes e os horários. '+
-       (missing.length?'Campos para conferir: '+missing.join(', ')+'. ':'')+
-       'O registro ainda NÃO foi salvo.');
+     const youth=(data.jovens||[]).map(p=>p.nome);
+     const chiefs=(data.escotistas||[]).map(p=>p.nome);
+     alert(count+' campo(s) preenchido(s). Seções a selecionar: '+
+       (data.secoes||[]).join(', ')+'. '+
+       'O Paxtu insere todos os integrantes ao selecionar as seções: confira a lista final, retirando os não participantes. '+
+       'Jovens selecionados no Conecta ('+youth.length+'): '+youth.join('; ')+'. '+
+       'Escotistas selecionados ('+chiefs.length+'): '+chiefs.join('; ')+'. '+
+       (missing.length?'Campos para completar manualmente: '+missing.join(', ')+'. ':'')+
+       'Nenhum registro foi salvo automaticamente.');
    }void run();
  }
  async function copyPaxtu(){
@@ -661,10 +695,23 @@
    const d1=dt(r.data_inicio),d2=dt(r.data_fim);
    const payload={
      origem:'gearpc-conecta-externa-v110',versao:1,
-     id_conecta:r.id,nome:r.titulo,tipo:TYPES[r.tipo]||r.tipo,
-     secao:r.atividade_geral?'Todo o grupo':sections.find(s=>Number(s.id)===Number(r.secao_id))?.nome||'',
+     id_conecta:r.id,nome:r.titulo,tipo:r.tipo_paxtu||TYPES[r.tipo]||r.tipo,
+     secoes:sectionNames(),incluir_diretoria:!!r.incluir_diretoria,
+     secao:r.atividade_geral?'Todo o grupo':sectionNames().join('; '),
+     jovens:[...chosenYouth].map(id=>{
+       const j=people.jovens.find(j=>Number(j.id)===id);
+       return {nome:j?.nome||String(id),registro_paxtu:j?.registro_paxtu||'',id_conecta:id};
+     }),
+     escotistas:[...chosenChiefs].map(id=>{
+       const c=people.chefes.find(c=>Number(c.id)===id);
+       return {nome:c?.nome||String(id),registro_paxtu:c?.registro_paxtu||'',id_conecta:id};
+     }),
      local:r.local,link_mapa:r.link_mapa||'',coordenador:r.responsavel_nome,
      transporte:r.transporte||'',custo:r.custo_estimado??'',
+     local_saida:r.local_saida||r.ponto_encontro||'',
+     local_chegada:r.local_chegada||r.ponto_encontro||'',
+     descricao_breve:r.descricao_breve||'',online:!!r.online,
+     noites_acampadas:!!r.noites_acampadas,indaba:!!r.indaba,
      data_inicio:d1.slice(0,10),hora_inicio:d1.slice(11,16),
      data_fim:d2.slice(0,10),hora_fim:d2.slice(11,16),
      encontro:r.ponto_encontro,objetivo:r.objetivo,
@@ -673,7 +720,7 @@
    };
    try{
      await navigator.clipboard.writeText(JSON.stringify(payload));
-     formStatus('Atividade copiada. No Paxtu100 abra Nova Atividade Especial, use o favorito GEArPC → Externa e confira antes de salvar.');
+     formStatus('Atividade, seções e lista final de participantes copiadas. No Paxtu100 abra Nova Atividade Especial e use o favorito GEArPC → Externa. Confira todas as seleções antes de salvar.');
    }catch(e){
      window.prompt('Copie os dados para usar no Paxtu100:',JSON.stringify(payload));
      formStatus('Copie o conteúdo acima para usar no Paxtu100.');
