@@ -182,7 +182,13 @@
       selectedDirector=el.checked;
     }else if(el.id==='externalSectionV107'){
       if(!chosenSections.has(Number(el.value))){
-        chosenSections.add(Number(el.value));
+        const sid=Number(el.value);
+        chosenSections.add(sid);
+        for(const j of people.jovens)
+          if(Number(j.secao_id)===sid&&!j.eh_teste)chosenYouth.add(Number(j.id));
+        for(const link of people.chefes_secoes)
+          if(Number(link.secao_id)===sid&&!people.chefes.find(c=>Number(c.id)===Number(link.chefe_id))?.eh_teste)
+            chosenChiefs.add(Number(link.chefe_id));
         renderPeople();
       }
     }else if(el.id==='externalTypeV107'){
@@ -317,6 +323,7 @@
      adults=$('externalAdultsV111');
    if(!sectionsHost||!you||!adults)return;
    const editable=canEdit();
+   const previousYouthScroll=you.scrollTop,previousChiefScroll=adults.scrollTop;
    const sid=Number($('externalSectionV107')?.value||0);
    sectionsHost.innerHTML=sections.map(s=>
      '<label class="ext-member-option-v111"><input type="checkbox" data-ext-section="'+s.id+'" '+
@@ -341,6 +348,7 @@
        '<label class="ext-member-option-v111"><input type="checkbox" data-ext-chief="'+c.id+'" '+
        (chosenChiefs.has(Number(c.id))?'checked ':'')+(editable?'':'disabled ')+
        '/>'+esc(c.nome)+(c.eh_teste?' <small>(teste)</small>':'')+'</label>').join('');
+   you.scrollTop=previousYouthScroll;adults.scrollTop=previousChiefScroll;
  }
  function selectedIds(){return {
    secoes:[...chosenSections].sort((a,b)=>a-b),
