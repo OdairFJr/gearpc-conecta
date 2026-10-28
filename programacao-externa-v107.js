@@ -398,8 +398,11 @@
       permitted.some(p=>Number(p.id)===Number(s.id)));
    const title=row?.titulo||'';
    const existing=row?.status||'rascunho';
-   const editable=!row||['rascunho','ajustes'].includes(existing);
+   const editable=(!row||['rascunho','ajustes'].includes(existing)) &&
+      (!row||manager(Number(row.secao_id)));
    const disabledControls=!editable;
+   // A chefia convidada por outra seção consulta o roteiro, mas não o edita.
+   const canChange=editable;
    const types=Object.entries(TYPES).map(([key,value])=>
      '<option value="'+key+'" '+(key===(row?.tipo||'externa')?'selected':'')+'>'+esc(value)+'</option>').join('');
    const options=select.map(section=>'<option value="'+section.id+'">'+esc(section.nome)+'</option>').join('');
