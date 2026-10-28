@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v111-external-rosters';
+const CACHE_NAME = 'gearpc-conecta-offline-v112-external-document';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -18,7 +18,7 @@ const APP_SHELL = [
   './ideas-data.js?v=23.0',
   './app.js?v=105.0',
   './programacao.js?v=102.0',
-  './programacao-externa-v107.js?v=111.0',
+  './programacao-externa-v107.js?v=112.0',
   './authorizations-v109.js?v=110.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
@@ -204,7 +204,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-permissions-v106.js?v=106.0"></script>\n</body>');
   }
   if (!html.includes('programacao-externa-v107.js')) {
-    html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=111.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=112.0"></script>\n</body>');
   }
   if (!html.includes('authorizations-v109.js')) {
     html = html.replace('</body>', '  <script src="authorizations-v109.js?v=110.0"></script>\n</body>');
