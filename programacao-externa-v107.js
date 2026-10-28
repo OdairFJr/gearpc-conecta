@@ -501,6 +501,8 @@
     '<label>Custo estimado por participante (R$)<input id="externalCostV107" type="number" min="0" step="0.01" value="'+
      esc(row?.custo_estimado??'')+'" /></label>'+
     '<p class="full external-notes-v107">Autorização específica obrigatória para atividades externas.</p>'+
+    '<p class="full external-notes-v107"><strong>Seções no Paxtu100</strong>'+
+    'Marque todas as seções participantes. A opção Ninhada não apareceu na lista do Paxtu100; confira esse caso manualmente.</p>'+
     '<p class="full external-notes-v107"><strong>Segurança de Atividades</strong>'+
     'Riscos, medidas preventivas, cuidados e plano alternativo são registrados apenas no Plano de Segurança. A atividade só poderá ser publicada após a aprovação do plano pelo DME.</p>'+
     '<p class="full external-notes-v107"><strong>Autorização padronizada</strong>O Conecta gera a autorização segundo o modelo institucional. Nenhum texto precisa ser digitado pela chefia.</p>'+
@@ -711,7 +713,7 @@
    const payload={
      origem:'gearpc-conecta-externa-v110',versao:1,
      id_conecta:r.id,nome:r.titulo,tipo:r.tipo_paxtu||TYPES[r.tipo]||r.tipo,
-     secoes:sectionNames(),incluir_diretoria:!!r.incluir_diretoria,
+     secoes:[...sectionNames(),...(r.incluir_diretoria?['DIRETORIA']:[])],incluir_diretoria:!!r.incluir_diretoria,
      secao:r.atividade_geral?'Todo o grupo':sectionNames().join('; '),
      jovens:[...chosenYouth].map(id=>{
        const j=people.jovens.find(j=>Number(j.id)===id);
