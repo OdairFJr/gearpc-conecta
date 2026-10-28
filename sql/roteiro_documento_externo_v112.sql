@@ -104,6 +104,10 @@ begin
    or p_nome !~* '\.(pdf|doc|docx)$' then
    raise exception 'Selecione um documento PDF, DOC ou DOCX válido';
  end if;
+ if lower(regexp_replace(p_nome,'^.*\\.','')) <>
+    lower(regexp_replace(p_path,'^.*\\.','')) then
+    raise exception 'A extensão do documento não corresponde ao arquivo armazenado';
+ end if;
  if p_path is null or not private.pode_gravar_roteiro_externo_v112(p_path)
   or split_part(p_path,'/',1)<>p_id::text then
    raise exception 'Caminho do anexo inválido';
