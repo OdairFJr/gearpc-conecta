@@ -109,6 +109,11 @@
     '.ext-rosters-v111{margin:12px 0}.ext-rosters-v111 h4{color:#1c4565;margin:8px 0}',
     '.ext-flagline-v111{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}.ext-flagline-v111 label{display:flex;gap:6px;align-items:center}',
     '.ext-flagline-v111 input{width:auto!important}',
+    '.ext-doc-v112{padding:13px;border:1px solid #c5d5e4;border-radius:10px;background:#fff;margin:10px 0 16px}',
+    '.ext-doc-v112 p{margin:6px 0 10px}.ext-doc-v112 label{display:grid;gap:7px;font-size:.82rem;font-weight:800;color:#2d526e}',
+    '.ext-doc-v112 input[type=file]{width:100%;box-sizing:border-box;padding:9px;border:1px solid #c3d4e2;border-radius:8px}',
+    '.ext-doc-v112 .ext-doc-existing-v112{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}',
+    '.ext-doc-v112 button{padding:9px 12px;border:1px solid #b6cad8;border-radius:8px;background:#f5faff;color:#16476d;font-weight:750}',
     '.external-hidden-v107{display:none!important}',
     '@media(max-width:650px){.external-grid-v107{grid-template-columns:1fr}.external-card-v107{align-items:flex-start;flex-direction:column}}'
   ].join('');
@@ -146,6 +151,8 @@
    if(e.target.closest('#externalAdjustV107'))await action('ajustar');
    if(e.target.closest('#externalPublishV107'))await action('publicar');
    if(e.target.closest('#externalCopyPaxtuV110'))await copyPaxtu();
+   if(e.target.closest('#externalDownloadDocumentV112'))await downloadScheduleDocument();
+   if(e.target.closest('#externalUnlinkDocumentV112'))await unlinkScheduleDocument();
    if(e.target.closest('#externalBindSafetyV108'))await attachSafety();
   });
   $('externalEditorV107').addEventListener('submit',save);
@@ -229,7 +236,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,roteiro_arquivo_path,roteiro_arquivo_nome,roteiro_arquivo_mime,roteiro_arquivo_tamanho,roteiro_arquivo_atualizado_em,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -251,7 +258,8 @@
    return '<article class="external-card-v107"><div><strong>'+esc(row.titulo)+'</strong>'+
      '<small>'+esc(TYPES[row.tipo]||row.tipo)+' • '+(row.atividade_geral?'Todo o grupo':esc(byId.get(Number(row.secao_id))||'Seção'))+
      ' • '+esc(dateFormat(row.data_inicio))+' até '+esc(dateFormat(row.data_fim))+
-     '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+'</small></div>'+
+     '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+
+       (row.roteiro_arquivo_path?' • PDF/Word anexado':'')+'</small></div>'+
      '<button type="button" data-external-open="'+Number(row.id)+'">Abrir roteiro</button></article>';
   }).join(''):'<p>Nenhuma programação externa cadastrada. Use “Nova programação externa” para começar.</p>';
  }
@@ -517,7 +525,20 @@
     '</div><div class="external-grid-v107 ext-rosters-v111">'+
       '<section><h4>Jovens</h4><div id="externalYouthV111" class="ext-member-list-v111"></div></section>'+
       '<section><h4>Escotistas</h4><div id="externalAdultsV111" class="ext-member-list-v111"></div></section>'+
-    '</div><h3>Roteiro / linha do tempo</h3>'+
+    '</div><h3>Roteiro da atividade</h3>'+
+    '<p>Se o roteiro já estiver pronto em PDF ou Word, anexe esse documento. Não é necessário redigitar as etapas. Os dados gerais, as seções e os participantes continuam obrigatórios.</p>'+
+    '<div class="ext-doc-v112"><strong>Documento do roteiro (PDF, DOC ou DOCX)</strong>'+
+    (row?.roteiro_arquivo_path?
+       '<div class="ext-doc-existing-v112"><span>Arquivo salvo: <strong>'+esc(row.roteiro_arquivo_nome)+
+       '</strong> ('+Math.round((Number(row.roteiro_arquivo_tamanho)||0)/1024)+' KB)</span>'+
+       '<button type="button" id="externalDownloadDocumentV112">Baixar roteiro</button>'+
+       (editable?'<button type="button" id="externalUnlinkDocumentV112">Remover anexo</button>':'')+
+       '</div>':'<p>Ainda não há documento anexado.</p>')+
+    (editable?'<label>Enviar arquivo existente ou substituir o anterior'+
+      '<input type="file" id="externalDocumentFileV112" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />'+
+      '<small>Até 15 MB. O documento será enviado ao salvar. Como alternativa, digite as etapas abaixo.</small>'+
+      '</label>':'')+
+    '</div><h3>Etapas do roteiro (opcionais quando houver documento)</h3>'+
     '<p>Inclua as etapas com horários reais; o roteiro pode atravessar vários dias.</p>'+
     '<div id="externalStagesV107"></div>'+
     '<div class="external-actions-v107"><button type="button" id="externalAddStageV107">＋ Adicionar etapa</button></div>'+
@@ -575,6 +596,13 @@
   if(!($('externalPaxtuTypeV111')?.value.trim())){
     formStatus('Informe o tipo de atividade utilizado no Paxtu100.');return null;
   }
+  const attachedFile=$('externalDocumentFileV112')?.files?.[0]||null;
+  if(attachedFile){
+    const ext=attachedFile.name.split('.').pop()?.toLowerCase();
+    if(!['pdf','doc','docx'].includes(ext)||!attachedFile.size||attachedFile.size>15728640){
+      formStatus('O documento precisa ser PDF, DOC ou DOCX e ter até 15 MB.');return null;
+    }
+  }
   if(steps.some(s=>!s.inicio||!s.fim||s.inicio>=s.fim||
     s.inicio<start||s.fim>end||!String(s.titulo||'').trim())){
       formStatus('Confira as datas, a ordem e o título de cada etapa.');return null;
@@ -613,15 +641,65 @@
    const {data:result,error}=await client.rpc('salvar_programacao_externa_v111',{p_dados:dados});
    if(error)throw error;
    if(!result?.id)throw new Error('O servidor não confirmou o registro.');
+   if(attachedFile){
+     formStatus('Dados salvos. Enviando documento PDF/Word...');
+     const extension=attachedFile.name.split('.').pop().toLowerCase();
+     const mimeTypes={
+       pdf:'application/pdf',doc:'application/msword',
+       docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+     };
+     const path=String(result.id)+'/'+crypto.randomUUID()+'.'+extension;
+     const {error:uploadError}=await client.storage.from('gearpc-roteiros-externos')
+       .upload(path,attachedFile,{contentType:mimeTypes[extension],upsert:false});
+     if(uploadError)throw new Error('O rascunho foi salvo, mas o envio do documento falhou: '+uploadError.message);
+     const {error:linkError}=await client.rpc('vincular_roteiro_documento_externo_v112',{
+       p_id:Number(result.id),p_path:path,p_nome:attachedFile.name,
+       p_atualizado_em:result.atualizado_em
+     });
+     if(linkError){
+       await client.storage.from('gearpc-roteiros-externos').remove([path]);
+       throw new Error('O rascunho foi salvo, mas o documento não foi vinculado: '+linkError.message);
+     }
+   }
    await load();
    editing=data.find(r=>Number(r.id)===Number(result.id))||{
      ...dados,id:result.id,atualizado_em:result.atualizado_em,status:result.status};
-   formStatus('Roteiro salvo.');
+   formStatus(attachedFile?'Rascunho e documento salvos.':'Roteiro salvo.');
    return Number(result.id);
   }catch(error){
    formStatus('Não foi possível salvar: '+error.message);
    return null;
   }finally{busy=false;}
+ }
+ async function downloadScheduleDocument(){
+   const row=editing;
+   if(!row?.roteiro_arquivo_path){formStatus('Esta atividade ainda não tem documento.');return;}
+   formStatus('Baixando roteiro...');
+   try{
+     const {data:blob,error}=await client.storage.from('gearpc-roteiros-externos')
+       .download(row.roteiro_arquivo_path);
+     if(error)throw error;
+     const url=URL.createObjectURL(blob);
+     const link=document.createElement('a');
+     link.href=url;link.download=row.roteiro_arquivo_nome||'roteiro-externo.pdf';
+     document.body.appendChild(link);link.click();link.remove();
+     setTimeout(()=>URL.revokeObjectURL(url),60000);
+     formStatus('Documento pronto para ser aberto ou enviado ao Paxtu100.');
+   }catch(err){formStatus('Não foi possível baixar o documento: '+err.message);}
+ }
+ async function unlinkScheduleDocument(){
+   if(busy||!editing?.id||!editing?.roteiro_arquivo_path||!canEdit())return;
+   if(!window.confirm('Retirar o documento desta programação? Enquanto for rascunho, você poderá enviar outro.'))return;
+   busy=true;formStatus('Retirando documento...');
+   try{
+     const id=editing.id,old=editing.roteiro_arquivo_path;
+     const {error}=await client.rpc('desvincular_roteiro_documento_externo_v112',{p_id:id});
+     if(error)throw error;
+     await client.storage.from('gearpc-roteiros-externos').remove([old]);
+     await load();await openEditor(id);
+     formStatus('Documento retirado. Envie outro ou preencha o roteiro no aplicativo.');
+   }catch(err){formStatus('Não foi possível retirar o documento: '+err.message);}
+   finally{busy=false;}
  }
  async function save(event){
   event.preventDefault();
@@ -703,6 +781,7 @@
        'Jovens selecionados no Conecta ('+youth.length+'): '+youth.join('; ')+'. '+
        'Escotistas selecionados ('+chiefs.length+'): '+chiefs.join('; ')+'. '+
        (missing.length?'Campos para completar manualmente: '+missing.join(', ')+'. ':'')+
+       (data.roteiro_em_anexo?'Há um roteiro em PDF/Word vinculado no Conecta: baixe o arquivo pelo Conecta e faça o upload manual no Paxtu100. ':'')+
        'Nenhum registro foi salvo automaticamente.');
    }void run();
  }
@@ -732,12 +811,16 @@
      data_inicio:d1.slice(0,10),hora_inicio:d1.slice(11,16),
      data_fim:d2.slice(0,10),hora_fim:d2.slice(11,16),
      encontro:r.ponto_encontro,objetivo:r.objetivo,
+     documento_roteiro:r.roteiro_arquivo_nome||null,
+     roteiro_em_anexo:!!r.roteiro_arquivo_path,
      alimentacao:r.alimentacao,materiais:r.materiais,observacoes:r.observacoes,
      etapas:steps.map(e=>({...e}))
    };
    try{
      await navigator.clipboard.writeText(JSON.stringify(payload));
-     formStatus('Atividade, seções e lista final de participantes copiadas. No Paxtu100 abra Nova Atividade Especial e use o favorito GEArPC → Externa. Confira todas as seleções antes de salvar.');
+     formStatus('Atividade, seções e participantes copiados. Abra o Paxtu100 e use o favorito GEArPC → Externa. '+
+       (r.roteiro_arquivo_path?'Baixe também o PDF/Word pelo botão "Baixar roteiro" e faça upload do documento na área correspondente do Paxtu100. ':'')+
+       'Confira todas as informações antes de salvar.');
    }catch(e){
      window.prompt('Copie os dados para usar no Paxtu100:',JSON.stringify(payload));
      formStatus('Copie o conteúdo acima para usar no Paxtu100.');
