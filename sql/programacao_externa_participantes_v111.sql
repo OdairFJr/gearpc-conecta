@@ -46,7 +46,7 @@ returns jsonb language plpgsql stable security definer set search_path=''
 as $fn$
 declare v jsonb;
 begin
- if auth.uid() is null or not (private.sou_admin() or exists(
+ if auth.uid() is null or not (private.sou_admin() or private.sou_dirigente() or exists(
    select 1 from public.perfis_usuarios p
      join public.chefe_secoes cs on cs.chefe_id=p.chefe_id
    where p.user_id=auth.uid() and p.ativo and p.tipo='chefia')) then
@@ -96,6 +96,9 @@ begin
  end if;
  if v_geral and not private.sou_admin() then
    raise exception 'Somente administração pode criar atividade geral' using errcode='42501';
+ end if;
+ if coalesce((p_dados->>'incluir_diretoria')::boolean,false) and not private.sou_admin() then
+   raise exception 'Somente a administração pode selecionar a Diretoria' using errcode='42501';
  end if;
  if v_secoes is null or jsonb_typeof(v_secoes)<>'array' or jsonb_array_length(v_secoes)<1
    or jsonb_array_length(v_secoes)>30 or
