@@ -109,6 +109,11 @@
     '.ext-rosters-v111{margin:12px 0}.ext-rosters-v111 h4{color:#1c4565;margin:8px 0}',
     '.ext-flagline-v111{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0}.ext-flagline-v111 label{display:flex;gap:6px;align-items:center}',
     '.ext-flagline-v111 input{width:auto!important}',
+    '.ext-doc-v112{padding:13px;border:1px solid #c5d5e4;border-radius:10px;background:#fff;margin:10px 0 16px}',
+    '.ext-doc-v112 p{margin:6px 0 10px}.ext-doc-v112 label{display:grid;gap:7px;font-size:.82rem;font-weight:800;color:#2d526e}',
+    '.ext-doc-v112 input[type=file]{width:100%;box-sizing:border-box;padding:9px;border:1px solid #c3d4e2;border-radius:8px}',
+    '.ext-doc-v112 .ext-doc-existing-v112{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}',
+    '.ext-doc-v112 button{padding:9px 12px;border:1px solid #b6cad8;border-radius:8px;background:#f5faff;color:#16476d;font-weight:750}',
     '.external-hidden-v107{display:none!important}',
     '@media(max-width:650px){.external-grid-v107{grid-template-columns:1fr}.external-card-v107{align-items:flex-start;flex-direction:column}}'
   ].join('');
@@ -146,6 +151,8 @@
    if(e.target.closest('#externalAdjustV107'))await action('ajustar');
    if(e.target.closest('#externalPublishV107'))await action('publicar');
    if(e.target.closest('#externalCopyPaxtuV110'))await copyPaxtu();
+   if(e.target.closest('#externalDownloadDocumentV112'))await downloadScheduleDocument();
+   if(e.target.closest('#externalUnlinkDocumentV112'))await unlinkScheduleDocument();
    if(e.target.closest('#externalBindSafetyV108'))await attachSafety();
   });
   $('externalEditorV107').addEventListener('submit',save);
@@ -229,7 +236,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,roteiro_arquivo_path,roteiro_arquivo_nome,roteiro_arquivo_mime,roteiro_arquivo_tamanho,roteiro_arquivo_atualizado_em,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -251,7 +258,8 @@
    return '<article class="external-card-v107"><div><strong>'+esc(row.titulo)+'</strong>'+
      '<small>'+esc(TYPES[row.tipo]||row.tipo)+' • '+(row.atividade_geral?'Todo o grupo':esc(byId.get(Number(row.secao_id))||'Seção'))+
      ' • '+esc(dateFormat(row.data_inicio))+' até '+esc(dateFormat(row.data_fim))+
-     '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+'</small></div>'+
+     '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+
+       (row.roteiro_arquivo_path?' • PDF/Word anexado':'')+'</small></div>'+
      '<button type="button" data-external-open="'+Number(row.id)+'">Abrir roteiro</button></article>';
   }).join(''):'<p>Nenhuma programação externa cadastrada. Use “Nova programação externa” para começar.</p>';
  }
@@ -517,7 +525,20 @@
     '</div><div class="external-grid-v107 ext-rosters-v111">'+
       '<section><h4>Jovens</h4><div id="externalYouthV111" class="ext-member-list-v111"></div></section>'+
       '<section><h4>Escotistas</h4><div id="externalAdultsV111" class="ext-member-list-v111"></div></section>'+
-    '</div><h3>Roteiro / linha do tempo</h3>'+
+    '</div><h3>Roteiro da atividade</h3>'+
+    '<p>Se o roteiro já estiver pronto em PDF ou Word, anexe esse documento. Não é necessário redigitar as etapas. Os dados gerais, as seções e os participantes continuam obrigatórios.</p>'+
+    '<div class="ext-doc-v112"><strong>Documento do roteiro (PDF, DOC ou DOCX)</strong>'+
+    (row?.roteiro_arquivo_path?
+       '<div class="ext-doc-existing-v112"><span>Arquivo salvo: <strong>'+esc(row.roteiro_arquivo_nome)+
+       '</strong> ('+Math.round((Number(row.roteiro_arquivo_tamanho)||0)/1024)+' KB)</span>'+
+       '<button type="button" id="externalDownloadDocumentV112">Baixar roteiro</button>'+
+       (editable?'<button type="button" id="externalUnlinkDocumentV112">Remover anexo</button>':'')+
+       '</div>':'<p>Ainda não há documento anexado.</p>')+
+    (editable?'<label>Enviar arquivo existente ou substituir o anterior'+
+      '<input type="file" id="externalDocumentFileV112" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />'+
+      '<small>Até 15 MB. O documento será enviado ao salvar. Como alternativa, digite as etapas abaixo.</small>'+
+      '</label>':'')+
+    '</div><h3>Etapas do roteiro (opcionais quando houver documento)</h3>'+
     '<p>Inclua as etapas com horários reais; o roteiro pode atravessar vários dias.</p>'+
     '<div id="externalStagesV107"></div>'+
     '<div class="external-actions-v107"><button type="button" id="externalAddStageV107">＋ Adicionar etapa</button></div>'+
