@@ -306,8 +306,12 @@
    people={jovens:c?.jovens||[],chefes:c?.chefes||[],
      chefes_secoes:c?.chefes_secoes||[]};
  }
- function sectionNames(){return [...chosenSections].map(id=>
-   sections.find(s=>Number(s.id)===id)?.nome||'Seção não identificada');}
+ function sectionNames(){return [...chosenSections].map(id=>{
+   const sec=sections.find(s=>Number(s.id)===id);
+   if(!sec)return 'Seção não identificada';
+   const prefix={2:'ALCATEIA',3:'TROPA ESCOTEIRA',4:'TROPA SÊNIOR',5:'CLÃ'}[Number(sec.ramo_id)]||'';
+   return (prefix?prefix+' ':'')+sec.nome.toLocaleUpperCase('pt-BR');
+ });}
  function renderPeople(){
    const sectionsHost=$('externalChosenSectionsV111'),you=$('externalYouthV111'),
      adults=$('externalAdultsV111');
