@@ -71,7 +71,11 @@
    dateStyle:'short',timeStyle:'short'}):'Não informada';
  const nowLocal=()=>dateLocal(new Date().toISOString());
  const status=(text)=>{const node=$('externalStatusV107');if(node)node.textContent=text||'';};
- const formStatus=text=>{const node=$('externalFormStatusV107');if(node)node.textContent=text||'';};
+ const formStatus=text=>{
+   for(const id of ['externalFormStatusV107','externalDmeStatusV114']){
+     const node=$(id);if(node)node.textContent=text||'';
+   }
+ };
 
  function styles(){
   if($('externalCssV107'))return;
@@ -480,7 +484,7 @@
          '<button type="button" data-dme-action="comentar">Registrar comentário</button>'+
          '<button type="button" data-dme-action="ajustar">Solicitar ajustes</button>'+
          (existing==='em_analise'?'<button type="button" data-dme-action="reprovar">Reprovar atividade</button>':'')+
-       '</div></section>':'';
+       '</div><p id="externalDmeStatusV114" class="external-status-v107" role="status"></p></section>':'';
    let safetyOptions='';
    if(admin() && row?.status==='aprovada') {
      const {data:approved,error:plansError}=await client.rpc('listar_planos_seguranca_externa_v108');
