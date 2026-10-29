@@ -129,6 +129,9 @@
     '.ext-review-actions-v114 button[data-dme-action="reprovar"]{border-color:#b77777;color:#923232}',
     '.ext-review-history-v114{font-size:.78rem;color:#445d72;margin:12px 0 0;padding-left:18px}',
     '.ext-review-history-v114 li{margin:5px 0;white-space:normal;overflow-wrap:anywhere}',
+    '.ext-reopen-v116{padding:12px;border-radius:10px;border:1px solid #d5bf8d;background:#fff9ed;color:#624b25;margin:10px 0}',
+    '.ext-reopen-v116 strong{display:block;margin-bottom:4px}',
+    '.ext-review-actions-v114 button[data-dme-action="ajustar"].ext-reopen-button-v116{background:#fff2d6;border:2px solid #b58c45;color:#664513}',
     '.external-auth-preview-v115{margin:14px 0;border:2px solid #aebfd0;border-radius:12px;background:#fff;padding:17px;color:#263c51}',
     '.external-auth-preview-v115 h4{color:#143d61;text-align:center;margin:5px 0 12px}',
     '.external-auth-preview-v115 .document-facts-v110{margin:15px 0}',
@@ -479,16 +482,24 @@
          (event.parecer?' — '+esc(event.parecer):'')+'</li>').join('')+'</ol></section>':'';
    }
    const showReview=canReviewExternal&&row&&['em_analise','aprovada'].includes(existing);
+   const approvedLockNotice=existing==='aprovada'?'<div class="ext-reopen-v116">'+
+     '<strong>Programação aprovada: edição bloqueada.</strong>'+
+     (canReviewExternal?'Para corrigir datas ou outros dados, use o botão “Reabrir para correção” abaixo. '+
+       'A programação precisará passar por nova aprovação do DME.':
+       'Peça ao Diretor de Métodos Educativos que use “Reabrir para correção”. '+
+       'Depois será possível editar e reenviar a programação.')+'</div>':'';
    const reviewPanel=showReview?
      '<section class="ext-review-v114" id="externalDmePanelV114">'+
-       '<h4>Conferência da programação externa — DME</h4>'+
-       '<p>Registre sua avaliação antes de decidir. O comentário é opcional ao aprovar, mas obrigatório para solicitar ajustes, reprovar ou comentar sem decidir.</p>'+
+       '<h4>'+(existing==='aprovada'?'Reabrir programação aprovada — DME':'Conferência da programação externa — DME')+'</h4>'+
+       '<p>'+(existing==='aprovada'?'Esta programação ainda não foi publicada. Para corrigir datas, participantes ou roteiro, informe o motivo e reabra para edição. Após a correção, a chefia deverá reenviar ao DME.':'Registre sua avaliação antes de decidir. O comentário é opcional ao aprovar, mas obrigatório para solicitar ajustes, reprovar ou comentar sem decidir.')+'</p>'+
        '<label>Parecer e orientações do DME'+
          '<textarea id="externalDmeCommentV114" maxlength="4000" rows="4" placeholder="Escreva aqui os comentários ou as correções necessárias..."></textarea></label>'+
        '<div class="ext-review-actions-v114">'+
          (existing==='em_analise'?'<button type="button" data-dme-action="aprovar">Aprovar atividade</button>':'')+
          '<button type="button" data-dme-action="comentar">Registrar comentário</button>'+
-         '<button type="button" data-dme-action="ajustar">Solicitar ajustes</button>'+
+         '<button type="button" data-dme-action="ajustar" '+
+          (existing==='aprovada'?'class="ext-reopen-button-v116"':'')+'>'+
+          (existing==='aprovada'?'Reabrir para correção':'Solicitar ajustes')+'</button>'+
          (existing==='em_analise'?'<button type="button" data-dme-action="reprovar">Reprovar atividade</button>':'')+
        '</div><p id="externalDmeStatusV114" class="external-status-v107" role="status"></p></section>':'';
    let safetyOptions='';
@@ -525,7 +536,7 @@
     '<h3>'+(row?'Programação externa: '+esc(row.titulo):'Nova programação externa')+'</h3>'+
     '<p>Tipo: '+esc(STATUS[existing]||existing)+
       '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+
-      note+reviewPanel+reviewHistory+safetyOptions+
+      note+approvedLockNotice+reviewPanel+reviewHistory+safetyOptions+
     '<form id="externalFormV107"><div class="external-grid-v107">'+
     '<label>Seção de referência (chefia organizadora)<select id="externalSectionV107" required>'+options+'</select></label>'+
     '<label>Tipo interno da atividade<select id="externalTypeV107">'+types+'</select></label>'+
@@ -935,6 +946,7 @@
  async function action(operation){
   if(busy)return;
   let id=editing?.id;
+  const reopeningApproved=operation==='ajustar'&&editing?.status==='aprovada';
   if(operation==='enviar'){
    id=await persist();
    if(!id)return;
@@ -947,6 +959,7 @@
       $('externalDmeCommentV114')?.focus();return;
     }
     if(operation==='reprovar'&&!window.confirm('Reprovar definitivamente esta programação externa? Ela ficará bloqueada para edição e publicação.'))return;
+    if(reopeningApproved&&!window.confirm('Reabrir a programação aprovada para edição? A aprovação anterior ficará no histórico, e será necessária nova conferência do DME antes de publicar.'))return;
   }else if(operation==='publicar'){
     if(!window.confirm('Publicar esta atividade aprovada para o cadastro usado pelos responsáveis? A programação será bloqueada para preservar os registros e autorizações.'))return;
   }
@@ -960,7 +973,7 @@
     const messages={
       enviar:'Enviada para conferência do DME.',
       aprovar:'Atividade aprovada pelo DME. Ainda não publicada aos responsáveis.',
-      ajustar:'Ajustes solicitados: a programação voltou para a chefia.',
+      ajustar:reopeningApproved?'Programação reaberta para correção. Agora edite as datas, salve e envie novamente ao DME para nova aprovação.':'Ajustes solicitados: a programação voltou para a chefia.',
       comentar:'Comentário do DME registrado. A atividade permanece em análise.',
       reprovar:'Atividade reprovada com justificativa registrada. Não poderá ser publicada.',
       publicar:'Atividade publicada para os responsáveis.'
