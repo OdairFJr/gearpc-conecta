@@ -47,6 +47,9 @@
       '.authorizations-sign-v109 input[type=text],.authorizations-sign-v109 input[inputmode=numeric],.authorizations-v109 select{padding:10px;box-sizing:border-box;width:100%;border:1px solid #bdcedd;border-radius:8px;background:#fff;color:#1c394f;font:inherit}',
       '.auth-sign-error-v117{padding:8px 10px;margin:7px 0;color:#9a2828;font-weight:800;border-left:3px solid #b63b3b;min-height:1em}',
       '.auth-sign-hint-v117{color:#516a82;font-size:.76rem}',
+      '.auth-name-validation-v120{font-size:.78rem;font-weight:800;color:#a13f30;min-height:1em;margin:3px 0}',
+      '.auth-registered-name-v120{background:#eef6fc;padding:10px;border-radius:8px;color:#254960;font-size:.78rem}',
+      '.auth-fill-name-v120{align-self:flex-start;border:1px solid #9cbad1!important;background:#edf6fc!important}',
       '.authorizations-sign-v109 label.check{display:flex;flex-direction:row;align-items:flex-start;gap:9px}',
       '.authorizations-sign-v109 input[type=checkbox]{flex:0 0 auto;margin-top:3px}',
       '.authorizations-sign-v109 button.primary{background:#0a376c;color:white}',
@@ -156,6 +159,21 @@
         const card=$('familyAuthListV109')?.querySelector('[data-family-auth-row="'+i+'"]');
         if(row)printSheet(withIdentity(row,card));return;
       }
+      const fill=ev.target.closest('[data-fill-registered-name]');
+      if(fill){
+        const i=Number(fill.dataset.fillRegisteredName),row=familyRows[i];
+        const card=$('familyAuthListV109')?.querySelector('[data-family-auth-row="'+i+'"]');
+        const input=card?.querySelector('[data-sign-name]');
+        if(row&&input){
+          input.value=row.responsavel_nome||'';
+          input.removeAttribute('aria-invalid');
+          const warning=card.querySelector('[data-name-validation]');
+          if(warning)warning.textContent='Nome cadastrado aplicado.';
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          showSignMessage(card,'Nome do responsável cadastrado aplicado. Confira seu documento e a declaração antes de assinar.');
+        }
+        return;
+      }
       const sign=ev.target.closest('[data-sign-authorization]');
       if(sign)await signElectronic(Number(sign.dataset.signAuthorization),sign.dataset.answer);
     });
@@ -170,6 +188,11 @@
         document:card.querySelector('[data-sign-document]')?.value||'',
         accepted:!!card.querySelector('[data-sign-accept]')?.checked
       });
+      if(ev.target.matches('[data-sign-name]')){
+        const warning=card.querySelector('[data-name-validation]');
+        if(warning)warning.textContent='';
+        ev.target.removeAttribute('aria-invalid');
+      }
       previewCardIdentity(card,row);
     };
     panel.addEventListener('input',saveDraft);
@@ -181,7 +204,7 @@
     const rows=familyRows;
     host.innerHTML=rows.length?rows.map((r,i)=>{
       const current=validAuthorization(r),draft=familyDrafts.get(draftKey(r))||{};
-      const name=draft.name||'';
+      const name=draft.name===undefined?(r.responsavel_nome||''):draft.name;
       const docType=draft.documentType==='RG'?'RG':'CPF';
       const missing=[];
       if(!r.local_saida&&!r.ponto_encontro)missing.push('local de saída');
@@ -197,7 +220,11 @@
         (current?' • '+esc(r.nome_assinante||'')+' • '+esc(when(r.assinado_em)):'')+'</p>'+
         '<div class="authorizations-sign-v109">'+
         '<label>Nome completo de quem vai assinar'+
-          '<input type="text" data-sign-name maxlength="200" autocomplete="name" placeholder="Preencher à mão no impresso ou digitar para assinar" value="'+esc(name)+'"></label>'+
+          '<input type="text" data-sign-name maxlength="200" autocomplete="name" placeholder="Nome completo cadastrado" value="'+esc(name)+'"></label>'+
+        '<p class="auth-registered-name-v120">A assinatura eletrônica pertence à conta autenticada: <strong>'+esc(r.responsavel_nome||'Nome não identificado')+'</strong>. '+
+          'Outro responsável precisa entrar com seu próprio acesso vinculado ao jovem.</p>'+
+        '<button type="button" class="auth-fill-name-v120" data-fill-registered-name="'+i+'">Usar nome cadastrado</button>'+
+        '<p data-name-validation class="auth-name-validation-v120" role="alert"></p>'+
         '<label>Tipo de documento de identificação'+
           '<select data-sign-doc-type><option value="CPF" '+(docType==='CPF'?'selected':'')+'>CPF</option>'+
           '<option value="RG" '+(docType==='RG'?'selected':'')+'>RG</option></select></label>'+
@@ -248,10 +275,19 @@
     const acceptField=card.querySelector('[data-sign-accept]');
     const name=nameField?.value?.trim()||'';
     const numeroDoc=docField?.value?.trim()||'';
-    if(name.length<5){showSignMessage(card,'Informe seu nome completo.');nameField?.focus();return;}
-    if(name.toLocaleLowerCase('pt-BR')!==(row.responsavel_nome||'').trim().toLocaleLowerCase('pt-BR')){
-      showSignMessage(card,'O nome deve corresponder ao cadastro do responsável.');nameField?.focus();return;
+    if(name.length<5||name.toLocaleLowerCase('pt-BR')!==(row.responsavel_nome||'').trim().toLocaleLowerCase('pt-BR')){
+      const expected=row.responsavel_nome||'nome do responsável cadastrado';
+      const msg='Assinatura não iniciada. Esta conta está cadastrada como “'+expected+'”. '+
+        'Para assinar eletronicamente, use esse nome, ou acesse a conta de outro responsável vinculado ao jovem.';
+      nameField?.setAttribute('aria-invalid','true');
+      const warning=card.querySelector('[data-name-validation]');
+      if(warning)warning.textContent=msg;
+      showSignMessage(card,msg);
+      return;
     }
+    nameField?.removeAttribute('aria-invalid');
+    const warning=card.querySelector('[data-name-validation]');
+    if(warning)warning.textContent='';
     if(tipo==='CPF'&&!validCpf(numeroDoc)){showSignMessage(card,'Digite um CPF válido com 11 dígitos.');docField?.focus();return;}
     if(tipo==='RG'&&!validRg(numeroDoc)){showSignMessage(card,'Informe um RG com 5 a 20 letras ou números.');docField?.focus();return;}
     if(!acceptField?.checked){showSignMessage(card,'Marque a declaração antes de assinar.');acceptField?.focus();return;}
