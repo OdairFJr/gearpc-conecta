@@ -64,7 +64,7 @@
   // à atividade efetivamente publicada, não ao modelo antigo de cada chefe.
   function consentDocument(row){
     const documento=row.documento_responsavel||'____________________________';
-    const tipoDocumento=row.tipo_documento==='RG'?'RG':'CPF';
+    const tipoDocumento=!row.documento_responsavel?'CPF ou RG':(row.tipo_documento==='RG'?'RG':'CPF');
     const reais=value=>value===null||value===undefined||value===''?
       'Não informado':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const chef=row.chefe_responsavel||'Não informado';
