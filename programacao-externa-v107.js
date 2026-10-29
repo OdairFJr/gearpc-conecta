@@ -129,6 +129,11 @@
     '.ext-review-actions-v114 button[data-dme-action="reprovar"]{border-color:#b77777;color:#923232}',
     '.ext-review-history-v114{font-size:.78rem;color:#445d72;margin:12px 0 0;padding-left:18px}',
     '.ext-review-history-v114 li{margin:5px 0;white-space:normal;overflow-wrap:anywhere}',
+    '.external-auth-preview-v115{margin:14px 0;border:2px solid #aebfd0;border-radius:12px;background:#fff;padding:17px;color:#263c51}',
+    '.external-auth-preview-v115 h4{color:#143d61;text-align:center;margin:5px 0 12px}',
+    '.external-auth-preview-v115 .document-facts-v110{margin:15px 0}',
+    '.external-auth-preview-v115 .document-facts-v110 div{margin:4px 0}',
+    '.external-auth-preview-v115 .preview-only-v115{padding:10px;background:#f3f6fa;border-radius:8px;font-weight:750}',
     '.external-hidden-v107{display:none!important}',
     '@media(max-width:650px){.external-grid-v107{grid-template-columns:1fr}.external-card-v107{align-items:flex-start;flex-direction:column}}'
   ].join('');
@@ -165,6 +170,7 @@
    const review=e.target.closest('[data-dme-action]');
    if(review)await action(review.dataset.dmeAction);
    if(e.target.closest('#externalPublishV107'))await action('publicar');
+   if(e.target.closest('#externalPreviewAuthV115')){previewAuthorization();return;}
    if(e.target.closest('#externalCopyPaxtuV110'))await copyPaxtu();
    if(e.target.closest('#externalDownloadDocumentV112'))await downloadScheduleDocument();
    if(e.target.closest('#externalUnlinkDocumentV112'))await unlinkScheduleDocument();
@@ -251,7 +257,7 @@
    const promises=[
     client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo',true).order('id'),
     client.from('programacoes_externas')
-      .select('id,roteiro_arquivo_path,roteiro_arquivo_nome,roteiro_arquivo_mime,roteiro_arquivo_tamanho,roteiro_arquivo_atualizado_em,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,status,parecer_dme,atividade_id,atualizado_em')
+      .select('id,roteiro_arquivo_path,roteiro_arquivo_nome,roteiro_arquivo_mime,roteiro_arquivo_tamanho,roteiro_arquivo_atualizado_em,secao_id,atividade_geral,plano_seguranca_visit_id,tipo,tipo_paxtu,responsavel_chefe_id,titulo,local,ponto_encontro,local_saida,local_chegada,descricao_breve,transporte,transporte_detalhes,alimentacao,materiais,responsavel_nome,link_mapa,custo_estimado,online,noites_acampadas,indaba,incluir_diretoria,exige_autorizacao,texto_autorizacao,observacoes,objetivo,data_inicio,data_fim,status,parecer_dme,atividade_id,atualizado_em')
       .order('data_inicio',{ascending:false}).limit(250)
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
@@ -597,12 +603,14 @@
     (editable?'<button class="external-primary-v107" type="submit" id="externalSaveV107">Salvar rascunho / alterações</button>':'')+
     (editable?'<button type="button" id="externalSendV107">Salvar e enviar ao DME</button>':'')+
 
+    (row?.plano_seguranca_visit_id?'<button type="button" id="externalPreviewAuthV115" aria-expanded="false">Pré-visualizar autorização</button>':'')+
     (admin()&&existing==='aprovada'?'<button type="button" id="externalPublishV107" '+
      (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
      '>Publicar para responsáveis</button>':'')+
     (admin()&&row&&existing==='publicada'?'<button type="button" id="externalCopyPaxtuV110">Copiar para Paxtu100</button>':'')+
     '<button type="button" id="externalCancelV107">Fechar</button>'+
     '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
+    (row?.plano_seguranca_visit_id?'<section id="externalAuthorizationPreviewV115" class="external-auth-preview-v115 external-hidden-v107" aria-live="polite"></section>':'')+
     (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Para preservar autorizações e registros, ela não pode mais ser editada neste módulo.</p>':'')+
     '</form>';
    if(row)$('externalSectionV107').value=String(row.secao_id);
@@ -615,6 +623,47 @@
    }
    $('externalEditorV107').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(error){status('Não foi possível abrir o roteiro: '+error.message);}
+ }
+ function previewAuthorization(){
+  const pane=$('externalAuthorizationPreviewV115');
+  const btn=$('externalPreviewAuthV115');
+  if(!pane||!editing?.id||!editing.plano_seguranca_visit_id)return;
+  if(!pane.classList.contains('external-hidden-v107')){
+    pane.classList.add('external-hidden-v107');
+    btn?.setAttribute('aria-expanded','false');
+    return;
+  }
+  // Rascunho: a via individual nasce somente após publicação aprovada.
+  const chef=editing.responsavel_nome||'responsável pela atividade';
+  const term='Tendo total ciência de que o Grupo Escoteiro, na figura do/a Chefe '+
+    chef+', é responsável pelo(a) associado(a) apenas durante a realização da referida atividade, '+
+    'ficando isento de responsabilidades pelo deslocamento do(a) associado(a) de sua residência '+
+    'até o local de saída da atividade, como seu retorno do local de chegada da atividade '+
+    'até sua residência, subscrevo-me.';
+  const example={
+    titulo:editing.titulo,inicio:editing.data_inicio,fim:editing.data_fim,
+    local:editing.local,transporte:editing.transporte,
+    ponto_encontro:editing.local_saida||editing.ponto_encontro||'A confirmar',
+    chefe_responsavel:chef,custo_individual:editing.custo_estimado,
+    responsavel_nome:'NOME DO RESPONSÁVEL',jovem_nome:'NOME DO JOVEM',
+    texto_autorizacao:term
+  };
+  const render=window.GEARPC_CONSENT_PREVIEW_V115;
+  if(typeof render!=='function'){
+    formStatus('A pré-visualização ainda está carregando. Atualize o Conecta e tente novamente.');
+    return;
+  }
+  pane.innerHTML='<h4>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</h4>'+
+    '<p class="preview-only-v115">Pré-visualização para conferência, sem validade de autorização ou assinatura. '+
+    'Nenhum responsável recebeu este documento ainda.</p>'+
+    render(example)+
+    '<p><strong>Assinatura do responsável:</strong> ____________________________________</p>'+
+    '<p><strong>Data:</strong> ____/____/______</p>'+
+    '<p>'+chosenYouth.size+' jovem(ns) selecionado(s). Após a publicação, cada responsável verá '+
+    'a autorização individual com os nomes preenchidos e poderá assinar eletronicamente ou imprimir.</p>';
+  pane.classList.remove('external-hidden-v107');
+  btn?.setAttribute('aria-expanded','true');
+  pane.scrollIntoView({behavior:'smooth',block:'nearest'});
  }
  function closeEditor(){
    editing=null;steps=[];chosenSections.clear();chosenYouth.clear();chosenChiefs.clear();
