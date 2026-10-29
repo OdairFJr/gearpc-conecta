@@ -46,8 +46,9 @@
  const TRANSPORT_OPTIONS=['A pé','Avião','Barco','Bicicleta','Carro','Metrô','Ônibus','Outros','Trem'];
  const TYPES={externa:'Atividade externa',acampamento:'Acampamento',acantonamento:'Acantonamento',
   jornada:'Jornada',visita:'Visita educativa',evento:'Evento',especial:'Atividade especial'};
- const STATUS={rascunho:'Rascunho',em_analise:'Aguardando DME',ajustes:'Ajustes solicitados',
-  aprovada:'Aprovada',publicada:'Publicada para responsáveis'};
+ const STATUS={rascunho:'Rascunho',em_analise:'Aguardando análise do DME',ajustes:'Ajustes solicitados',
+  aprovada:'Aprovada pelo DME',publicada:'Publicada para responsáveis',
+  reprovada:'Reprovada pelo DME'};
  let data=[],sections=[],own=[],editing=null,steps=[],busy=false;
  let people={jovens:[],chefes:[],chefes_secoes:[]};
  let chosenSections=new Set(),chosenYouth=new Set(),chosenChiefs=new Set();
@@ -114,6 +115,16 @@
     '.ext-doc-v112 input[type=file]{width:100%;box-sizing:border-box;padding:9px;border:1px solid #c3d4e2;border-radius:8px}',
     '.ext-doc-v112 .ext-doc-existing-v112{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:12px 0}',
     '.ext-doc-v112 button{padding:9px 12px;border:1px solid #b6cad8;border-radius:8px;background:#f5faff;color:#16476d;font-weight:750}',
+    '.ext-review-v114{padding:14px;border:2px solid #aabfce;background:#f8fbfd;border-radius:12px;margin:16px 0}',
+    '.ext-review-v114 h4{margin:0 0 8px;color:#183e60}',
+    '.ext-review-v114 label{display:grid;gap:6px;font-weight:700;font-size:.82rem}',
+    '.ext-review-v114 textarea{width:100%;box-sizing:border-box;min-height:100px;border:1px solid #b6c7d9;border-radius:9px;padding:11px;font:inherit;color:#233d54}',
+    '.ext-review-actions-v114{display:flex;flex-wrap:wrap;gap:8px;margin:11px 0 2px}',
+    '.ext-review-actions-v114 button{padding:10px 13px;border:1px solid #90abc0;border-radius:8px;background:#fff;font-weight:800;color:#133e68;cursor:pointer}',
+    '.ext-review-actions-v114 button[data-dme-action="aprovar"]{background:#12486e;color:#fff}',
+    '.ext-review-actions-v114 button[data-dme-action="reprovar"]{border-color:#b77777;color:#923232}',
+    '.ext-review-history-v114{font-size:.78rem;color:#445d72;margin:12px 0 0;padding-left:18px}',
+    '.ext-review-history-v114 li{margin:5px 0;white-space:normal;overflow-wrap:anywhere}',
     '.external-hidden-v107{display:none!important}',
     '@media(max-width:650px){.external-grid-v107{grid-template-columns:1fr}.external-card-v107{align-items:flex-start;flex-direction:column}}'
   ].join('');
@@ -147,8 +158,8 @@
    });renderSteps();return;}
    if(e.target.closest('#externalCancelV107')){closeEditor();return;}
    if(e.target.closest('#externalSendV107'))await action('enviar');
-   if(e.target.closest('#externalApproveV107'))await action('aprovar');
-   if(e.target.closest('#externalAdjustV107'))await action('ajustar');
+   const review=e.target.closest('[data-dme-action]');
+   if(review)await action(review.dataset.dmeAction);
    if(e.target.closest('#externalPublishV107'))await action('publicar');
    if(e.target.closest('#externalCopyPaxtuV110'))await copyPaxtu();
    if(e.target.closest('#externalDownloadDocumentV112'))await downloadScheduleDocument();
@@ -254,13 +265,18 @@
  function mountReady(){return Boolean($('externalBoxV107'));}
  function list(){
   const byId=new Map(sections.map(s=>[Number(s.id),s.nome]));
-  $('externalListV107').innerHTML=data.length?data.map(row=>{
+  const rows=admin()?[...data].sort((a,b)=>
+   Number(b.status==='em_analise')-Number(a.status==='em_analise')):data;
+  $('externalListV107').innerHTML=rows.length?rows.map(row=>{
    return '<article class="external-card-v107"><div><strong>'+esc(row.titulo)+'</strong>'+
+     (admin()&&row.status==='em_analise'?'<small><strong>⏳ Aguardando parecer do DME</strong></small>':'')+
      '<small>'+esc(TYPES[row.tipo]||row.tipo)+' • '+(row.atividade_geral?'Todo o grupo':esc(byId.get(Number(row.secao_id))||'Seção'))+
      ' • '+esc(dateFormat(row.data_inicio))+' até '+esc(dateFormat(row.data_fim))+
      '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+
        (row.roteiro_arquivo_path?' • PDF/Word anexado':'')+'</small></div>'+
-     '<button type="button" data-external-open="'+Number(row.id)+'">Abrir roteiro</button></article>';
+     '<button type="button" data-external-open="'+Number(row.id)+'">'+
+     (admin()&&row.status==='em_analise'?'Analisar atividade':'Abrir roteiro')+
+     '</button></article>';
   }).join(''):'<p>Nenhuma programação externa cadastrada. Use “Nova programação externa” para começar.</p>';
  }
 
@@ -434,7 +450,35 @@
    const transportOptions=TRANSPORT_OPTIONS.map(t=>
      '<option value="'+esc(t)+'" '+(t===transportVal?'selected':'')+'>'+esc(t)+'</option>').join('');
    const note=row?.parecer_dme?
-      '<aside class="external-notes-v107"><strong>Orientações do DME</strong>'+esc(row.parecer_dme)+'</aside>':'';
+      '<aside class="external-notes-v107"><strong>Parecer mais recente do DME</strong>'+esc(row.parecer_dme)+'</aside>':'';
+   let reviewHistory='';
+   if(id){
+     const {data:history,error:historyError}=await client.from('programacao_externa_pareceres_v114')
+       .select('acao,parecer,status_novo,registrado_em')
+       .eq('programacao_id',Number(id)).order('registrado_em',{ascending:false}).limit(40);
+     if(historyError)throw historyError;
+     const actionNames={enviar:'Enviada para análise',aprovar:'Aprovada',ajustar:'Ajustes solicitados',
+       comentar:'Comentário registrado',reprovar:'Reprovada',publicar:'Publicada'};
+     reviewHistory=history?.length?
+       '<section class="ext-review-v114"><h4>Histórico de análise</h4>'+
+       '<ol class="ext-review-history-v114">'+history.map(event=>
+         '<li><strong>'+esc(actionNames[event.acao]||event.acao)+'</strong> • '+
+         esc(dateFormat(event.registrado_em))+
+         (event.parecer?' — '+esc(event.parecer):'')+'</li>').join('')+'</ol></section>':'';
+   }
+   const showReview=admin()&&row&&['em_analise','aprovada'].includes(existing);
+   const reviewPanel=showReview?
+     '<section class="ext-review-v114" id="externalDmePanelV114">'+
+       '<h4>Conferência da programação externa — DME</h4>'+
+       '<p>Registre sua avaliação antes de decidir. O comentário é opcional ao aprovar, mas obrigatório para solicitar ajustes, reprovar ou comentar sem decidir.</p>'+
+       '<label>Parecer e orientações do DME'+
+         '<textarea id="externalDmeCommentV114" maxlength="4000" rows="4" placeholder="Escreva aqui os comentários ou as correções necessárias..."></textarea></label>'+
+       '<div class="ext-review-actions-v114">'+
+         (existing==='em_analise'?'<button type="button" data-dme-action="aprovar">Aprovar atividade</button>':'')+
+         '<button type="button" data-dme-action="comentar">Registrar comentário</button>'+
+         '<button type="button" data-dme-action="ajustar">Solicitar ajustes</button>'+
+         (existing==='em_analise'?'<button type="button" data-dme-action="reprovar">Reprovar atividade</button>':'')+
+       '</div></section>':'';
    let safetyOptions='';
    if(admin() && row?.status==='aprovada') {
      const {data:approved,error:plansError}=await client.rpc('listar_planos_seguranca_externa_v108');
@@ -468,7 +512,8 @@
    $('externalEditorV107').innerHTML=
     '<h3>'+(row?'Programação externa: '+esc(row.titulo):'Nova programação externa')+'</h3>'+
     '<p>Tipo: '+esc(STATUS[existing]||existing)+
-      '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+note+safetyOptions+
+      '. Os responsáveis somente verão os dados da atividade depois da publicação.</p>'+
+      note+reviewPanel+reviewHistory+safetyOptions+
     '<form id="externalFormV107"><div class="external-grid-v107">'+
     '<label>Seção de referência (chefia organizadora)<select id="externalSectionV107" required>'+options+'</select></label>'+
     '<label>Tipo interno da atividade<select id="externalTypeV107">'+types+'</select></label>'+
@@ -545,8 +590,7 @@
     '<div class="external-form-actions-v107">'+
     (editable?'<button class="external-primary-v107" type="submit" id="externalSaveV107">Salvar rascunho / alterações</button>':'')+
     (editable?'<button type="button" id="externalSendV107">Salvar e enviar ao DME</button>':'')+
-    (admin()&&existing==='em_analise'?'<button type="button" id="externalApproveV107">Aprovar</button>'+
-      '<button type="button" id="externalAdjustV107">Solicitar ajustes</button>':'')+
+
     (admin()&&existing==='aprovada'?'<button type="button" id="externalPublishV107" '+
      (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
      '>Publicar para responsáveis</button>':'')+
@@ -841,12 +885,13 @@
    if(!id)return;
   }else if(!id){formStatus('Salve a programação primeiro.');return;}
   let comment=null;
-  if(operation==='aprovar'){
-    comment=window.prompt('Comentários e orientações do DME (opcional):','');
-    if(comment===null)return;
-  }else if(operation==='ajustar'){
-    comment=window.prompt('Informe as orientações para correção:','');
-    if(!comment?.trim()){formStatus('Descreva quais ajustes são necessários.');return;}
+  if(['aprovar','ajustar','reprovar','comentar'].includes(operation)){
+    comment=$('externalDmeCommentV114')?.value?.trim()||null;
+    if(['ajustar','reprovar','comentar'].includes(operation)&&(!comment||comment.length<3)){
+      formStatus('Escreva um parecer com pelo menos 3 caracteres para registrar essa decisão.');
+      $('externalDmeCommentV114')?.focus();return;
+    }
+    if(operation==='reprovar'&&!window.confirm('Reprovar definitivamente esta programação externa? Ela ficará bloqueada para edição e publicação.'))return;
   }else if(operation==='publicar'){
     if(!window.confirm('Publicar esta atividade aprovada para o cadastro usado pelos responsáveis? A programação será bloqueada para preservar os registros e autorizações.'))return;
   }
@@ -857,9 +902,15 @@
     });
     if(error)throw error;
     await load();await openEditor(id);
-    formStatus(operation==='enviar'?'Enviada para conferência do DME.':
-      operation==='aprovar'?'Atividade aprovada; ainda não publicada.':
-      operation==='ajustar'?'Ajustes solicitados à chefia.':'Atividade publicada para os responsáveis.');
+    const messages={
+      enviar:'Enviada para conferência do DME.',
+      aprovar:'Atividade aprovada pelo DME. Ainda não publicada aos responsáveis.',
+      ajustar:'Ajustes solicitados: a programação voltou para a chefia.',
+      comentar:'Comentário do DME registrado. A atividade permanece em análise.',
+      reprovar:'Atividade reprovada com justificativa registrada. Não poderá ser publicada.',
+      publicar:'Atividade publicada para os responsáveis.'
+    };
+    formStatus(messages[operation]||'Situação atualizada.');
   }catch(error){formStatus('Não foi possível concluir: '+error.message);}
   finally{busy=false;}
  }
