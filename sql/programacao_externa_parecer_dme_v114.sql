@@ -1,4 +1,25 @@
 -- GEArPC v114: decisão formal do DME para programações externas.
+-- Revisão exclusiva de quem possui a função DME e é administrador ativo.
+create or replace function private.sou_dme_externa_v114()
+returns boolean language sql stable security definer set search_path=''
+as $fn$
+ select private.sou_admin() and exists(
+   select 1 from public.perfis_usuarios p
+   join public.chefe_funcoes cf on cf.chefe_id=p.chefe_id
+   where p.user_id=auth.uid() and p.ativo
+     and lower(btrim(cf.funcao)) in(
+       'diretor de metodos educativos','diretor de métodos educativos',
+       'diretora de metodos educativos','diretora de métodos educativos','dme')
+ );
+$fn$;
+create or replace function public.pode_revisar_programacao_externa_v114()
+returns boolean language sql stable security definer set search_path=''
+as $fn$
+ select auth.uid() is not null and private.sou_dme_externa_v114();
+$fn$;
+revoke all on function public.pode_revisar_programacao_externa_v114() from public,anon,authenticated;
+grant execute on function public.pode_revisar_programacao_externa_v114() to authenticated;
+
 alter table public.programacoes_externas
  drop constraint if exists programacoes_externas_status_check;
 alter table public.programacoes_externas
@@ -63,8 +84,8 @@ begin
    update public.programacoes_externas set status='em_analise',atualizado_em=clock_timestamp()
    where id=p_id;
  elsif p_acao in('aprovar','ajustar','reprovar','comentar') then
-   if not private.sou_admin() then
-     raise exception 'Parecer reservado à administração/DME' using errcode='42501';
+   if not private.sou_dme_externa_v114() then
+     raise exception 'Parecer reservado ao Diretor de Métodos Educativos' using errcode='42501';
    end if;
    if p_acao in('aprovar','reprovar') and v.status<>'em_analise' then
      raise exception 'Só é possível aprovar ou reprovar uma atividade aguardando DME';
