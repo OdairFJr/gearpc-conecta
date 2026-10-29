@@ -25,6 +25,7 @@
     && Number(s.versao_atividade)===Number(r.versao));
   const matchingAccount=(name,row)=>name.trim().toLocaleLowerCase('pt-BR')===
     String(row.responsavel_nome||'').trim().toLocaleLowerCase('pt-BR');
+  const completedResponse=r=>validAuthorization(r)||Boolean(lastSimulation(r,familySimulations));
   const statusLabel=r=>!validAuthorization(r)?'Pendente de autorização':
     r.status==='nao_autorizado'?'Participação não autorizada':
     r.meio==='eletronica'?'Autorizada eletronicamente':
@@ -55,6 +56,9 @@
       '.auth-name-validation-v120{font-size:.78rem;font-weight:800;color:#a13f30;min-height:1em;margin:3px 0}',
       '.auth-registered-name-v120{background:#eef6fc;padding:10px;border-radius:8px;color:#254960;font-size:.78rem}',
       '.auth-simulation-v121{background:#fff6e3;border:1px solid #d1b67c;border-radius:8px;padding:10px;color:#664b25;font-size:.78rem}',
+      '.auth-completed-v122{margin:12px 0;border-top:1px solid #d0dee8;padding:12px 0}',
+      '.auth-completed-v122 summary{font-weight:800;cursor:pointer;color:#1b5276}',
+      '.auth-completed-v122 p{margin:8px 0}',
       '.auth-fill-name-v120{align-self:flex-start;border:1px solid #9cbad1!important;background:#edf6fc!important}',
       '.authorizations-sign-v109 label.check{display:flex;flex-direction:row;align-items:flex-start;gap:9px}',
       '.authorizations-sign-v109 input[type=checkbox]{flex:0 0 auto;margin-top:3px}',
@@ -73,7 +77,7 @@
   // à atividade efetivamente publicada, não ao modelo antigo de cada chefe.
   function consentDocument(row){
     const documento=row.documento_responsavel||'____________________________';
-    const tipoDocumento=!row.documento_responsavel?'CPF ou RG':(row.tipo_documento==='RG'?'RG':'CPF');
+    const tipoDocumento=!row.documento_responsavel?'CPF ou RG':(row.tipo_documento==='RG'?'RG':row.tipo_documento==='CPF'?'CPF':'documento de identificação');
     const reais=value=>value===null||value===undefined||value===''?
       'Não informado':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const chef=row.chefe_responsavel||'Não informado';
@@ -84,7 +88,7 @@
       '</strong>, identificado(a) pelo '+tipoDocumento+' nº <strong>'+esc(documento)+'</strong>'+
       ', responsável legal por <strong>'+esc(row.jovem_nome)+
       '</strong>, membro do <strong>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</strong>, '+
-      'autorizo sua participação na atividade escoteira descrita abaixo:</p>';
+      (row.status==='nao_autorizado'?'não autorizo':'autorizo')+' sua participação na atividade escoteira descrita abaixo:</p>';
     return lead+'<div class="document-facts-v110">'+
       item('Atividade',row.titulo)+
       item('Jovem',row.jovem_nome)+
@@ -214,7 +218,9 @@
   function drawFamily(){
     const host=$('familyAuthListV109');if(!host)return;
     const rows=familyRows;
-    host.innerHTML=rows.length?rows.map((r,i)=>{
+    const pending=rows.map((r,i)=>({r,i})).filter(({r})=>!completedResponse(r));
+    const completed=rows.filter(completedResponse);
+    host.innerHTML=(pending.length?pending.map(({r,i})=>{
       const current=validAuthorization(r),draft=familyDrafts.get(draftKey(r))||{};
       const name=draft.name===undefined?'':draft.name;
       const sim=lastSimulation(r,familySimulations),same=matchingAccount(name,r);
@@ -262,7 +268,19 @@
           (same?'Assinar e não autorizar':'Registrar teste e não autorizar')+'</button>'+
         '</div><p data-card-sign-status class="auth-sign-error-v117" role="alert" aria-live="polite"></p>'+
         '</div></article>';
-    }).join(''):'<p>Nenhuma atividade externa publicada para os jovens vinculados a esta conta.</p>';
+    }).join(''):'<p>Nenhuma autorização aguardando assinatura. As respostas já registradas saem automaticamente desta lista.</p>')+
+      (completed.length?'<details class="auth-completed-v122"><summary>Histórico de respostas concluídas ('+
+        completed.length+')</summary><p>Estas atividades não estão disponíveis para nova assinatura.</p>'+
+        completed.map(r=>{
+          const sim=lastSimulation(r,familySimulations);
+          const real=validAuthorization(r);
+          return '<article class="authorizations-card-v109"><strong>'+esc(r.titulo)+'</strong>'+
+            '<small>'+esc(r.jovem_nome)+' • '+esc(r.secao_nome)+'</small>'+
+            '<p>'+esc(real?statusLabel(r):'Simulação de teste registrada (não é autorização válida)')+
+              ' • '+esc(when(real?r.assinado_em:sim?.registrado_em))+'</p>'+
+            (!real&&sim?'<p>Nome informado no teste: '+esc(sim.nome_informado)+'</p>':'')+
+            '</article>';
+        }).join('')+'</details>':'');
   }
   async function loadFamily(){
     if(!showFamily()||!$('familyAuthStatusV109'))return;
@@ -278,9 +296,8 @@
       familyRows=Array.isArray(items.data)?items.data:[];
       familySimulations=Array.isArray(sims.data)?sims.data:[];
       drawFamily();
-      const pending=familyRows.filter(r=>!validAuthorization(r)).length;
-      message.textContent=familyRows.length+
-        ' autorização(ões) de atividade externa • '+pending+' pendente(s).';
+      const pending=familyRows.filter(r=>!completedResponse(r)).length;
+      message.textContent=pending+' autorização(ões) pendente(s) • '+(familyRows.length-pending)+' resposta(s) concluída(s).';
     }catch(err){message.textContent='Não foi possível consultar autorizações: '+err.message;}
   }
   async function signElectronic(index,answer){
@@ -385,6 +402,12 @@
     $('chiefAuthRefreshV109').addEventListener('click',loadChief);
     panel.addEventListener('toggle',()=>{if(panel.open)void loadChief();});
     panel.addEventListener('click',async event=>{
+      const documentButton=event.target.closest('[data-open-signed-document]');
+      if(documentButton){
+        await openSignedDocument(Number(documentButton.dataset.openSignedDocument),
+          documentButton.dataset.simulation==='true');
+        return;
+      }
       const recv=event.target.closest('[data-receive-paper]');
       if(recv)await receivePaper(Number(recv.dataset.receivePaper));
     });
@@ -414,6 +437,16 @@
           (!complete&&sim?'<p class="auth-simulation-v121">Simulação de assinatura (não é autorização válida): '+
             esc(sim.nome_informado)+' • '+esc(sim.documento_tipo)+' final '+esc(sim.documento_final)+
             ' • '+esc(when(sim.registrado_em))+'</p>':'');
+        if(complete&&r.meio==='eletronica'){
+          html+='<div class="authorizations-actions-v109">'+
+            '<button type="button" data-open-signed-document="'+i+'" data-simulation="false">Visualizar assinatura eletrônica / Salvar PDF</button>'+
+            '</div>';
+        }
+        if(!complete&&sim){
+          html+='<div class="authorizations-actions-v109">'+
+            '<button type="button" data-open-signed-document="'+i+'" data-simulation="true">Visualizar comprovante de simulação (teste)</button>'+
+            '</div>';
+        }
         if(canReceive && guardians.length){
           html+='<div class="authorizations-sign-v109">'+
             '<label>Responsável que assinou o papel'+
@@ -445,6 +478,98 @@
       drawChief();
       node.textContent='Autorizações atualizadas.';
     }catch(e){node.textContent='Não foi possível consultar autorizações: '+e.message;}
+  }
+
+  function signedDocumentHtml(row){
+    const simulated=row.simulado===true;
+    const decision=row.status==='autorizado'?'PARTICIPAÇÃO AUTORIZADA':'PARTICIPAÇÃO NÃO AUTORIZADA';
+    const type=simulated?'SIMULAÇÃO — NÃO É AUTORIZAÇÃO VÁLIDA':
+      'COMPROVANTE DE REGISTRO DE ASSINATURA ELETRÔNICA';
+    const documentType=row.documento_tipo||'Documento não identificado';
+    const documentLast=row.documento_final?'Final '+String(row.documento_final):'Não armazenado';
+    const docRow={
+      ...row,
+      nome_assinatura:row.nome_assinante,
+      tipo_documento:row.documento_tipo||'',
+      documento_responsavel:row.documento_final?'somente final '+row.documento_final:'não registrado'
+    };
+    const proof=(label,value)=>'<div><strong>'+esc(label)+': </strong>'+esc(value??'Não informado')+'</div>';
+    const support=(simulated?
+      'Este registro foi criado exclusivamente para teste por uma conta de responsável fictício. Não comprova que a pessoa cujo nome foi digitado assinou; não vale como autorização de participação.':
+      'O GEArPC Conecta registrou esta resposta em uma conta autenticada. Trata-se de comprovante de assinatura eletrônica simples, não de assinatura digital certificada.');
+    return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'+
+      '<meta name="viewport" content="width=device-width,initial-scale=1">'+
+      '<title>'+esc(simulated?'SIMULACAO_':'AUTORIZACAO_')+esc(row.atividade_id)+'_'+esc(row.jovem_id)+'</title>'+
+      '<style>'+
+      'body{font:14px/1.55 Arial,sans-serif;color:#172b3d;margin:25px auto;max-width:790px;padding:0 20px}'+
+      'header{border-bottom:2px solid #254969;padding-bottom:13px;margin-bottom:22px;text-align:center}'+
+      'header h1{font-size:17px;margin:0}header p{margin:5px 0}'+
+      'h2{text-align:center;font-size:17px;color:#193f5e;margin-top:16px}'+
+      '.status{padding:12px;border:1px solid #aebfcd;background:#f3f7fa;font-weight:bold;text-align:center}'+
+      '.test{border:3px solid #8b452a;background:#fff0e9;color:#842e19;font-size:17px;font-weight:bold;'+
+      'padding:14px;text-align:center;margin:14px 0}'+
+      '.note{font-size:12px;line-height:1.5;padding:12px;background:#f5f6f7;border-left:4px solid #7d92a5;margin:15px 0}'+
+      '.proof{border:1px solid #98abbc;background:#f9fbfc;border-radius:8px;padding:13px;margin:15px 0}'+
+      '.proof div,.document-facts-v110 div{margin:4px 0;overflow-wrap:anywhere}'+
+      '.actions{padding:15px;text-align:center}.actions button{padding:11px 18px;font-size:14px;font-weight:bold;cursor:pointer}'+
+      '@media print{body{max-width:none;margin:0;padding:5mm;font-size:12px}.actions{display:none}'+
+      '.proof{break-inside:avoid}.test{break-inside:avoid}}'+
+      '</style></head><body>'+
+      '<header><h1>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</h1>'+
+      '<p>GEArPC Conecta • Atividades externas</p></header>'+
+      (simulated?'<div class="test">SIMULAÇÃO DE TESTE — NÃO COMPROVA AUTORIZAÇÃO</div>':'')+
+      '<h2>'+esc(type)+'</h2>'+
+      '<p class="status">'+esc(decision)+'</p>'+
+      consentDocument(docRow)+
+      '<section class="proof"><h3>Registro eletrônico</h3>'+
+      proof('Tipo de registro',simulated?'Simulação de teste':'Assinatura eletrônica')+
+      proof('Nome informado',row.nome_assinante)+
+      proof('Identificação apresentada',documentType+' • '+documentLast)+
+      proof('Data e hora do registro',when(row.assinado_em))+
+      proof('Resposta registrada',row.status==='autorizado'?'Autorizado':'Não autorizado')+
+      proof('ID do registro',row.registro_id)+
+      (!simulated?proof('ID do evento de assinatura',row.evento_id||'Não disponível'):'')+
+      proof('Versão da autorização',row.versao_assinada)+
+      '</section><p class="note">'+esc(support)+'</p>'+
+      (simulated?'<div class="test">DOCUMENTO DE TESTE — NÃO É AUTORIZAÇÃO VÁLIDA</div>':'')+
+      '<div class="actions"><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button></div>'+
+      '</body></html>';
+  }
+  async function openSignedDocument(index,simulated){
+    const row=chiefRows[index];
+    if(!row||!canChief())return;
+    // Abrir na ação do clique, antes da chamada assíncrona, para não ser bloqueado no celular.
+    const w=window.open('','_blank');
+    if(!w){
+      const node=$('chiefAuthStatusV109');
+      if(node)node.textContent='O navegador bloqueou a janela do comprovante. Permita novas janelas para o Conecta e tente novamente.';
+      return;
+    }
+    w.document.open();
+    w.document.write('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Preparando comprovante</title><body><p>Preparando documento de autorização...</p></body></html>');
+    w.document.close();
+    try{
+      const {data,error}=await client.rpc('obter_documento_autorizacao_externa_v122',{
+        p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,
+        p_simulacao:simulated
+      });
+      if(error)throw error;
+      if(!data||data.simulado!==simulated)throw new Error('O documento retornado não corresponde ao registro solicitado.');
+      const html=signedDocumentHtml(data);
+      w.document.open();w.document.write(html);w.document.close();
+      const node=$('chiefAuthStatusV109');
+      if(node)node.textContent=simulated?
+        'Simulação aberta em nova janela, identificada como teste. Use Imprimir / Salvar como PDF.':
+        'Comprovante eletrônico aberto em nova janela. Use Imprimir / Salvar como PDF.';
+    }catch(e){
+      const node=$('chiefAuthStatusV109');
+      if(node)node.textContent='Não foi possível abrir o documento: '+e.message;
+      try{
+        w.document.open();
+        w.document.write('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><body><p>Não foi possível carregar este comprovante. Volte ao Conecta e tente novamente.</p></body></html>');
+        w.document.close();
+      }catch(_){}
+    }
   }
   async function receivePaper(index){
     if(busy||!canChief())return;
