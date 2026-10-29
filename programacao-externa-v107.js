@@ -142,8 +142,8 @@
    const remove=e.target.closest('[data-external-remove]');
    if(remove){collectSteps();steps.splice(Number(remove.dataset.externalRemove),1);renderSteps();return;}
    if(e.target.closest('#externalAddStageV107')){collectSteps();steps.push({
-     inicio:$('externalFromV107')?.value||nowLocal(),
-     fim:$('externalToV107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:''
+     inicio:$('external_from_v107')?.value||nowLocal(),
+     fim:$('external_to_v107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:''
    });renderSteps();return;}
    if(e.target.closest('#externalCancelV107')){closeEditor();return;}
    if(e.target.closest('#externalSendV107'))await action('enviar');
@@ -576,10 +576,17 @@
   if(!canEdit()){formStatus('Essa programação não permite alterações no momento.');return null;}
   collectSteps();
   const value=k=>$('external_'+k+'_v107')?.value?.trim()||'';
-  const start=$('externalFromV107')?.value,end=$('externalToV107')?.value;
+  const start=$('external_from_v107')?.value,end=$('external_to_v107')?.value;
   const section=Number($('externalSectionV107')?.value||0);
   if(!section || !manager(section)){formStatus('Escolha uma seção autorizada.');return null;}
-  if(!start||!end||start>=end){formStatus('Informe início e término válidos.');return null;}
+  if(!start||!end){
+    formStatus('Preencha a data e o horário de início e de término da atividade.');return null;
+  }
+  if(!Number.isFinite(Date.parse(start+':00-03:00')) ||
+     !Number.isFinite(Date.parse(end+':00-03:00')) ||
+     start>=end){
+    formStatus('Confira os horários: o término deve ser posterior ao início.');return null;
+  }
   if(value('title').length<3 || !value('place')){formStatus('Informe título e local.');return null;}
   if(!chosenSections.has(section) || !chosenSections.size){
     formStatus('Inclua a seção organizadora entre as participantes.');return null;
