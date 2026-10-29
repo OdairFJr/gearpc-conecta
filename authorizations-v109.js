@@ -82,6 +82,9 @@
       '<p>'+esc(row.texto_autorizacao||'O responsável confirma ciência da participação na atividade acima.')+'</p>';
   }
 
+  // Prévia usa o mesmo corpo do termo exibido na via impressa e para a família.
+  window.GEARPC_CONSENT_PREVIEW_V115 = consentDocument;
+
   function mountFamily(){
     if(!showFamily())return;
     if($('familyAuthBoxV109'))return;
