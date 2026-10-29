@@ -8,6 +8,8 @@
   const {client,state}=rt,$=id=>document.getElementById(id);
   const PARENTS_TEST_ONLY=true;
   let familyRows=[],chiefRows=[],busy=false;
+  const familyDrafts=new Map();
+  const draftKey=r=>String(r.atividade_id)+':'+String(r.jovem_id);
   const esc=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
     .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
   const when=s=>s?new Date(s).toLocaleString('pt-BR',
@@ -42,7 +44,9 @@
       '.authorizations-sign-v109{margin-top:10px;border-top:1px solid #d8e5ee;padding-top:10px;display:grid;gap:10px}',
       '.document-facts-v110{margin:12px 0;font-size:.79rem}.document-facts-v110 div{margin:3px 0}',
       '.authorizations-sign-v109 label{display:grid;gap:5px;font-size:.78rem;color:#425b71;font-weight:750}',
-      '.authorizations-sign-v109 input[type=text],.authorizations-v109 select{padding:10px;box-sizing:border-box;width:100%;border:1px solid #bdcedd;border-radius:8px;background:#fff;color:#1c394f;font:inherit}',
+      '.authorizations-sign-v109 input[type=text],.authorizations-sign-v109 input[inputmode=numeric],.authorizations-v109 select{padding:10px;box-sizing:border-box;width:100%;border:1px solid #bdcedd;border-radius:8px;background:#fff;color:#1c394f;font:inherit}',
+      '.auth-sign-error-v117{padding:8px 10px;margin:7px 0;color:#9a2828;font-weight:800;border-left:3px solid #b63b3b;min-height:1em}',
+      '.auth-sign-hint-v117{color:#516a82;font-size:.76rem}',
       '.authorizations-sign-v109 label.check{display:flex;flex-direction:row;align-items:flex-start;gap:9px}',
       '.authorizations-sign-v109 input[type=checkbox]{flex:0 0 auto;margin-top:3px}',
       '.authorizations-sign-v109 button.primary{background:#0a376c;color:white}',
@@ -59,29 +63,67 @@
   // O mesmo conteúdo é apresentado na tela e impresso. Os dados são ligados
   // à atividade efetivamente publicada, não ao modelo antigo de cada chefe.
   function consentDocument(row){
-    const cpf='____________________________';
+    const cpf=row.documento_responsavel||'____________________________';
     const reais=value=>value===null||value===undefined||value===''?
-      'A confirmar':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    const chef=row.chefe_responsavel||'Chefe responsável pela atividade';
-    const lead='<p>Eu, <strong>'+esc(row.responsavel_nome||'Responsável legal')+
-      '</strong>, inscrito(a) no CPF sob nº '+cpf+
-      ', responsável legal de <strong>'+esc(row.jovem_nome)+
+      'Não informado':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const chef=row.chefe_responsavel||'Não informado';
+    const item=(name,value)=>'<div><strong>'+esc(name)+': </strong>'+
+      esc(value===null||value===undefined||value===''?'Não informado':value)+'</div>';
+    const lead='<p>Eu, <strong>'+esc(row.nome_assinatura||row.responsavel_nome||'Responsável legal')+
+      '</strong>, inscrito(a) no CPF sob nº <strong>'+esc(cpf)+'</strong>'+
+      ', responsável legal por <strong>'+esc(row.jovem_nome)+
       '</strong>, membro do <strong>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</strong>, '+
-      'autorizo sua participação na atividade especial descrita abaixo:</p>';
-    const item=(name,value)=>'<div><strong>'+esc(name)+': </strong>'+esc(value||'Não informado')+'</div>';
-    return lead+
-      '<div class="document-facts-v110">'+
+      'autorizo sua participação na atividade escoteira descrita abaixo:</p>';
+    return lead+'<div class="document-facts-v110">'+
       item('Atividade',row.titulo)+
-      item('Data',when(row.inicio)+' até '+when(row.fim))+
-      item('Local',row.local)+
-      item('Transporte',row.transporte||'A confirmar')+
-      item('Ponto de encontro',row.ponto_encontro||'A confirmar')+
-      item('Responsável pela atividade',chef)+
-      item('Custo individual da atividade',reais(row.custo_individual))+
-      '</div>'+
-      '<p>'+esc(row.texto_autorizacao||'O responsável confirma ciência da participação na atividade acima.')+'</p>';
+      item('Jovem',row.jovem_nome)+
+      item('Seção',row.secao_nome)+
+      item('Data e hora de saída',when(row.inicio))+
+      item('Data e hora de retorno',when(row.fim))+
+      item('Local da atividade',row.local)+
+      item('Local de saída',row.local_saida||row.ponto_encontro)+
+      item('Local de chegada',row.local_chegada||row.ponto_encontro)+
+      item('Transporte',row.transporte)+
+      (row.transporte_detalhes?item('Detalhes do transporte',row.transporte_detalhes):'')+
+      item('Ponto de encontro',row.ponto_encontro||row.local_saida)+
+      item('Chefe responsável',chef)+
+      item('Custo por participante',reais(row.custo_individual))+
+      (row.descricao_breve?item('Descrição da atividade',row.descricao_breve):'')+
+      (row.alimentacao?item('Alimentação e água',row.alimentacao):'')+
+      (row.materiais?item('Materiais necessários',row.materiais):'')+
+      (row.observacoes?item('Orientações adicionais',row.observacoes):'')+
+      (row.link_mapa?item('Localização (mapa)',row.link_mapa):'')+
+      '</div><p>'+esc(row.texto_autorizacao||
+        'O responsável declara ciência das condições da atividade acima.')+'</p>';
   }
-
+  const validCpf=c=>{
+    const d=String(c||'').replace(/\D/g,'');
+    if(!/^\d{11}$/.test(d)||/^(\d)\1{10}$/.test(d))return false;
+    const digit=n=>{
+      let sum=0;for(let i=0;i<n;i++)sum+=Number(d[i])*(n+1-i);
+      const v=(sum*10)%11;return v===10?0:v;
+    };
+    return digit(9)===Number(d[9])&&digit(10)===Number(d[10]);
+  };
+  const formatCpf=v=>{
+    const d=String(v||'').replace(/\D/g,'').slice(0,11);
+    return d.length===11?d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9):d;
+  };
+  const withIdentity=(row,card)=>({
+    ...row,
+    nome_assinatura:card?.querySelector('[data-sign-name]')?.value?.trim()||row.responsavel_nome,
+    documento_responsavel:formatCpf(card?.querySelector('[data-sign-cpf]')?.value)||''
+  });
+  function showSignMessage(card,message){
+    const local=card?.querySelector('[data-card-sign-status]');
+    if(local)local.textContent=message||'';
+    if($('familyAuthStatusV109'))$('familyAuthStatusV109').textContent=message||'';
+  }
+  function previewCardIdentity(card,row){
+    const target=card?.querySelector('[data-consent-document]');
+    if(target)target.innerHTML=consentDocument(withIdentity(row,card));
+  }
+  
   // Prévia usa o mesmo corpo do termo exibido na via impressa e para a família.
   window.GEARPC_CONSENT_PREVIEW_V115 = consentDocument;
 
@@ -100,45 +142,72 @@
     modules.insertAdjacentElement('afterend',panel);
     panel.addEventListener('click',async ev=>{
       const print=ev.target.closest('[data-print-authorization]');
-      if(print){const row=familyRows[Number(print.dataset.printAuthorization)];if(row)printSheet(row);return;}
+      if(print){
+        const i=Number(print.dataset.printAuthorization),row=familyRows[i];
+        const card=$('familyAuthListV109')?.querySelector('[data-family-auth-row="'+i+'"]');
+        if(row)printSheet(withIdentity(row,card));return;
+      }
       const sign=ev.target.closest('[data-sign-authorization]');
       if(sign)await signElectronic(Number(sign.dataset.signAuthorization),sign.dataset.answer);
     });
+    const saveDraft=ev=>{
+      const card=ev.target.closest('[data-family-auth-row]');
+      if(!card)return;
+      const row=familyRows[Number(card.dataset.familyAuthRow)];
+      if(!row)return;
+      familyDrafts.set(draftKey(row),{
+        name:card.querySelector('[data-sign-name]')?.value||'',
+        cpf:card.querySelector('[data-sign-cpf]')?.value||'',
+        accepted:!!card.querySelector('[data-sign-accept]')?.checked
+      });
+      previewCardIdentity(card,row);
+    };
+    panel.addEventListener('input',saveDraft);
+    panel.addEventListener('change',saveDraft);
     $('familyAuthRefreshV109').addEventListener('click',loadFamily);
   }
   function drawFamily(){
     const host=$('familyAuthListV109');if(!host)return;
     const rows=familyRows;
     host.innerHTML=rows.length?rows.map((r,i)=>{
-      const current=validAuthorization(r);
+      const current=validAuthorization(r),draft=familyDrafts.get(draftKey(r))||{};
+      const name=draft.name===undefined?r.responsavel_nome:draft.name;
+      const missing=[];
+      if(!r.local_saida&&!r.ponto_encontro)missing.push('local de saída');
+      if(!r.local_chegada&&!r.ponto_encontro)missing.push('local de chegada');
+      if(!r.transporte||r.transporte==='Outros'&&!r.transporte_detalhes)missing.push('detalhes do transporte');
       return '<article class="authorizations-card-v109" data-family-auth-row="'+i+'">'+
         '<strong>'+esc(r.titulo)+'</strong>'+
         '<small>Jovem: '+esc(r.jovem_nome)+' • '+esc(r.secao_nome)+'</small>'+
-        '<small>'+esc(when(r.inicio))+' até '+esc(when(r.fim))+' • '+esc(r.local||'Local a confirmar')+'</small>'+
-        (r.descricao?'<p>'+esc(r.descricao)+'</p>':'')+
-        '<div class="authorizations-terms-v109">'+consentDocument(r)+'</div>'+
+        '<small>'+esc(when(r.inicio))+' até '+esc(when(r.fim))+' • '+esc(r.local||'Local não informado')+'</small>'+
+        (missing.length?'<p class="auth-sign-error-v117">A programação não informa: '+esc(missing.join(', '))+
+          '. Confirme esses dados com a chefia antes de autorizar.</p>':'')+
         '<p class="authorizations-status-v109">'+esc(statusLabel(r))+
         (current?' • '+esc(r.nome_assinante||'')+' • '+esc(when(r.assinado_em)):'')+'</p>'+
-        '<div class="authorizations-actions-v109">'+
-         '<button type="button" data-print-authorization="'+i+'">Imprimir autorização</button></div>'+
-        '<details><summary>Assinar eletronicamente / registrar resposta</summary>'+
         '<div class="authorizations-sign-v109">'+
-        '<label>Digite seu nome completo conforme cadastro'+
-          '<input type="text" data-sign-name maxlength="200" placeholder="'+esc(r.responsavel_nome||'Nome do responsável')+'"></label>'+
-        '<label class="check"><input type="checkbox" data-sign-accept>'+
-          '<span>Confirmo que sou o responsável autenticado, li os dados e o texto da autorização e estou registrando minha decisão eletronicamente.</span></label>'+
+        '<label>Nome completo do responsável (conforme cadastro)'+
+          '<input type="text" data-sign-name maxlength="200" autocomplete="name" value="'+esc(name||'')+'"></label>'+
+        '<label>CPF do responsável'+
+          '<input type="text" inputmode="numeric" autocomplete="off" data-sign-cpf maxlength="14" placeholder="000.000.000-00" value="'+esc(draft.cpf||'')+'"></label>'+
+        '<p class="auth-sign-hint-v117">O CPF é usado para conferir a assinatura. O número completo não será gravado pelo Conecta; apenas os dois últimos dígitos ficam no registro de auditoria.</p>'+
+        '<div class="authorizations-terms-v109" data-consent-document>'+
+          consentDocument({...r,nome_assinatura:name,documento_responsavel:formatCpf(draft.cpf)})+'</div>'+
+        '<div class="authorizations-actions-v109"><button type="button" data-print-authorization="'+i+'">Imprimir autorização preenchida</button></div>'+
+        '<label class="check"><input type="checkbox" data-sign-accept '+(draft.accepted?'checked':'')+'>'+
+          '<span>Confirmo que li os dados e o texto da autorização e registro minha decisão eletronicamente.</span></label>'+
         '<div class="authorizations-actions-v109">'+
-        '<button type="button" class="primary" data-sign-authorization="'+i+'" data-answer="autorizado">Assinar e autorizar</button>'+
-        '<button type="button" data-sign-authorization="'+i+'" data-answer="nao_autorizado">Não autorizar</button></div>'+
-        '</div></details></article>';
-    }).join(''):'<p>Nenhuma atividade externa aguardando autorização para os jovens vinculados a esta conta.</p>';
+          '<button type="button" class="primary" data-sign-authorization="'+i+'" data-answer="autorizado">Assinar eletronicamente e autorizar</button>'+
+          '<button type="button" data-sign-authorization="'+i+'" data-answer="nao_autorizado">Assinar e não autorizar</button>'+
+        '</div><p data-card-sign-status class="auth-sign-error-v117" role="alert" aria-live="polite"></p>'+
+        '</div></article>';
+    }).join(''):'<p>Nenhuma atividade externa publicada para os jovens vinculados a esta conta.</p>';
   }
   async function loadFamily(){
     if(!showFamily()||!$('familyAuthStatusV109'))return;
     const message=$('familyAuthStatusV109');
     message.textContent='Verificando atividades publicadas...';
     try{
-      const {data,error}=await client.rpc('listar_autorizacoes_familia_v109');
+      const {data,error}=await client.rpc('listar_autorizacoes_familia_v117');
       if(error)throw error;
       familyRows=Array.isArray(data)?data:[];
       drawFamily();
@@ -148,33 +217,47 @@
     }catch(err){message.textContent='Não foi possível consultar autorizações: '+err.message;}
   }
   async function signElectronic(index,answer){
-    if(busy||!showFamily())return;
-    const row=familyRows[index],host=$('familyAuthListV109')?.querySelector('[data-family-auth-row="'+index+'"]');
-    if(!row||!host)return;
-    const name=host.querySelector('[data-sign-name]')?.value?.trim();
-    const checked=host.querySelector('[data-sign-accept]')?.checked;
-    if(!name||!checked){
-      $('familyAuthStatusV109').textContent='Digite seu nome completo e marque a confirmação para assinar.';
+    if(!showFamily())return;
+    const row=familyRows[index];
+    const card=$('familyAuthListV109')?.querySelector('[data-family-auth-row="'+index+'"]');
+    if(!row||!card){
+      showSignMessage(card,'Não foi possível localizar o formulário. Atualize as autorizações.');
       return;
     }
+    if(busy){showSignMessage(card,'Uma assinatura já está sendo processada.');return;}
+    const nameField=card.querySelector('[data-sign-name]');
+    const cpfField=card.querySelector('[data-sign-cpf]');
+    const acceptField=card.querySelector('[data-sign-accept]');
+    const name=nameField?.value?.trim()||'';
+    const cpf=cpfField?.value?.trim()||'';
+    if(name.length<5){showSignMessage(card,'Informe seu nome completo.');nameField?.focus();return;}
+    if(name.toLocaleLowerCase('pt-BR')!==(row.responsavel_nome||'').trim().toLocaleLowerCase('pt-BR')){
+      showSignMessage(card,'O nome deve corresponder ao cadastro do responsável.');nameField?.focus();return;
+    }
+    if(!validCpf(cpf)){showSignMessage(card,'Digite um CPF válido com 11 dígitos.');cpfField?.focus();return;}
+    if(!acceptField?.checked){showSignMessage(card,'Marque a declaração antes de assinar.');acceptField?.focus();return;}
     const choice=answer==='autorizado'?'AUTORIZAR':'NÃO AUTORIZAR';
-    if(!window.confirm('Confirma que deseja '+choice+' a participação de '+
-      row.jovem_nome+' na atividade '+row.titulo+'?'))return;
+    if(!window.confirm('Confirmar que deseja '+choice+' a participação de '+
+       row.jovem_nome+' na atividade '+row.titulo+'?'))return;
     busy=true;
-    const controls=[...host.querySelectorAll('button,input')];controls.forEach(el=>el.disabled=true);
-    $('familyAuthStatusV109').textContent='Registrando sua assinatura...';
+    const controls=[...card.querySelectorAll('button,input')];
+    controls.forEach(el=>el.disabled=true);
+    showSignMessage(card,'Registrando assinatura eletrônica...');
     try{
-      const {data,error}=await client.rpc('assinar_autorizacao_eletronica_v109',{
+      const {data,error}=await client.rpc('assinar_autorizacao_eletronica_v117',{
         p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,
-        p_status:answer,p_nome_digitado:name,p_termo_aceito:true
+        p_status:answer,p_nome_digitado:name,p_cpf_digitado:cpf,p_termo_aceito:true
       });
       if(error)throw error;
-      if(data?.ok!==true)throw new Error('Assinatura não confirmada pelo servidor.');
+      if(data?.ok!==true)throw new Error('O servidor não confirmou a assinatura.');
+      familyDrafts.delete(draftKey(row));
       await loadFamily();
-      $('familyAuthStatusV109').textContent='Resposta assinada eletronicamente e disponível à chefia.';
+      $('familyAuthStatusV109').textContent='Assinatura registrada e disponível à chefia. CPF conferido, sem armazenamento do número completo.';
     }catch(err){
-      $('familyAuthStatusV109').textContent='Não foi possível assinar: '+err.message;
-    }finally{busy=false;controls.forEach(el=>{if(el.isConnected)el.disabled=false;});}
+      showSignMessage(card,'Não foi possível assinar: '+err.message);
+    }finally{
+      busy=false;controls.forEach(el=>{if(el.isConnected)el.disabled=false;});
+    }
   }
 
   function printSheet(row){
@@ -199,8 +282,8 @@
       '<div class="signline"></div><p>Data: ____/____/______</p>'+
       '<div class="signline"></div><p>Cidade</p>'+
       '<div class="signline"></div><p>Assinatura do responsável</p>'+
-      '<p class="notice">O CPF deverá ser preenchido pelo responsável na via impressa, pois ainda não está registrado no Conecta. '+
-      'Entregue a autorização assinada à chefia. Não se trata de ficha médica.</p>'+
+      '<p class="notice">Confira o nome e o CPF impressos. Caso o CPF não tenha sido informado, preencha-o manualmente antes de assinar. '+
+      'Entregue a via física assinada à chefia. Não se trata de ficha médica.</p>'+
       '<div class="actions"><button onclick="window.print()">Imprimir autorização</button></div></body></html>';
     w.document.open();w.document.write(html);w.document.close();
   }
