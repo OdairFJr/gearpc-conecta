@@ -63,14 +63,16 @@
   // O mesmo conteúdo é apresentado na tela e impresso. Os dados são ligados
   // à atividade efetivamente publicada, não ao modelo antigo de cada chefe.
   function consentDocument(row){
-    const cpf=row.documento_responsavel||'____________________________';
+    const documento=row.documento_responsavel||'____________________________';
+    const tipoDocumento=row.tipo_documento==='RG'?'RG':'CPF';
     const reais=value=>value===null||value===undefined||value===''?
       'Não informado':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const chef=row.chefe_responsavel||'Não informado';
     const item=(name,value)=>'<div><strong>'+esc(name)+': </strong>'+
       esc(value===null||value===undefined||value===''?'Não informado':value)+'</div>';
-    const lead='<p>Eu, <strong>'+esc(row.nome_assinatura||row.responsavel_nome||'Responsável legal')+
-      '</strong>, inscrito(a) no CPF sob nº <strong>'+esc(cpf)+'</strong>'+
+    const nome=(row.nome_assinatura===undefined?row.responsavel_nome:row.nome_assinatura)||'____________________________';
+    const lead='<p>Eu, <strong>'+esc(nome)+
+      '</strong>, identificado(a) pelo '+tipoDocumento+' nº <strong>'+esc(documento)+'</strong>'+
       ', responsável legal por <strong>'+esc(row.jovem_nome)+
       '</strong>, membro do <strong>Grupo Escoteiro do Ar Paulo Carzino — 198/SC</strong>, '+
       'autorizo sua participação na atividade escoteira descrita abaixo:</p>';
@@ -109,11 +111,18 @@
     const d=String(v||'').replace(/\D/g,'').slice(0,11);
     return d.length===11?d.slice(0,3)+'.'+d.slice(3,6)+'.'+d.slice(6,9)+'-'+d.slice(9):d;
   };
-  const withIdentity=(row,card)=>({
-    ...row,
-    nome_assinatura:card?.querySelector('[data-sign-name]')?.value?.trim()||row.responsavel_nome,
-    documento_responsavel:formatCpf(card?.querySelector('[data-sign-cpf]')?.value)||''
-  });
+  const withIdentity=(row,card)=>{
+    const tipo=card?.querySelector('[data-sign-doc-type]')?.value==='RG'?'RG':'CPF';
+    const raw=card?.querySelector('[data-sign-document]')?.value?.trim()||'';
+    return {
+      ...row,
+      nome_assinatura:card?.querySelector('[data-sign-name]')?.value?.trim()||'',
+      tipo_documento:tipo,
+      documento_responsavel:tipo==='CPF'?formatCpf(raw):raw.toUpperCase()
+    };
+  };
+  const validRg=value=>/^[0-9A-Z]{5,20}$/.test(String(value||'').toUpperCase().replace(/[^0-9A-Z]/g,''));
+
   function showSignMessage(card,message){
     const local=card?.querySelector('[data-card-sign-status]');
     if(local)local.textContent=message||'';
@@ -136,7 +145,7 @@
     const panel=document.createElement('details');panel.id='familyAuthBoxV109';
     panel.className='authorizations-v109';panel.open=true;
     panel.innerHTML='<summary>📝 Autorizações de atividades externas (teste)</summary>'+
-      '<p>Quando a atividade for publicada, consulte as informações, imprima a autorização para assinar à mão ou assine eletronicamente. A chefia verá seu registro.</p>'+
+      '<p>Imprima com nome e documento em branco para preenchimento à mão, ou digite os dados para a assinatura eletrônica. Qualquer responsável vinculado ao jovem pode assinar usando sua própria conta.</p>'+
       '<p id="familyAuthStatusV109" role="status"></p><div id="familyAuthListV109" class="authorizations-list-v109"></div>'+
       '<div class="authorizations-actions-v109"><button type="button" id="familyAuthRefreshV109">Atualizar autorizações</button></div>';
     modules.insertAdjacentElement('afterend',panel);
@@ -157,7 +166,8 @@
       if(!row)return;
       familyDrafts.set(draftKey(row),{
         name:card.querySelector('[data-sign-name]')?.value||'',
-        cpf:card.querySelector('[data-sign-cpf]')?.value||'',
+        documentType:card.querySelector('[data-sign-doc-type]')?.value||'CPF',
+        document:card.querySelector('[data-sign-document]')?.value||'',
         accepted:!!card.querySelector('[data-sign-accept]')?.checked
       });
       previewCardIdentity(card,row);
@@ -171,7 +181,8 @@
     const rows=familyRows;
     host.innerHTML=rows.length?rows.map((r,i)=>{
       const current=validAuthorization(r),draft=familyDrafts.get(draftKey(r))||{};
-      const name=draft.name===undefined?r.responsavel_nome:draft.name;
+      const name=draft.name||'';
+      const docType=draft.documentType==='RG'?'RG':'CPF';
       const missing=[];
       if(!r.local_saida&&!r.ponto_encontro)missing.push('local de saída');
       if(!r.local_chegada&&!r.ponto_encontro)missing.push('local de chegada');
@@ -185,14 +196,18 @@
         '<p class="authorizations-status-v109">'+esc(statusLabel(r))+
         (current?' • '+esc(r.nome_assinante||'')+' • '+esc(when(r.assinado_em)):'')+'</p>'+
         '<div class="authorizations-sign-v109">'+
-        '<label>Nome completo do responsável (conforme cadastro)'+
-          '<input type="text" data-sign-name maxlength="200" autocomplete="name" value="'+esc(name||'')+'"></label>'+
-        '<label>CPF do responsável'+
-          '<input type="text" inputmode="numeric" autocomplete="off" data-sign-cpf maxlength="14" placeholder="000.000.000-00" value="'+esc(draft.cpf||'')+'"></label>'+
-        '<p class="auth-sign-hint-v117">O CPF é usado para conferir a assinatura. O número completo não será gravado pelo Conecta; apenas os dois últimos dígitos ficam no registro de auditoria.</p>'+
+        '<label>Nome completo de quem vai assinar'+
+          '<input type="text" data-sign-name maxlength="200" autocomplete="name" placeholder="Preencher à mão no impresso ou digitar para assinar" value="'+esc(name)+'"></label>'+
+        '<label>Tipo de documento de identificação'+
+          '<select data-sign-doc-type><option value="CPF" '+(docType==='CPF'?'selected':'')+'>CPF</option>'+
+          '<option value="RG" '+(docType==='RG'?'selected':'')+'>RG</option></select></label>'+
+        '<label>Número do documento do responsável'+
+          '<input type="text" autocomplete="off" data-sign-document maxlength="25" '+
+          'placeholder="CPF ou RG de quem vai assinar" value="'+esc(draft.document||'')+'"></label>'+
+        '<p class="auth-sign-hint-v117">Na via impressa, nome e documento podem ficar em branco para preenchimento à mão. Para assinatura eletrônica, preencha os dois. Cada responsável vinculado ao jovem assina usando seu próprio acesso. A identificação completa não fica armazenada; somente o tipo e os dois dígitos finais constam na auditoria.</p>'+
         '<div class="authorizations-terms-v109" data-consent-document>'+
-          consentDocument({...r,nome_assinatura:name,documento_responsavel:formatCpf(draft.cpf)})+'</div>'+
-        '<div class="authorizations-actions-v109"><button type="button" data-print-authorization="'+i+'">Imprimir autorização preenchida</button></div>'+
+          consentDocument(withIdentity(r,{querySelector:q=>({value:q==='[data-sign-name]'?name:q==='[data-sign-doc-type]'?docType:draft.document||''})}))+'</div>'+
+        '<div class="authorizations-actions-v109"><button type="button" data-print-authorization="'+i+'">Imprimir autorização (campos manuais ou preenchidos)</button></div>'+
         '<label class="check"><input type="checkbox" data-sign-accept '+(draft.accepted?'checked':'')+'>'+
           '<span>Confirmo que li os dados e o texto da autorização e registro minha decisão eletronicamente.</span></label>'+
         '<div class="authorizations-actions-v109">'+
@@ -226,15 +241,17 @@
     }
     if(busy){showSignMessage(card,'Uma assinatura já está sendo processada.');return;}
     const nameField=card.querySelector('[data-sign-name]');
-    const cpfField=card.querySelector('[data-sign-cpf]');
+    const docField=card.querySelector('[data-sign-document]');
+    const tipo=card.querySelector('[data-sign-doc-type]')?.value==='RG'?'RG':'CPF';
     const acceptField=card.querySelector('[data-sign-accept]');
     const name=nameField?.value?.trim()||'';
-    const cpf=cpfField?.value?.trim()||'';
+    const numeroDoc=docField?.value?.trim()||'';
     if(name.length<5){showSignMessage(card,'Informe seu nome completo.');nameField?.focus();return;}
     if(name.toLocaleLowerCase('pt-BR')!==(row.responsavel_nome||'').trim().toLocaleLowerCase('pt-BR')){
       showSignMessage(card,'O nome deve corresponder ao cadastro do responsável.');nameField?.focus();return;
     }
-    if(!validCpf(cpf)){showSignMessage(card,'Digite um CPF válido com 11 dígitos.');cpfField?.focus();return;}
+    if(tipo==='CPF'&&!validCpf(numeroDoc)){showSignMessage(card,'Digite um CPF válido com 11 dígitos.');docField?.focus();return;}
+    if(tipo==='RG'&&!validRg(numeroDoc)){showSignMessage(card,'Informe um RG com 5 a 20 letras ou números.');docField?.focus();return;}
     if(!acceptField?.checked){showSignMessage(card,'Marque a declaração antes de assinar.');acceptField?.focus();return;}
     const choice=answer==='autorizado'?'AUTORIZAR':'NÃO AUTORIZAR';
     if(!window.confirm('Confirmar que deseja '+choice+' a participação de '+
@@ -244,15 +261,16 @@
     controls.forEach(el=>el.disabled=true);
     showSignMessage(card,'Registrando assinatura eletrônica...');
     try{
-      const {data,error}=await client.rpc('assinar_autorizacao_eletronica_v117',{
+      const {data,error}=await client.rpc('assinar_autorizacao_eletronica_v118',{
         p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,
-        p_status:answer,p_nome_digitado:name,p_cpf_digitado:cpf,p_termo_aceito:true
+        p_status:answer,p_nome_digitado:name,p_tipo_documento:tipo,
+        p_numero_documento:numeroDoc,p_termo_aceito:true
       });
       if(error)throw error;
       if(data?.ok!==true)throw new Error('O servidor não confirmou a assinatura.');
       familyDrafts.delete(draftKey(row));
       await loadFamily();
-      $('familyAuthStatusV109').textContent='Assinatura registrada e disponível à chefia. CPF conferido, sem armazenamento do número completo.';
+      $('familyAuthStatusV109').textContent='Assinatura registrada e disponível à chefia. Documento informado, sem guardar o número completo.';
     }catch(err){
       showSignMessage(card,'Não foi possível assinar: '+err.message);
     }finally{
@@ -282,7 +300,7 @@
       '<div class="signline"></div><p>Data: ____/____/______</p>'+
       '<div class="signline"></div><p>Cidade</p>'+
       '<div class="signline"></div><p>Assinatura do responsável</p>'+
-      '<p class="notice">Confira o nome e o CPF impressos. Caso o CPF não tenha sido informado, preencha-o manualmente antes de assinar. '+
+      '<p class="notice">Nome e documento podem ser preenchidos manualmente se os campos estiverem em branco. '+
       'Entregue a via física assinada à chefia. Não se trata de ficha médica.</p>'+
       '<div class="actions"><button onclick="window.print()">Imprimir autorização</button></div></body></html>';
     w.document.open();w.document.write(html);w.document.close();
