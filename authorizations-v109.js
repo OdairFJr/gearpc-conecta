@@ -206,7 +206,9 @@
           'placeholder="CPF ou RG de quem vai assinar" value="'+esc(draft.document||'')+'"></label>'+
         '<p class="auth-sign-hint-v117">Na via impressa, nome e documento podem ficar em branco para preenchimento à mão. Para assinatura eletrônica, preencha os dois. Cada responsável vinculado ao jovem assina usando seu próprio acesso. A identificação completa não fica armazenada; somente o tipo e os dois dígitos finais constam na auditoria.</p>'+
         '<div class="authorizations-terms-v109" data-consent-document>'+
-          consentDocument(withIdentity(r,{querySelector:q=>({value:q==='[data-sign-name]'?name:q==='[data-sign-doc-type]'?docType:draft.document||''})}))+'</div>'+
+          consentDocument({...r,nome_assinatura:name,tipo_documento:docType,
+            documento_responsavel:docType==='CPF'?formatCpf(draft.document||''):
+              String(draft.document||'').toUpperCase()})+'</div>'+
         '<div class="authorizations-actions-v109"><button type="button" data-print-authorization="'+i+'">Imprimir autorização (campos manuais ou preenchidos)</button></div>'+
         '<label class="check"><input type="checkbox" data-sign-accept '+(draft.accepted?'checked':'')+'>'+
           '<span>Confirmo que li os dados e o texto da autorização e registro minha decisão eletronicamente.</span></label>'+
