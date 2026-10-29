@@ -402,6 +402,12 @@
     $('chiefAuthRefreshV109').addEventListener('click',loadChief);
     panel.addEventListener('toggle',()=>{if(panel.open)void loadChief();});
     panel.addEventListener('click',async event=>{
+      const pdfButton=event.target.closest('[data-download-signed-pdf]');
+      if(pdfButton){
+        await downloadSignedPdf(Number(pdfButton.dataset.downloadSignedPdf),
+          pdfButton.dataset.simulation==='true',pdfButton);
+        return;
+      }
       const documentButton=event.target.closest('[data-open-signed-document]');
       if(documentButton){
         await openSignedDocument(Number(documentButton.dataset.openSignedDocument),
@@ -439,12 +445,14 @@
             ' • '+esc(when(sim.registrado_em))+'</p>':'');
         if(complete&&r.meio==='eletronica'){
           html+='<div class="authorizations-actions-v109">'+
-            '<button type="button" data-open-signed-document="'+i+'" data-simulation="false">Visualizar assinatura eletrônica / Salvar PDF</button>'+
+            '<button type="button" class="primary" data-download-signed-pdf="'+i+'" data-simulation="false">Baixar autorização em PDF</button>'+ 
+            '<button type="button" data-open-signed-document="'+i+'" data-simulation="false">Visualizar (impressão alternativa)</button>'+
             '</div>';
         }
         if(!complete&&sim){
           html+='<div class="authorizations-actions-v109">'+
-            '<button type="button" data-open-signed-document="'+i+'" data-simulation="true">Visualizar comprovante de simulação (teste)</button>'+
+            '<button type="button" class="primary" data-download-signed-pdf="'+i+'" data-simulation="true">Baixar simulação em PDF</button>'+ 
+            '<button type="button" data-open-signed-document="'+i+'" data-simulation="true">Visualizar simulação (alternativa)</button>'+
             '</div>';
         }
         if(canReceive && guardians.length){
@@ -535,6 +543,36 @@
       '<div class="actions"><button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button></div>'+
       '</body></html>';
   }
+
+  async function downloadSignedPdf(index,simulated,button){
+    const row=chiefRows[index],statusNode=$('chiefAuthStatusV109');
+    if(!row||!canChief())return;
+    if(busy){if(statusNode)statusNode.textContent='Há outra operação em andamento.';return;}
+    busy=true;
+    if(button)button.disabled=true;
+    if(statusNode)statusNode.textContent='Gerando arquivo PDF verdadeiro para download...';
+    try{
+      const {data,error}=await client.rpc('obter_documento_autorizacao_externa_v122',{
+        p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,p_simulacao:simulated
+      });
+      if(error)throw error;
+      if(!data||data.simulado!==simulated)throw new Error('Tipo de documento incorreto.');
+      if(!window.GEARPC_AUTH_PDF_V123?.downloadSigned){
+        throw new Error('Gerador de PDF indisponível. Recarregue o Conecta.');
+      }
+      const result=await window.GEARPC_AUTH_PDF_V123.downloadSigned(data);
+      if(statusNode)statusNode.textContent='PDF gerado ('+Math.round(result.size/1024)+
+        ' KB): '+result.name+'. Abra-o pela pasta Downloads do dispositivo. '+
+        'Se não aparecer, confira se o navegador permitiu o download.';
+    }catch(err){
+      if(statusNode)statusNode.textContent='Não foi possível baixar o PDF: '+err.message+
+        '. Você ainda pode usar a opção alternativa de visualização.';
+    }finally{
+      busy=false;
+      if(button?.isConnected)button.disabled=false;
+    }
+  }
+
   async function openSignedDocument(index,simulated){
     const row=chiefRows[index];
     if(!row||!canChief())return;
