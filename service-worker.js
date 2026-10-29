@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v121-simulacao-assinatura';
+const CACHE_NAME = 'gearpc-conecta-offline-v122-documento-assinado';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -19,7 +19,7 @@ const APP_SHELL = [
   './app.js?v=105.0',
   './programacao.js?v=102.0',
   './programacao-externa-v107.js?v=116.0',
-  './authorizations-v109.js?v=121.0',
+  './authorizations-v109.js?v=122.0',
   './programming-import-v33.js?v=48.0',
   './offline-bootstrap-v24.js',
   './offline-access-marker-v24.js',
@@ -207,7 +207,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=116.0"></script>\n</body>');
   }
   if (!html.includes('authorizations-v109.js')) {
-    html = html.replace('</body>', '  <script src="authorizations-v109.js?v=121.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="authorizations-v109.js?v=122.0"></script>\n</body>');
   }
   const headers = new Headers(response.headers);
   headers.delete('content-length');
