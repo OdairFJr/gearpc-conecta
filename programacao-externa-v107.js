@@ -52,7 +52,7 @@
  let data=[],sections=[],own=[],editing=null,steps=[],busy=false;
  let people={jovens:[],chefes:[],chefes_secoes:[]};
  let chosenSections=new Set(),chosenYouth=new Set(),chosenChiefs=new Set();
- let sectionFilter='',chiefFilter='',selectedDirector=false;
+ let sectionFilter='',chiefFilter='',selectedDirector=false,canReviewExternal=false;
  const esc=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;')
   .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
  const admin=()=>state.profile?.tipo==='administrador';
@@ -252,12 +252,14 @@
    ];
    if(chief() && state.profile?.chefe_id)promises.push(
       client.from('chefe_secoes').select('secao_id').eq('chefe_id',state.profile.chefe_id));
+   promises.push(client.rpc('pode_revisar_programacao_externa_v114'));
    const results=await Promise.all(promises);
    const err=results.find(r=>r.error)?.error;
    if(err)throw err;
    sections=results[0].data||[];
    data=results[1].data||[];
    own=chief()?(results[2]?.data||[]).map(r=>Number(r.secao_id)):[];
+   canReviewExternal=results[results.length-1].data===true;
    list();
    status(data.length+' programação(ões) cadastrada(s).');
   }catch(error){status('Erro ao carregar: '+error.message);}
@@ -265,17 +267,17 @@
  function mountReady(){return Boolean($('externalBoxV107'));}
  function list(){
   const byId=new Map(sections.map(s=>[Number(s.id),s.nome]));
-  const rows=admin()?[...data].sort((a,b)=>
+  const rows=canReviewExternal?[...data].sort((a,b)=>
    Number(b.status==='em_analise')-Number(a.status==='em_analise')):data;
   $('externalListV107').innerHTML=rows.length?rows.map(row=>{
    return '<article class="external-card-v107"><div><strong>'+esc(row.titulo)+'</strong>'+
-     (admin()&&row.status==='em_analise'?'<small><strong>⏳ Aguardando parecer do DME</strong></small>':'')+
+     (canReviewExternal&&row.status==='em_analise'?'<small><strong>⏳ Aguardando parecer do DME</strong></small>':'')+
      '<small>'+esc(TYPES[row.tipo]||row.tipo)+' • '+(row.atividade_geral?'Todo o grupo':esc(byId.get(Number(row.secao_id))||'Seção'))+
      ' • '+esc(dateFormat(row.data_inicio))+' até '+esc(dateFormat(row.data_fim))+
      '</small><small>'+esc(row.local)+' • '+esc(STATUS[row.status]||row.status)+
        (row.roteiro_arquivo_path?' • PDF/Word anexado':'')+'</small></div>'+
      '<button type="button" data-external-open="'+Number(row.id)+'">'+
-     (admin()&&row.status==='em_analise'?'Analisar atividade':'Abrir roteiro')+
+     (canReviewExternal&&row.status==='em_analise'?'Analisar atividade':'Abrir roteiro')+
      '</button></article>';
   }).join(''):'<p>Nenhuma programação externa cadastrada. Use “Nova programação externa” para começar.</p>';
  }
@@ -466,7 +468,7 @@
          esc(dateFormat(event.registrado_em))+
          (event.parecer?' — '+esc(event.parecer):'')+'</li>').join('')+'</ol></section>':'';
    }
-   const showReview=admin()&&row&&['em_analise','aprovada'].includes(existing);
+   const showReview=canReviewExternal&&row&&['em_analise','aprovada'].includes(existing);
    const reviewPanel=showReview?
      '<section class="ext-review-v114" id="externalDmePanelV114">'+
        '<h4>Conferência da programação externa — DME</h4>'+
