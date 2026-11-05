@@ -101,15 +101,19 @@
   ])if(r[key])field(label,r[key]);
   y-=10;heading('Declaração registrada');
   const verb=r.status==='nao_autorizado'?'NÃO AUTORIZO':'AUTORIZO';
+  const documentoCompleto=String(r.documento_completo||'').trim();
+  const identificacao=documentoCompleto
+   ?safe(r.documento_tipo)+' nº '+safe(documentoCompleto)
+   :safe(r.documento_tipo)+' terminado em '+safe(r.documento_final);
   paragraph('Eu, '+safe(r.nome_assinante)+', identificado(a) pelo documento '+
-   safe(r.documento_tipo)+' terminado em '+safe(r.documento_final)+', declaro: '+
+   identificacao+', declaro: '+
    verb+' a participação de '+safe(r.jovem_nome)+' na atividade descrita acima.',{size:10.6,after:8});
   if(r.termo_original||r.texto_autorizacao)
    paragraph(r.termo_original||r.texto_autorizacao,{size:10,after:10});
   heading('Registro eletrônico');
   field('Tipo',r.simulado?'Simulação não válida':'Assinatura eletrônica simples');
   field('Nome informado',r.nome_assinante);
-  field('Documento',safe(r.documento_tipo)+' - somente final '+safe(r.documento_final));
+  field('Documento',identificacao);
   field('Resposta',r.status==='autorizado'?'Autorizado':'Não autorizado');
   field('Data e hora',when(r.assinado_em));
   field('ID de registro',r.registro_id);
