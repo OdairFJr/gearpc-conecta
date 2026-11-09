@@ -253,7 +253,7 @@
         '<label>Número do documento do responsável'+
           '<input type="text" autocomplete="off" data-sign-document maxlength="25" '+
           'placeholder="CPF ou RG de quem vai assinar" value="'+esc(draft.document||'')+'"></label>'+
-        '<p class="auth-sign-hint-v117">Na via impressa, o pai ou a mãe poderá preencher e assinar o documento. Para testar o fluxo eletrônico, informe o nome e o CPF ou RG que desejar testar. Um nome diferente da conta gera simulação, não autorização válida. O sistema guarda apenas os dois dígitos finais do documento.</p>'+
+        '<p class="auth-sign-hint-v117">Na via impressa, o pai ou a mãe poderá preencher e assinar o documento. Para testar o fluxo eletrônico, informe o nome e o CPF ou RG que desejar testar. Um nome diferente da conta gera simulação, não autorização válida. O CPF de uma assinatura eletrônica é exibido no comprovante acessível à chefia da seção e à administração. Para RG e simulações, são guardados os dois últimos caracteres.</p>'+
         '<div class="authorizations-terms-v109" data-consent-document>'+
           consentDocument({...r,nome_assinatura:name,tipo_documento:docType,
             documento_responsavel:docType==='CPF'?formatCpf(draft.document||''):
@@ -339,10 +339,11 @@
     showSignMessage(card,'Registrando assinatura eletrônica...');
     try{
       const {data,error}=await client.rpc(same?
-        'assinar_autorizacao_eletronica_v118':'simular_autorizacao_externa_v121',{
+        'assinar_autorizacao_eletronica_v124':'simular_autorizacao_externa_v121',{
         p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,
         p_status:answer,p_nome_digitado:name,p_tipo_documento:tipo,
-        p_numero_documento:numeroDoc,p_termo_aceito:true
+        p_numero_documento:numeroDoc,p_termo_aceito:true,
+        ...(same?{p_versao:row.versao}:{})
       });
       if(error)throw error;
       if(data?.ok!==true)throw new Error('O servidor não confirmou o registro.');
@@ -494,12 +495,12 @@
     const type=simulated?'SIMULAÇÃO — NÃO É AUTORIZAÇÃO VÁLIDA':
       'COMPROVANTE DE REGISTRO DE ASSINATURA ELETRÔNICA';
     const documentType=row.documento_tipo||'Documento não identificado';
-    const documentLast=row.documento_final?'Final '+String(row.documento_final):'Não armazenado';
+    const documentLast=row.documento_completo||(row.documento_final?'Final '+String(row.documento_final):'Não armazenado');
     const docRow={
       ...row,
       nome_assinatura:row.nome_assinante,
       tipo_documento:row.documento_tipo||'',
-      documento_responsavel:row.documento_final?'somente final '+row.documento_final:'não registrado'
+      documento_responsavel:documentLast
     };
     const proof=(label,value)=>'<div><strong>'+esc(label)+': </strong>'+esc(value??'Não informado')+'</div>';
     const support=(simulated?
@@ -552,7 +553,7 @@
     if(button)button.disabled=true;
     if(statusNode)statusNode.textContent='Gerando arquivo PDF verdadeiro para download...';
     try{
-      const {data,error}=await client.rpc('obter_documento_autorizacao_externa_v122',{
+      const {data,error}=await client.rpc('obter_documento_autorizacao_externa_v124',{
         p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,p_simulacao:simulated
       });
       if(error)throw error;
@@ -587,7 +588,7 @@
     w.document.write('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Preparando comprovante</title><body><p>Preparando documento de autorização...</p></body></html>');
     w.document.close();
     try{
-      const {data,error}=await client.rpc('obter_documento_autorizacao_externa_v122',{
+      const {data,error}=await client.rpc('obter_documento_autorizacao_externa_v124',{
         p_atividade_id:row.atividade_id,p_jovem_id:row.jovem_id,
         p_simulacao:simulated
       });

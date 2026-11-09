@@ -72,7 +72,7 @@
  const nowLocal=()=>dateLocal(new Date().toISOString());
  const status=(text)=>{const node=$('externalStatusV107');if(node)node.textContent=text||'';};
  const formStatus=text=>{
-   for(const id of ['externalFormStatusV107','externalDmeStatusV114']){
+   for(const id of ['externalFormStatusV107','externalDmeStatusV114','externalCorrectionStatusV124']){
      const node=$(id);if(node)node.textContent=text||'';
    }
  };
@@ -174,6 +174,8 @@
    if(review)await action(review.dataset.dmeAction);
    if(e.target.closest('#externalPublishV107'))await action('publicar');
    if(e.target.closest('#externalPreviewAuthV115')){previewAuthorization();return;}
+   if(e.target.closest('#externalCorrectPublishedV124'))await correctPublished();
+   if(e.target.closest('#externalDeleteV124'))await deleteSchedule();
    if(e.target.closest('#externalCopyPaxtuV110'))await copyPaxtu();
    if(e.target.closest('#externalDownloadDocumentV112'))await downloadScheduleDocument();
    if(e.target.closest('#externalUnlinkDocumentV112'))await unlinkScheduleDocument();
@@ -619,11 +621,20 @@
      (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
      '>Publicar para responsáveis</button>':'')+
     (admin()&&row&&existing==='publicada'?'<button type="button" id="externalCopyPaxtuV110">Copiar para Paxtu100</button>':'')+
+    (admin()&&row?'<button type="button" id="externalDeleteV124">Excluir definitivamente</button>':'')+
     '<button type="button" id="externalCancelV107">Fechar</button>'+
     '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
     (row?.plano_seguranca_visit_id?'<section id="externalAuthorizationPreviewV115" class="external-auth-preview-v115 external-hidden-v107" aria-live="polite"></section>':'')+
-    (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Para preservar autorizações e registros, ela não pode mais ser editada neste módulo.</p>':'')+
-    '</form>';
+    '</form>'+
+    (admin()&&existing==='publicada'?
+      '<details class="external-notes-v107"><summary>Corrigir data, horário ou local</summary>'+
+      '<p>Ao salvar, a atividade sai da área dos responsáveis e as autorizações anteriores são excluídas. Confira o roteiro e o Plano de Segurança antes de enviar para nova aprovação. Após republicar, os responsáveis precisarão assinar novamente.</p>'+
+      '<div class="external-grid-v107">'+
+      dateField('Novo início','correction_from',dateLocal(row.data_inicio),true)+
+      dateField('Novo término','correction_to',dateLocal(row.data_fim),true)+
+      textField('Local da atividade','correction_place',row.local,false,true,true)+
+      '</div><button type="button" id="externalCorrectPublishedV124">Salvar correção e retirar publicação</button>'+
+      '<p id="externalCorrectionStatusV124" role="status"></p></details>':'');
    if(row)$('externalSectionV107').value=String(row.secao_id);
    $('externalEditorV107').classList.remove('external-hidden-v107');
    renderSteps();renderPeople();
@@ -787,6 +798,52 @@
    formStatus('Não foi possível salvar: '+error.message);
    return null;
   }finally{busy=false;}
+ }
+ async function correctPublished(){
+   const row=editing;
+   if(busy||!admin()||row?.status!=='publicada')return;
+   const start=$('external_correction_from_v107');
+   const end=$('external_correction_to_v107');
+   const place=$('external_correction_place_v107');
+   if(![start,end,place].every(field=>field?.reportValidity()))return;
+   const local=place.value.trim();
+   const from=timestamp(start.value),to=timestamp(end.value);
+   if(!local||!from||!to||from>=to){formStatus('Informe início, término e local válidos.');return;}
+   if(!window.confirm('Retirar a publicação e invalidar todas as autorizações desta atividade?'))return;
+   busy=true;
+   try{
+     const {error}=await client.rpc('corrigir_atividade_externa_publicada_v124',{
+       p_id:row.id,p_atualizado_em:row.atualizado_em,p_inicio:from,p_fim:to,p_local:local
+     });
+     if(error)throw error;
+     await load();await openEditor(row.id);
+     formStatus('Correção salva. Confira o roteiro, envie ao DME e vincule o Plano de Segurança aprovado antes de republicar.');
+   }catch(error){formStatus('Não foi possível corrigir a atividade: '+error.message);}
+   finally{busy=false;}
+ }
+ async function deleteSchedule(){
+   const row=editing;
+   if(busy||!admin()||!row?.id)return;
+   if(!window.confirm('Excluir definitivamente “'+row.titulo+'”, seu roteiro, o Plano de Segurança vinculado e todas as autorizações e assinaturas? Esta ação é irreversível.'))return;
+   busy=true;
+   formStatus('Excluindo programação e registros vinculados...');
+   try{
+     const params={p_id:row.id,p_atualizado_em:row.atualizado_em};
+     const check=await client.rpc('excluir_programacao_externa_v124',{...params,p_confirmar:false});
+     if(check.error)throw check.error;
+     const bucket=client.storage.from('gearpc-roteiros-externos');
+     const paths=check.data||[];
+     for(let offset=0;offset<paths.length;offset+=100){
+       const {error}=await bucket.remove(paths.slice(offset,offset+100));
+       if(error)throw error;
+     }
+     const {error}=await client.rpc('excluir_programacao_externa_v124',params);
+     if(error)throw error;
+     closeEditor();
+     await load();
+     status('Atividade excluída definitivamente.');
+   }catch(error){formStatus('Exclusão não concluída: '+error.message);}
+   finally{busy=false;}
  }
  async function downloadScheduleDocument(){
    const row=editing;
@@ -961,7 +1018,7 @@
     if(operation==='reprovar'&&!window.confirm('Reprovar definitivamente esta programação externa? Ela ficará bloqueada para edição e publicação.'))return;
     if(reopeningApproved&&!window.confirm('Reabrir a programação aprovada para edição? A aprovação anterior ficará no histórico, e será necessária nova conferência do DME antes de publicar.'))return;
   }else if(operation==='publicar'){
-    if(!window.confirm('Publicar esta atividade aprovada para o cadastro usado pelos responsáveis? A programação será bloqueada para preservar os registros e autorizações.'))return;
+    if(!window.confirm('Publicar esta atividade aprovada para o cadastro usado pelos responsáveis? Se a data, o horário ou o local mudarem, use a opção de correção na programação publicada.'))return;
   }
   busy=true;formStatus('Atualizando situação...');
   try{

@@ -122,7 +122,7 @@
   y-=12;
   paragraph(r.simulado?
    'ATENCAO: teste sem valor de autorização. A pessoa indicada não foi autenticada, e o registro não comprova que ela assinou.':
-   'Registro da assinatura eletrônica simples realizada em conta autenticada do GEArPC Conecta. Não é assinatura digital certificada. Somente o final do documento de identificação é apresentado.',
+   'Registro da assinatura eletrônica simples realizada em conta autenticada do GEArPC Conecta. Não é assinatura digital certificada.',
    {size:9.2,bold:!!r.simulado,color:r.simulado?red:grey});
   const pages=doc.getPages();
   pages.forEach((p,i)=>{
