@@ -702,7 +702,7 @@
     const [ramosRes, secoesRes, jovensRes, vinculosRes, responsaveisRes, equipesRes, equipeChefesRes, chefesRes, chefeSecoesRes, fichasRes, visitasRes, historicoRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').eq('ativo', true).order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').eq('ativo', true),
-      client.from('jovens').select('id,nome_completo,registro_paxtu,validade_registro,data_nascimento,ramo_id,secao_id,ativo,data_acolhida,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta,equipe_id,data_pode_iniciar_caminho,data_inicio_caminho,data_passagem_ramo,data_limite_passagem_ramo').order('nome_completo'),
+      client.from('jovens').select('id,nome_completo,registro_paxtu,validade_registro,data_nascimento,ramo_id,secao_id,ativo,data_acolhida,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta,equipe_id,data_pode_iniciar_caminho,data_pode_realizar_passagem,data_inicio_caminho,data_passagem_ramo,data_limite_passagem_ramo').order('nome_completo'),
       client.from('jovem_responsaveis').select('jovem_id,responsavel_id,parentesco,responsavel_principal'),
       client.from('responsaveis').select('id,nome_completo,registro_paxtu,telefone'),
       client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
@@ -1040,7 +1040,9 @@
       ...(Number(ramo.id) === 5 ? [
         ramoHistoricoField('Investidura Pioneira','data_investidura_pioneira',row?.data_investidura_pioneira,editable)
       ] : []),
-      ramoHistoricoField('Início real do Caminho','data_inicio_caminho',row?.data_inicio_caminho,editable),
+      ...(Number(ramo.id) === 5 ? [] : [
+        ramoHistoricoField('Início real do Caminho','data_inicio_caminho',row?.data_inicio_caminho,editable)
+      ]),
       ...(Number(ramo.id) === 5 ? [
         ramoHistoricoField('Partida Pioneira','data_partida_pioneira',row?.data_partida_pioneira,editable)
       ] : [
@@ -1141,12 +1143,17 @@
         </div>
         <div class="milestone-alerts-v97">
           <h4>Alertas de planejamento ${isMilestoneAdmin ? '• administração' : '• consulta da chefia'}</h4>
-          <p class="milestone-info-v97">Prazos previstos do ramo atual, editáveis só pelo administrador.</p>
+          <p class="milestone-info-v97">${ramoId === 5 ? 'O prazo da Partida Pioneira é calculado pela data de nascimento.' : 'Datas previstas para o ramo atual. A primeira data possível de passagem é calculada automaticamente.'}</p>
           <div class="milestone-inline-grid-v99">
-            ${inlineMilestoneField('Pode iniciar o Caminho a partir de','canStart',m.data_pode_iniciar_caminho,isMilestoneAdmin)}
-            ${inlineMilestoneField('Data limite prevista para passagem','limit',m.data_limite_passagem_ramo,isMilestoneAdmin)}
+            ${ramoId === 5
+              ? inlineMilestoneField('Data limite da Partida Pioneira','limit',m.data_limite_passagem_ramo,false)
+              : [
+                  inlineMilestoneField('Pode iniciar o Caminho a partir de','canStart',m.data_pode_iniciar_caminho,isMilestoneAdmin),
+                  inlineMilestoneField('Pode realizar a passagem a partir de','canPass',m.data_pode_realizar_passagem,false),
+                  inlineMilestoneField('Data limite prevista para passagem','limit',m.data_limite_passagem_ramo,isMilestoneAdmin)
+                ].join('')}
           </div>
-          ${isMilestoneAdmin ? '<div class="milestone-inline-actions-v99"><button type="button" class="save-button" data-planning-save>Salvar alertas</button><p class="form-message" data-planning-status role="status"></p></div>' : ''}
+          ${isMilestoneAdmin && ramoId !== 5 ? '<div class="milestone-inline-actions-v99"><button type="button" class="save-button" data-planning-save>Salvar alertas</button><p class="form-message" data-planning-status role="status"></p></div>' : ''}
         </div>
         <details class="history-legacy-reference-v101">
           <summary>Dados antigos do cadastro • referência para conferência</summary>
@@ -1220,7 +1227,7 @@
             p_data_ingresso: input('data_ingresso'),
             p_data_acolhida: input('data_acolhida'),
             p_data_promessa: input('data_promessa'),
-            p_data_inicio_caminho: input('data_inicio_caminho'),
+            p_data_inicio_caminho: ram === 5 ? (record?.data_inicio_caminho || null) : input('data_inicio_caminho'),
             // Partida é a conclusão do Pioneiro; preserva passagem antiga, se houver.
             p_data_passagem: ram === 5 ? (record?.data_passagem || null) : input('data_passagem'),
             p_versao_esperada: scope.dataset.version || null,
