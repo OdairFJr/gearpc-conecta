@@ -1,0 +1,23 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atividades de Adultos e Pioneiros — Testes</title>
+<style>body{font:16px system-ui;background:#f5f7fa;color:#17324d;max-width:720px;margin:20px auto;padding:12px}fieldset{background:white;border:1px solid #cbd5e1;border-radius:12px;margin:14px 0;padding:16px}label{display:block;margin:12px 0}input,select,textarea{display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:4px;font:inherit;border:1px solid #9eacba;border-radius:6px}button{background:#0a376c;color:white;border:0;border-radius:6px;padding:12px;margin:5px;cursor:pointer}.step{border-top:1px solid #ddd;padding-top:8px}small{color:#53687c}#message{white-space:pre-wrap}</style>
+<h2>Atividades de Adultos e Pioneiros</h2><small>Ambiente de testes. Utiliza o login do GEArPC Conecta.</small>
+
+<section id="workspace"><form id="form"><fieldset><legend>Atividade</legend>
+<label>Nome<input name="nome" required></label><label>Tipo<select name="tipo" required><option>Oficina</option><option>Formação</option><option>Indaba</option><option>Curso</option><option>Reunião</option><option>Seminário</option><option>Outro</option></select></label>
+<label>Responsável<input name="responsavel" required></label><label>Local<input name="local" required></label><label>Google Maps<input name="maps_url" type="url"></label>
+<label>Data<input name="data" type="date" required></label><label>Início<input name="inicio" type="time" required></label><label>Fim<input name="fim" type="time" required></label>
+<label>Observações<textarea name="observacoes"></textarea></label></fieldset>
+<fieldset><legend>Programação (opcional)</legend><div id="steps"></div><button type="button" id="add">Adicionar etapa</button></fieldset>
+<fieldset><legend>Participantes adultos e pioneiros</legend><small>Um nome por linha; confirmação e presença serão integradas em etapa posterior.</small><textarea name="participantes" rows="4"></textarea></fieldset>
+<button type="submit">Salvar atividade no banco de testes</button></form><h3>Atividades registradas</h3><div id="items"></div></section>
+<p id="message" role="status"></p>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $=id=>document.getElementById(id);
+const db=window.supabase.createClient('https://wewbwrdqubypuwuyvwmv.supabase.co','sb_publishable_deqHEsvtUheOU-IhRpxgdw_K6qNiVmu');
+function msg(t){$('message').textContent=t}
+function row(t){const d=document.createElement('div');d.textContent=t;return d}
+async function refresh(){const {data,error}=await db.from('atividades_adultos_pioneiros_v1').select('nome,tipo,data,inicio,fim,local').order('data',{ascending:false});$('items').replaceChildren(...(data||[]).map(x=>row(x.data+' — '+x.nome+' ('+x.inicio+'–'+x.fim+') — '+x.local)));if(error)msg(error.message)}
+async function session(){const {data}=await db.auth.getSession();if(data.session)await refresh();else msg('Entre no GEArPC Conecta para registrar atividades.')}
+session();
+</script></html>
