@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Protótipo — Atividades de Adultos e Pioneiros</title>
+<style>body{font:16px system-ui;background:#f4f7fb;color:#18304a;max-width:760px;margin:auto;padding:20px}h1{font-size:1.5rem}fieldset{background:white;border:1px solid #dce4ed;border-radius:12px;padding:16px;margin:16px 0}label{display:block;margin:12px 0}input,select,textarea{display:block;box-sizing:border-box;width:100%;padding:10px;margin-top:4px;border:1px solid #b8c7d7;border-radius:8px;font:inherit}button{padding:10px 15px;border:0;border-radius:8px;background:#0a376c;color:white;margin:6px 6px 6px 0;cursor:pointer}.secondary{background:#5a6777}.step{border-top:1px solid #ddd;padding-top:10px}.note{color:#5b6877;font-size:.9rem}#saved{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<h1>Atividades de Adultos e Pioneiros</h1>
+<p class="note">Protótipo isolado para validar campos e fluxo. Não está conectado ao login, ao calendário ou ao banco do GEArPC Conecta. Não use dados pessoais reais.</p>
+<form id="activity">
+<fieldset><legend>Dados da atividade</legend>
+<label>Nome da atividade<input name="nome" required></label>
+<label>Tipo<select name="tipo" required><option value="">Selecione</option><option>Formação</option><option>Indaba</option><option>Oficina</option><option>Curso</option><option>Reunião</option><option>Seminário</option><option>Outro</option></select></label>
+<label>Responsável pela atividade<input name="responsavel" required></label>
+<label>Local<input name="local" required></label>
+<label>Link do local no Google Maps<input name="maps" type="url" placeholder="https://maps.google.com/..."></label>
+<label>Data<input name="data" type="date" required></label>
+<label>Início<input name="inicio" type="time" required></label>
+<label>Fim<input name="fim" type="time" required></label>
+<label>Observações sobre a atividade<textarea name="observacoes" rows="3"></textarea></label></fieldset>
+<fieldset><legend>Programação opcional</legend><div id="steps"></div><button type="button" id="add">+ Adicionar etapa</button></fieldset>
+<fieldset><legend>Participação</legend><p class="note">Adultos e pioneiros. Na versão integrada, os nomes virão do cadastro do grupo.</p><label>Participantes (um nome por linha)<textarea name="participantes" rows="4"></textarea></label></fieldset>
+<button type="submit">Validar e visualizar cadastro</button></form>
+<section id="result" hidden><h2>Cadastro preparado</h2><pre id="saved"></pre><button id="finish" type="button">Abrir avaliação pós-atividade</button></section>
+<section id="evaluation" hidden><h2>Avaliação anônima (protótipo)</h2><p class="note">Não registra identidade ou respostas em servidor.</p><form id="evalForm"><div id="questions"></div><label>O que mais gostou?<textarea name="positivo"></textarea></label><label>O que melhorar?<textarea name="melhorias"></textarea></label><button type="submit">Visualizar avaliação</button></form><pre id="evalResult"></pre></section>
+<script>
+const $=id=>document.getElementById(id);
+$('add').onclick=()=>{const d=document.createElement('div');d.className='step';d.innerHTML='<label>Etapa<input class="etapa" required></label><label>Formador ou instrutor<input class="formador"></label><label>Início (opcional)<input class="inicio" type="time"></label><label>Fim (opcional)<input class="fim" type="time"></label><button type="button" class="secondary">Remover etapa</button>';d.querySelector('button').onclick=()=>d.remove();$('steps').append(d)};
+$('activity').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);if(f.get('fim')<=f.get('inicio'))return alert('O término deve ser posterior ao início.');const maps=f.get('maps');if(maps&&!/^https:\/\/(www\.)?(google\.[^/]+\/maps|maps\.google\.[^/]+|maps\.app\.goo\.gl)\//i.test(maps))return alert('Informe um link válido do Google Maps.');const obj=Object.fromEntries(f);obj.etapas=[...document.querySelectorAll('.step')].map(x=>({etapa:x.querySelector('.etapa').value,formador:x.querySelector('.formador').value,inicio:x.querySelector('.inicio').value,fim:x.querySelector('.fim').value}));$('saved').textContent=JSON.stringify(obj,null,2);$('result').hidden=false;$('result').scrollIntoView()};
+const questions=['Organização','Conteúdo','Clareza dos formadores','Aproveitamento','Local e estrutura'];
+$('questions').innerHTML=questions.map((q,i)=>'<label>'+q+'<select name="q'+i+'" required><option value="">Avalie de 1 a 5</option>'+[1,2,3,4,5].map(n=>'<option>'+n+'</option>').join('')+'</select></label>').join('');
+$('finish').onclick=()=>{$('evaluation').hidden=false;$('evaluation').scrollIntoView()};
+$('evalForm').onsubmit=e=>{e.preventDefault();$('evalResult').textContent=JSON.stringify(Object.fromEntries(new FormData(e.target)),null,2)};
+</script></html>
