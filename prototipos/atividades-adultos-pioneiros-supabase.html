@@ -1,0 +1,27 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Atividades de Adultos e Pioneiros — Testes</title>
+<style>body{font:16px system-ui;background:#f5f7fa;color:#17324d;max-width:720px;margin:20px auto;padding:12px}fieldset{background:white;border:1px solid #cbd5e1;border-radius:12px;margin:14px 0;padding:16px}label{display:block;margin:12px 0}input,select,textarea{display:block;width:100%;box-sizing:border-box;padding:10px;margin-top:4px;font:inherit;border:1px solid #9eacba;border-radius:6px}button{background:#0a376c;color:white;border:0;border-radius:6px;padding:12px;margin:5px;cursor:pointer}.step{border-top:1px solid #ddd;padding-top:8px}small{color:#53687c}#message{white-space:pre-wrap}</style>
+<h2>Atividades de Adultos e Pioneiros</h2><small>Ambiente de testes. Acesso com usuário autorizado no Supabase de testes.</small>
+<section id="login"><fieldset><legend>Entrar</legend><label>E-mail<input id="email" type="email"></label><label>Senha<input id="senha" type="password"></label><button id="entrar">Entrar</button></fieldset></section>
+<section id="workspace" hidden><button id="sair">Sair</button><form id="form"><fieldset><legend>Atividade</legend>
+<label>Nome<input name="nome" required></label><label>Tipo<select name="tipo" required><option>Oficina</option><option>Formação</option><option>Indaba</option><option>Curso</option><option>Reunião</option><option>Seminário</option><option>Outro</option></select></label>
+<label>Responsável<input name="responsavel" required></label><label>Local<input name="local" required></label><label>Google Maps<input name="maps_url" type="url"></label>
+<label>Data<input name="data" type="date" required></label><label>Início<input name="inicio" type="time" required></label><label>Fim<input name="fim" type="time" required></label>
+<label>Observações<textarea name="observacoes"></textarea></label></fieldset>
+<fieldset><legend>Programação (opcional)</legend><div id="steps"></div><button type="button" id="add">Adicionar etapa</button></fieldset>
+<fieldset><legend>Participantes adultos e pioneiros</legend><small>Um nome por linha; confirmação e presença serão integradas em etapa posterior.</small><textarea name="participantes" rows="4"></textarea></fieldset>
+<button type="submit">Salvar atividade no banco de testes</button></form><h3>Atividades registradas</h3><div id="items"></div></section>
+<p id="message" role="status"></p>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const $=id=>document.getElementById(id);
+const db=window.supabase.createClient('https://slolbvyyqtmetpkxurhi.supabase.co','sb_publishable_zilxeL2RiT0LBC_2Q-J7Zg_naspInVg');
+function msg(t){$('message').textContent=t}
+function row(t){const d=document.createElement('div');d.textContent=t;return d}
+async function refresh(){const {data,error}=await db.from('atividades_adultos_pioneiros_v1').select('nome,tipo,data,inicio,fim,local').order('data',{ascending:false});$('items').replaceChildren(...(data||[]).map(x=>row(x.data+' — '+x.nome+' ('+x.inicio+'–'+x.fim+') — '+x.local)));if(error)msg(error.message)}
+async function session(){const {data}=await db.auth.getSession();$('login').hidden=!!data.session;$('workspace').hidden=!data.session;if(data.session)await refresh()}
+$('entrar').onclick=async()=>{const {error}=await db.auth.signInWithPassword({email:$('email').value,password:$('senha').value});if(error)msg(error.message);else{msg('');session()}};
+$('sair').onclick=async()=>{await db.auth.signOut();session()};
+$('add').onclick=()=>{const d=document.createElement('div');d.className='step';d.innerHTML='<label>Etapa<input class="etapa" required></label><label>Formador<input class="formador"></label><label>Início<input type="time" class="inicio"></label><label>Fim<input type="time" class="fim"></label><button type="button">Remover</button>';d.querySelector('button').onclick=()=>d.remove();$('steps').append(d)};
+$('form').onsubmit=async e=>{e.preventDefault();const v=Object.fromEntries(new FormData(e.target));if(v.fim<=v.inicio)return msg('Horário final deve ser posterior ao inicial.');v.etapas=[...document.querySelectorAll('.step')].map(d=>({nome:d.querySelector('.etapa').value,formador:d.querySelector('.formador').value,inicio:d.querySelector('.inicio').value,fim:d.querySelector('.fim').value}));v.participantes=v.participantes.split('\n').map(x=>x.trim()).filter(Boolean);const {error}=await db.from('atividades_adultos_pioneiros_v1').insert(v);if(error)return msg('Não foi possível salvar: '+error.message);msg('Atividade salva no banco de testes.');e.target.reset();$('steps').replaceChildren();refresh()};
+session();
+</script></html>
