@@ -2,7 +2,7 @@
   const element = (id) => document.getElementById(id);
   const runtime = window.GEARPC_RUNTIME;
   if (!runtime) return;
-  const { client, state, showDashboard } = runtime;
+  const { client, state, showDashboard, doLogout } = runtime;
   const dashboard = element('dashboardView');
   const page = element('adultActivitiesView');
   const button = element('adultActivitiesButton');
@@ -25,9 +25,13 @@
   });
   let request = 0;
 
-  function canUseModule() {
+  function canManageActivities() {
     return state.user && state.profile?.ativo &&
       ['administrador', 'chefia'].includes(state.profile.tipo);
+  }
+
+  function isPioneer() {
+    return Boolean(state.user && state.profile?.ativo && state.profile.tipo === 'pioneiro');
   }
 
   function append(parent, tag, content) {
@@ -84,7 +88,7 @@
 
     evaluationForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (submit.disabled || !canUseModule()) return;
+      if (submit.disabled || !canManageActivities()) return;
       const values = Object.fromEntries(new FormData(evaluationForm));
       for (const [name] of questions) values[name] = Number(values[name]);
       submit.disabled = true;
@@ -115,7 +119,7 @@
           .select('organizacao,conteudo,formadores,aproveitamento,estrutura,positivo,melhorias')
           .eq('atividade_id', activity.id);
         if (error) throw error;
-        if (current !== resultRequest || !canUseModule()) return;
+        if (current !== resultRequest || !canManageActivities()) return;
         results.textContent = data.length === 1 ? '1 avaliação' : `${data.length} avaliações`;
         for (const response of data) {
           const item = append(results, 'article', '');
@@ -160,7 +164,7 @@
       append(participants, 'summary', 'Participantes');
       append(participants, 'p', activity.participantes.join('\n'));
     }
-    addEvaluation(activity, card);
+    if (canManageActivities()) addEvaluation(activity, card);
   }
 
   async function refresh() {
@@ -168,22 +172,25 @@
     const userId = state.user?.id;
     listMessage.textContent = 'Carregando atividades…';
     try {
-      const { data, error } = await activities()
-        .select('id,nome,tipo,data,inicio,fim,local,responsavel,maps_url,observacoes,etapas,participantes')
+      const fields = 'id,nome,tipo,data,inicio,fim,local,responsavel,maps_url,etapas';
+      const query = isPioneer()
+        ? client.from('atividades_consulta_pioneiros_v1').select(fields)
+        : activities().select(`${fields},observacoes,participantes`);
+      const { data, error } = await query
         .order('data', { ascending: false }).order('inicio', { ascending: false });
       if (error) throw error;
-      if (current !== request || state.user?.id !== userId || !canUseModule()) return;
+      if (current !== request || state.user?.id !== userId || !(canManageActivities() || isPioneer())) return;
       list.replaceChildren();
       for (const activity of data) renderActivity(activity);
       listMessage.textContent = data.length ? '' : 'Nenhuma atividade registrada.';
     } catch {
-      if (current === request) listMessage.textContent = 'Não foi possível carregar as atividades. Volte ao painel e tente novamente.';
+      if (current === request) listMessage.textContent = 'Não foi possível carregar as atividades. Abra o aplicativo novamente para tentar de novo.';
     }
   }
 
   const observer = new MutationObserver(() => {
-    if (!dashboard.classList.contains('hidden')) button.classList.toggle('hidden', !canUseModule());
-    if (!canUseModule()) {
+    if (!dashboard.classList.contains('hidden')) button.classList.toggle('hidden', !canManageActivities());
+    if (!canManageActivities() && !isPioneer()) {
       request += 1;
       form.reset();
       steps.replaceChildren();
@@ -195,14 +202,32 @@
   observer.observe(dashboard, { attributes: true, attributeFilter: ['class'] });
   observer.observe(element('loginView'), { attributes: true, attributeFilter: ['class'] });
 
+  const back = element('adultActivitiesBackButton');
+  function configureView() {
+    const pioneer = isPioneer();
+    form.classList.toggle('hidden', pioneer);
+    back.textContent = pioneer ? 'Sair' : '←';
+    back.setAttribute('aria-label', pioneer ? 'Sair' : 'Voltar');
+  }
+
+  page.addEventListener('pioneer-activities-open', () => {
+    configureView();
+    window.scrollTo(0, 0);
+    void refresh();
+  });
   button.addEventListener('click', () => {
-    if (!canUseModule() || dashboard.classList.contains('hidden')) return;
+    if (!canManageActivities() || dashboard.classList.contains('hidden')) return;
+    configureView();
     dashboard.classList.add('hidden');
     page.classList.remove('hidden');
     window.scrollTo(0, 0);
     void refresh();
   });
-  element('adultActivitiesBackButton').addEventListener('click', () => {
+  back.addEventListener('click', () => {
+    if (isPioneer()) {
+      void doLogout();
+      return;
+    }
     showDashboard();
     window.scrollTo(0, 0);
   });
@@ -218,7 +243,7 @@
   let activityId = crypto.randomUUID();
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (submit.disabled || !canUseModule()) return;
+    if (submit.disabled || !canManageActivities()) return;
     const fields = new FormData(form);
     const values = {};
     for (const name of ['nome', 'tipo', 'responsavel', 'local', 'maps_url', 'data', 'inicio', 'fim', 'observacoes']) {

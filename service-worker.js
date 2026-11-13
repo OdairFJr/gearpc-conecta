@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v123-oficinas';
+const CACHE_NAME = 'gearpc-conecta-offline-v123-oficinas-pioneiros';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -16,8 +16,8 @@ const APP_SHELL = [
   './offline.html',
   './styles.css?v=103.1',
   './ideas-data.js?v=23.0',
-  './app.js?v=105.2',
-  './adult-activities-navigation-v1.js?v=1.1',
+  './app.js?v=105.3',
+  './adult-activities-navigation-v1.js?v=1.2',
   './programacao.js?v=102.0',
   './programacao-externa-v107.js?v=116.0',
   './authorization-pdf-v123.js?v=123.0',

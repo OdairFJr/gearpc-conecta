@@ -388,6 +388,14 @@
   async function loadProfile(user) {
     const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta,chefe_id,responsavel_id,eh_teste').eq('user_id', user.id).single();
     if (error || !data) {
+      if (error?.code === 'PGRST116') {
+        const { data: isPioneer } = await client.rpc('pode_consultar_como_pioneiro');
+        if (isPioneer === true) {
+          state.user = user;
+          state.profile = { tipo: 'pioneiro', ativo: true };
+          return true;
+        }
+      }
       await client.auth.signOut();
       loginMessage.textContent = 'Seu acesso existe, mas ainda não possui um perfil autorizado no GEArPC Conecta.';
       showLogin();
@@ -2907,8 +2915,15 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     enterAppPromise = (async () => {
       const allowed = await loadProfile(session.user);
       if (!allowed) return false;
-      await registerAppAccess();
-      await revealDashboardStable();
+      if (state.profile.tipo === 'pioneiro') {
+        hideAllViews();
+        const page = $('adultActivitiesView');
+        page.classList.remove('hidden');
+        page.dispatchEvent(new Event('pioneer-activities-open'));
+      } else {
+        await registerAppAccess();
+        await revealDashboardStable();
+      }
       activeAuthenticatedUserId = userId;
       return true;
     })();
@@ -3034,7 +3049,7 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     });
   });
 
-  window.GEARPC_RUNTIME = { client, state, showDashboard, showLogin, escapeHtml };
+  window.GEARPC_RUNTIME = { client, state, showDashboard, showLogin, doLogout, escapeHtml };
 
   client.auth.onAuthStateChange((event, session) => {
     window.setTimeout(async () => {
