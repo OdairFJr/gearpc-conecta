@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const $=id=>document.getElementById(id);
-const db=window.supabase.createClient('https://slolbvyyqtmetpkxurhi.supabase.co','REPLACE_WITH_TEST_PUBLISHABLE_KEY');
+const db=window.supabase.createClient('https://slolbvyyqtmetpkxurhi.supabase.co','sb_publishable_zilxeL2RiT0LBC_2Q-J7Zg_naspInVg');
 function msg(t){$('message').textContent=t}
 function row(t){const d=document.createElement('div');d.textContent=t;return d}
 async function refresh(){const {data,error}=await db.from('atividades_adultos_pioneiros_v1').select('nome,tipo,data,inicio,fim,local').order('data',{ascending:false});$('items').replaceChildren(...(data||[]).map(x=>row(x.data+' — '+x.nome+' ('+x.inicio+'–'+x.fim+') — '+x.local)));if(error)msg(error.message)}
