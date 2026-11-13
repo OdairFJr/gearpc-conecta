@@ -58,6 +58,36 @@
     return null;
   }
 
+  function directionsLink(activity, locationLink) {
+    const route = new URL('https://www.google.com/maps/dir/');
+    route.searchParams.set('api', '1');
+    route.searchParams.set('dir_action', 'navigate');
+
+    let destination = activity.local;
+    if (locationLink) {
+      const map = new URL(locationLink);
+      const pinnedCoordinates = map.pathname.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+      const place = map.pathname.match(/\/maps\/place\/([^/]+)/);
+      const query = map.searchParams.get('destination') || map.searchParams.get('query') ||
+        map.searchParams.get('q');
+      if (pinnedCoordinates) {
+        destination = `${pinnedCoordinates[1]},${pinnedCoordinates[2]}`;
+      } else if (query) {
+        destination = query;
+      } else if (place) {
+        try {
+          destination = decodeURIComponent(place[1].replace(/\+/g, ' '));
+        } catch {
+          // Se o link não pode ser interpretado, use o endereço cadastrado.
+        }
+      }
+      const placeId = map.searchParams.get('destination_place_id') || map.searchParams.get('query_place_id');
+      if (placeId) route.searchParams.set('destination_place_id', placeId);
+    }
+    route.searchParams.set('destination', destination);
+    return route.href;
+  }
+
   function addEvaluation(activity, card) {
     if (dateTime.format(new Date()) < `${activity.data} ${activity.fim}`) {
       append(card, 'p', 'A avaliação estará disponível após o horário de término.');
@@ -141,23 +171,32 @@
     append(card, 'h3', activity.nome);
     const date = activity.data.split('-').reverse().join('/');
     append(card, 'p', `${activity.tipo} · ${date} · ${activity.inicio.slice(0, 5)} às ${activity.fim.slice(0, 5)}`);
-    append(card, 'p', `Local: ${activity.local}\nResponsável: ${activity.responsavel}`);
+    const local = append(card, 'p', 'Local: ');
     const url = mapsLink(activity.maps_url);
+    const route = directionsLink(activity, url);
+    const location = append(local, 'a', activity.local);
+    location.href = route;
+    append(card, 'p', `Responsável: ${activity.responsavel}`);
+    const navigate = append(card, 'a', 'Traçar rota no Google Maps');
+    navigate.className = 'mini-primary adult-activity-route';
+    navigate.href = route;
     if (url) {
-      const link = append(card, 'a', 'Abrir no Google Maps');
-      link.href = url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
+      const pin = append(card, 'p', '');
+      append(pin, 'a', 'Abrir ponto cadastrado no Google Maps').href = url;
     }
     if (activity.observacoes) append(card, 'p', activity.observacoes);
+    append(card, 'h4', 'Programação completa');
     if (activity.etapas?.length) {
-      const schedule = append(card, 'details', '');
-      append(schedule, 'summary', 'Programação');
-      const items = append(schedule, 'ul', '');
+      const items = append(card, 'ol', '');
       for (const step of activity.etapas) {
-        const time = [step.inicio, step.fim].filter(Boolean).join('–');
-        append(items, 'li', [time, step.nome || step.etapa, step.formador].filter(Boolean).join(' · '));
+        const time = step.inicio && step.fim ? `${step.inicio} às ${step.fim}`
+          : step.inicio ? `Início às ${step.inicio}`
+          : step.fim ? `Fim às ${step.fim}` : '';
+        const trainer = step.formador ? `Formador: ${step.formador}` : '';
+        append(items, 'li', [time, step.nome || step.etapa, trainer].filter(Boolean).join(' · '));
       }
+    } else {
+      append(card, 'p', 'Nenhuma etapa cadastrada.');
     }
     if (activity.participantes?.length) {
       const participants = append(card, 'details', '');
