@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
-  <link rel="stylesheet" href="styles.css?v=103.0" />
+  <link rel="stylesheet" href="styles.css?v=103.1" />
 </head>
 <body>
   <main class="app-shell">
@@ -110,7 +110,9 @@
           <span class="launch-module-arrow" aria-hidden="true">›</span>
         </button>
 
-        <button id="adultActivitiesButton" class="launch-module" type="button"><span class="launch-module-icon" aria-hidden="true">📋</span><span class="launch-module-copy"><strong>Atividades de Adultos e Pioneiros</strong><small>Cadastro manual de oficinas, formações e reuniões</small></span><span class="launch-module-arrow" aria-hidden="true">›</span></button>\n\n        <button id="accessButton" class="launch-module hidden" type="button">
+        <button id="adultActivitiesButton" class="launch-module hidden" type="button"><span class="launch-module-icon" aria-hidden="true">📋</span><span class="launch-module-copy"><strong>Atividades de Adultos e Pioneiros</strong><small>Cadastro manual de oficinas, formações e reuniões</small></span><span class="launch-module-arrow" aria-hidden="true">›</span></button>
+
+        <button id="accessButton" class="launch-module hidden" type="button">
           <span class="launch-module-icon access-icon" aria-hidden="true">🔐</span>
           <span class="launch-module-copy">
             <strong>Acessos</strong>
@@ -129,7 +131,49 @@
       <footer class="app-footer">GEArPC Conecta • Grupo Escoteiro do Ar Paulo Carzino</footer>
     </section>
 
-    <section id="adultActivitiesView" class="members-view hidden"><header class="subpage-header"><button id="adultActivitiesBackButton" class="back-button" type="button" aria-label="Voltar">←</button><div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Atividades de Adultos e Pioneiros</strong></div></div></header><p style="padding:12px">Ambiente de testes separado. Faça login com uma conta autorizada no Supabase de testes.</p><iframe id="adultActivitiesFrame" title="Cadastro de atividades de adultos e pioneiros" style="display:block;width:100%;min-height:85vh;border:0" loading="lazy" data-src="adult-activities-form-v1.html"></iframe></section>\n\n    <section id="membersView" class="members-view hidden">
+    <section id="adultActivitiesView" class="members-view hidden">
+      <header class="subpage-header">
+        <button id="adultActivitiesBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
+        <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Atividades de Adultos e Pioneiros</strong></div></div>
+      </header>
+      <div class="adult-activities-content">
+        <form id="adultActivityForm" class="detail-form">
+          <fieldset>
+            <legend>Nova atividade</legend>
+            <label>Nome da atividade<input name="nome" required></label>
+            <label>Tipo<select name="tipo" required><option>Oficina</option><option>Formação</option><option>Indaba</option><option>Curso</option><option>Reunião</option><option>Seminário</option><option>Outro</option></select></label>
+            <label>Responsável pela atividade<input name="responsavel" required></label>
+            <label>Local<input name="local" required></label>
+            <label>Link do local no Google Maps<input name="maps_url" type="url" placeholder="https://maps.app.goo.gl/…"></label>
+            <label>Data<input name="data" type="date" required></label>
+            <label>Horário de início<input name="inicio" type="time" required></label>
+            <label>Horário de fim<input name="fim" type="time" required></label>
+            <label>Observações sobre a oficina ou atividade<textarea name="observacoes" rows="3"></textarea></label>
+            <fieldset><legend>Programação (opcional)</legend>
+              <div id="adultActivitySteps"></div>
+              <button class="mini-primary" type="button" id="adultActivityAddStep">Adicionar etapa</button>
+            </fieldset>
+            <label>Participantes (opcional, um nome por linha)<textarea name="participantes" rows="3"></textarea></label>
+            <button class="save-button" type="submit">Salvar atividade</button>
+            <p id="adultActivityMessage" class="form-message" role="status"></p>
+          </fieldset>
+        </form>
+        <h2>Atividades registradas</h2>
+        <p id="adultActivityListMessage" role="status"></p>
+        <div id="adultActivityList"></div>
+      </div>
+      <template id="adultActivityStepTemplate">
+        <fieldset class="adult-activity-step"><legend>Etapa</legend>
+          <label>Nome da etapa<input name="etapa_nome" required></label>
+          <label>Nome do formador<input name="etapa_formador"></label>
+          <label>Início (opcional)<input name="etapa_inicio" type="time"></label>
+          <label>Fim (opcional)<input name="etapa_fim" type="time"></label>
+          <button class="cancel-button" type="button">Remover etapa</button>
+        </fieldset>
+      </template>
+    </section>
+
+    <section id="membersView" class="members-view hidden">
       <header class="subpage-header">
         <button id="membersBackButton" class="back-button" type="button" aria-label="Voltar">←</button>
         <div class="subpage-brand"><img src="logo-grupo.jpeg" alt="" /><div><span>GEArPC Conecta</span><strong>Jovens</strong></div></div>
@@ -946,10 +990,11 @@
     </form>
   </dialog>
 
-  <script src="adult-activities-navigation-v1.js?v=1.0"></script>\n  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="ideas-data.js?v=23.0"></script>
-  <script src="app.js?v=105.1"></script>
+  <script src="app.js?v=105.2"></script>
+  <script src="adult-activities-navigation-v1.js?v=1.1"></script>
   <script src="admin-reports-v29.js?v=29.0"></script>
   <script src="admin-reports-access-v29-1.js?v=29.1"></script>
   <script src="report-promessas-v104.js?v=104.0"></script>
@@ -979,7 +1024,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=123.1').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=123.2').catch(() => {});
       });
     }
   </script>

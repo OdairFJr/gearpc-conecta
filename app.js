@@ -312,6 +312,7 @@
     chiefsView.classList.add('hidden');
     attendanceView.classList.add('hidden');
     accessView.classList.add('hidden');
+    $('adultActivitiesView')?.classList.add('hidden');
     $('programmingView')?.classList.add('hidden');
     $('programEditorView')?.classList.add('hidden');
   }

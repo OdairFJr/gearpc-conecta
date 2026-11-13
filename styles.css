@@ -1465,3 +1465,34 @@ h1 { font-size: clamp(32px, 8vw, 42px); margin: 0; letter-spacing: -.03em; }
 .history-branch-v101[data-ramo-historico="5"] [data-history-field="data_partida_pioneira"] {
   border-color: #87a7c5;
 }
+
+.adult-activities-content {
+  width: min(100%, 720px);
+  margin-inline: auto;
+  padding: 16px;
+}
+.adult-activities-content fieldset,
+.adult-activities-content article {
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #fff;
+}
+.adult-activities-content label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.adult-activities-content input,
+.adult-activities-content select,
+.adult-activities-content textarea {
+  min-width: 0;
+  width: 100%;
+  padding: 8px;
+  font: inherit;
+}
+.adult-activities-content article p { white-space: pre-line; overflow-wrap: anywhere; }
+.adult-activities-content details { margin-top: 12px; }
+.adult-activities-content summary { cursor: pointer; }
