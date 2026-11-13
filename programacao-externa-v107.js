@@ -107,6 +107,8 @@
     '.external-notes-v107 strong{display:block;margin-bottom:4px}',
     '.external-form-actions-v107{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}',
     '.external-form-actions-v107 button{padding:10px 12px;border:1px solid #b6cad8;border-radius:9px;background:#fff;color:#0a376c;font-weight:800;cursor:pointer}',
+    '#externalDeleteV124{color:#9b2020;border-color:#d8a4a4}',
+    '#externalDeleteV124:disabled{opacity:.65;cursor:wait}',
     '.external-status-v107{min-height:1em;color:#4a657d;font-size:.78rem}',
     '.ext-member-list-v111{display:grid;gap:5px;max-height:280px;overflow:auto;padding:10px;background:#fff;border:1px solid #d4e0eb;border-radius:10px}',
     '.ext-member-option-v111{display:flex!important;align-items:center;gap:8px;padding:4px;font-size:.79rem;color:#34516b;cursor:pointer}',
@@ -168,6 +170,7 @@
      inicio:$('external_from_v107')?.value||nowLocal(),
      fim:$('external_to_v107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:''
    });renderSteps();return;}
+   if(e.target.closest('#externalDeleteV124')){await deleteSchedule();return;}
    if(e.target.closest('#externalCancelV107')){closeEditor();return;}
    if(e.target.closest('#externalSendV107'))await action('enviar');
    const review=e.target.closest('[data-dme-action]');
@@ -619,6 +622,7 @@
      (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
      '>Publicar para responsáveis</button>':'')+
     (admin()&&row&&existing==='publicada'?'<button type="button" id="externalCopyPaxtuV110">Copiar para Paxtu100</button>':'')+
+    (admin()&&row?'<button type="button" id="externalDeleteV124">Excluir atividade</button>':'')+
     '<button type="button" id="externalCancelV107">Fechar</button>'+
     '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
     (row?.plano_seguranca_visit_id?'<section id="externalAuthorizationPreviewV115" class="external-auth-preview-v115 external-hidden-v107" aria-live="polite"></section>':'')+
@@ -787,6 +791,32 @@
    formStatus('Não foi possível salvar: '+error.message);
    return null;
   }finally{busy=false;}
+ }
+ async function deleteSchedule(){
+   const row=editing;
+   if(busy||!admin()||!row?.id)return;
+   if(!window.confirm('Excluir definitivamente “'+row.titulo+'”, seu roteiro e todas as autorizações e assinaturas? Esta ação é irreversível.'))return;
+   const button=$('externalDeleteV124');
+   if(button)button.disabled=true;
+   busy=true;
+   formStatus('Excluindo programação e registros vinculados...');
+   try{
+     const params={p_id:row.id,p_atualizado_em:row.atualizado_em};
+     const check=await client.rpc('excluir_programacao_externa_v124',{...params,p_confirmar:false});
+     if(check.error)throw check.error;
+     const bucket=client.storage.from('gearpc-roteiros-externos');
+     const paths=check.data||[];
+     for(let offset=0;offset<paths.length;offset+=100){
+       const {error}=await bucket.remove(paths.slice(offset,offset+100));
+       if(error)throw error;
+     }
+     const {error}=await client.rpc('excluir_programacao_externa_v124',params);
+     if(error)throw error;
+     closeEditor();
+     await load();
+     status('Atividade excluída definitivamente.');
+   }catch(error){formStatus('Exclusão não concluída: '+error.message);}
+   finally{busy=false;if(button)button.disabled=false;}
  }
  async function downloadScheduleDocument(){
    const row=editing;

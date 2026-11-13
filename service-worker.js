@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v123-oficinas-rotas';
+const CACHE_NAME = 'gearpc-conecta-offline-v123-exclusao-externa';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -19,7 +19,7 @@ const APP_SHELL = [
   './app.js?v=105.3',
   './adult-activities-navigation-v1.js?v=1.3',
   './programacao.js?v=102.0',
-  './programacao-externa-v107.js?v=116.0',
+  './programacao-externa-v107.js?v=116.1',
   './authorization-pdf-v123.js?v=123.0',
   './authorizations-v109.js?v=123.0',
   './programming-import-v33.js?v=48.0',
@@ -206,7 +206,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-permissions-v106.js?v=106.0"></script>\n</body>');
   }
   if (!html.includes('programacao-externa-v107.js')) {
-    html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=116.0"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=116.1"></script>\n</body>');
   }
   if (!html.includes('authorization-pdf-v123.js')) {
     html = html.replace('</body>', '  <script src="authorization-pdf-v123.js?v=123.0"></script>\n</body>');
