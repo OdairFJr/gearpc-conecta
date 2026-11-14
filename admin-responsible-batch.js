@@ -44,6 +44,24 @@
         if (!check.disabled) choices.push({ row, check });
         label.append(check, document.createTextNode(' ' + row.nome));
         line.append(label, make('div', (row.email || 'Sem e-mail') + ' · ' + row.situacao));
+        if (![pending, 'Já acessou', 'Acesso bloqueado'].includes(row.situacao)) {
+          const edit = make('button', 'Corrigir e-mail');
+          edit.type = 'button';
+          edit.addEventListener('click', async () => {
+            if (busy) return;
+            const email = window.prompt('E-mail do responsável ' + row.nome, row.email || '')?.trim();
+            if (!email) return;
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+              status.textContent = 'Informe um e-mail válido.';
+              return;
+            }
+            const { data: saved, error } = await rt.client.from('responsaveis')
+              .update({ email }).eq('id', row.id).select('id').single();
+            status.textContent = error || !saved ? 'Não foi possível salvar o e-mail.' : 'E-mail atualizado.';
+            await refresh();
+          });
+          line.append(edit);
+        }
         for (const child of row.filhos) {
           const validity = child.validade?.split('-').reverse().join('/') || 'sem validade informada';
           line.append(make('div', child.nome + ' · ' + validity + (child.ativo ? '' : ' · cadastro inativo')));
