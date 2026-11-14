@@ -1,12 +1,10 @@
 /* GEArPC v109: autorizações de atividades externas, assinatura simples e vias impressas.
-   Enquanto testes com responsáveis não forem concluídos, a área familiar
-   aparece somente para a conta de responsável de teste. */
+   Autorizações familiares para contas ativas e vinculadas. */
 (() => {
   if(window.__GEARPC_AUTHORIZATIONS_V109__)return;
   window.__GEARPC_AUTHORIZATIONS_V109__=true;
   const rt=window.GEARPC_RUNTIME;if(!rt?.client||!rt?.state)return;
   const {client,state}=rt,$=id=>document.getElementById(id);
-  const PARENTS_TEST_ONLY=true;
   let familyRows=[],chiefRows=[],familySimulations=[],chiefSimulations=[],busy=false;
   const familyDrafts=new Map();
   const draftKey=r=>String(r.atividade_id)+':'+String(r.jovem_id);
@@ -18,7 +16,8 @@
   const canChief=()=>isAdmin()||state.profile?.tipo==='chefia';
   const asParent=()=>state.profile?.tipo==='responsavel'||
     (state.profile?.tipo==='chefia' && state.profile?.eh_teste===true && state.profile?.responsavel_id);
-  const showFamily=()=>asParent() && (!PARENTS_TEST_ONLY||state.profile?.eh_teste===true);
+  const showFamily=()=>asParent() && Boolean(state.profile?.ativo && state.profile?.responsavel_id);
+  const canSimulate=()=>state.profile?.eh_teste===true;
   const validAuthorization=r=>r.status&&Number(r.versao_assinada)===Number(r.versao);
   const lastSimulation=(r,items)=>items.find(s=>Number(s.atividade_id)===Number(r.atividade_id)
     && Number(s.jovem_id)===Number(r.jovem_id)
@@ -157,8 +156,8 @@
     style();
     const panel=document.createElement('details');panel.id='familyAuthBoxV109';
     panel.className='authorizations-v109';panel.open=true;
-    panel.innerHTML='<summary>📝 Autorizações de atividades externas (teste)</summary>'+
-      '<p>Informe o nome e o documento de quem assina. Durante os testes, é possível informar outro responsável ainda não cadastrado no Paxtu. A declaração será registrada como SIMULAÇÃO, sem ser considerada autorização legal válida.</p>'+
+    panel.innerHTML='<summary>📝 Autorizações de atividades externas'+(canSimulate()?' (teste)':'')+'</summary>'+
+      (canSimulate()?'<p>Use esta conta para testar assinaturas e simulações.</p>':'<p>Use o nome cadastrado na sua conta e informe seu documento para assinar.</p>')+
       '<p id="familyAuthStatusV109" role="status"></p><div id="familyAuthListV109" class="authorizations-list-v109"></div>'+
       '<div class="authorizations-actions-v109"><button type="button" id="familyAuthRefreshV109">Atualizar autorizações</button></div>';
     modules.insertAdjacentElement('afterend',panel);
@@ -207,8 +206,8 @@
       const same=matchingAccount(typed,row);
       const authorize=card.querySelector('[data-sign-authorization][data-answer="autorizado"]');
       const refuse=card.querySelector('[data-sign-authorization][data-answer="nao_autorizado"]');
-      if(authorize)authorize.textContent=same?'Assinar eletronicamente e autorizar':'Registrar teste de assinatura e autorizar';
-      if(refuse)refuse.textContent=same?'Assinar e não autorizar':'Registrar teste e não autorizar';
+      if(authorize)authorize.textContent=(same||!canSimulate())?'Assinar eletronicamente e autorizar':'Registrar teste de assinatura e autorizar';
+      if(refuse)refuse.textContent=(same||!canSimulate())?'Assinar e não autorizar':'Registrar teste e não autorizar';
       previewCardIdentity(card,row);
     };
     panel.addEventListener('input',saveDraft);
@@ -243,8 +242,8 @@
         '<div class="authorizations-sign-v109">'+
         '<label>Nome completo de quem vai assinar'+
           '<input type="text" data-sign-name maxlength="200" autocomplete="name" placeholder="Nome completo cadastrado" value="'+esc(name)+'"></label>'+
-        '<p class="auth-registered-name-v120">Conta usada para o teste: <strong>'+esc(r.responsavel_nome||'Não identificado')+
-          '</strong>. Pode digitar o nome do pai, da mãe ou de outro responsável. Quando o nome não corresponder ao desta conta, o aplicativo salvará apenas uma <strong>simulação</strong>, sem atribuir assinatura à pessoa digitada.</p>'+
+        '<p class="auth-registered-name-v120">Nome cadastrado: <strong>'+esc(r.responsavel_nome||'Não identificado')+
+          '</strong>.'+(canSimulate()?' Outro nome será registrado como simulação.':'')+'</p>'+
         '<button type="button" class="auth-fill-name-v120" data-fill-registered-name="'+i+'">Usar nome cadastrado</button>'+
         '<p data-name-validation class="auth-name-validation-v120" role="alert"></p>'+
         '<label>Tipo de documento de identificação'+
@@ -253,7 +252,7 @@
         '<label>Número do documento do responsável'+
           '<input type="text" autocomplete="off" data-sign-document maxlength="25" '+
           'placeholder="CPF ou RG de quem vai assinar" value="'+esc(draft.document||'')+'"></label>'+
-        '<p class="auth-sign-hint-v117">Na via impressa, o pai ou a mãe poderá preencher e assinar o documento. Para testar o fluxo eletrônico, informe o nome e o CPF ou RG que desejar testar. Um nome diferente da conta gera simulação, não autorização válida. O sistema guarda apenas os dois dígitos finais do documento.</p>'+
+        '<p class="auth-sign-hint-v117">Na via impressa, o pai ou a mãe poderá preencher e assinar o documento. Para assinar eletronicamente, use os dados da sua conta. O sistema guarda apenas os dois dígitos finais do documento.</p>'+
         '<div class="authorizations-terms-v109" data-consent-document>'+
           consentDocument({...r,nome_assinatura:name,tipo_documento:docType,
             documento_responsavel:docType==='CPF'?formatCpf(draft.document||''):
@@ -263,9 +262,9 @@
           '<span>Confirmo que li os dados e o texto da autorização e registro minha decisão eletronicamente.</span></label>'+
         '<div class="authorizations-actions-v109">'+
           '<button type="button" class="primary" data-sign-authorization="'+i+'" data-answer="autorizado">'+
-          (same?'Assinar eletronicamente e autorizar':'Registrar teste de assinatura e autorizar')+'</button>'+
+          ((same||!canSimulate())?'Assinar eletronicamente e autorizar':'Registrar teste de assinatura e autorizar')+'</button>'+
           '<button type="button" data-sign-authorization="'+i+'" data-answer="nao_autorizado">'+
-          (same?'Assinar e não autorizar':'Registrar teste e não autorizar')+'</button>'+
+          ((same||!canSimulate())?'Assinar e não autorizar':'Registrar teste e não autorizar')+'</button>'+
         '</div><p data-card-sign-status class="auth-sign-error-v117" role="alert" aria-live="polite"></p>'+
         '</div></article>';
     }).join(''):'<p>Nenhuma autorização aguardando assinatura. As respostas já registradas saem automaticamente desta lista.</p>')+
@@ -320,6 +319,11 @@
       return;
     }
     const same=matchingAccount(name,row);
+    if(!same&&!canSimulate()){
+      showSignMessage(card,'Use o nome cadastrado na sua conta para assinar.');
+      nameField?.focus();
+      return;
+    }
     nameField?.removeAttribute('aria-invalid');
     const warning=card.querySelector('[data-name-validation]');
     if(warning)warning.textContent=same?'Assinatura da conta autenticada.':
