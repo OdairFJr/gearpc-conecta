@@ -25,7 +25,13 @@
   });
   let request = 0;
 
+  let managerUserId = null;
+
   function canManageActivities() {
+    return canViewActivities() && managerUserId === state.user.id;
+  }
+
+  function canViewActivities() {
     return state.user && state.profile?.ativo &&
       ['administrador', 'chefia'].includes(state.profile.tipo);
   }
@@ -218,7 +224,7 @@
       const { data, error } = await query
         .order('data', { ascending: false }).order('inicio', { ascending: false });
       if (error) throw error;
-      if (current !== request || state.user?.id !== userId || !(canManageActivities() || isPioneer())) return;
+      if (current !== request || state.user?.id !== userId || !(canViewActivities() || isPioneer())) return;
       list.replaceChildren();
       for (const activity of data) renderActivity(activity);
       listMessage.textContent = data.length ? '' : 'Nenhuma atividade registrada.';
@@ -228,8 +234,9 @@
   }
 
   const observer = new MutationObserver(() => {
-    if (!dashboard.classList.contains('hidden')) button.classList.toggle('hidden', !canManageActivities());
-    if (!canManageActivities() && !isPioneer()) {
+    if (!dashboard.classList.contains('hidden')) button.classList.toggle('hidden', !canViewActivities());
+    if (!canViewActivities() && !isPioneer()) {
+      managerUserId = null;
       request += 1;
       form.reset();
       steps.replaceChildren();
@@ -244,7 +251,7 @@
   const back = element('adultActivitiesBackButton');
   function configureView() {
     const pioneer = isPioneer();
-    form.classList.toggle('hidden', pioneer);
+    form.classList.toggle('hidden', !canManageActivities());
     back.textContent = pioneer ? 'Sair' : '←';
     back.setAttribute('aria-label', pioneer ? 'Sair' : 'Voltar');
   }
@@ -254,12 +261,24 @@
     window.scrollTo(0, 0);
     void refresh();
   });
-  button.addEventListener('click', () => {
-    if (!canManageActivities() || dashboard.classList.contains('hidden')) return;
+  button.addEventListener('click', async () => {
+    if (!canViewActivities() || dashboard.classList.contains('hidden')) return;
+    const userId = state.user.id;
+    managerUserId = null;
     configureView();
     dashboard.classList.add('hidden');
     page.classList.remove('hidden');
     window.scrollTo(0, 0);
+
+    try {
+      const { data, error } = await client.rpc('pode_gerenciar_formacoes_eventos_internos');
+      if (state.user?.id !== userId || page.classList.contains('hidden')) return;
+      if (!error && data === true) managerUserId = userId;
+    } catch {
+      // A consulta continua disponível se a permissão de lançamento não puder ser confirmada.
+    }
+    if (state.user?.id !== userId || page.classList.contains('hidden')) return;
+    configureView();
     void refresh();
   });
   back.addEventListener('click', () => {
