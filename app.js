@@ -388,6 +388,12 @@
   async function loadProfile(user) {
     const { data, error } = await client.from('perfis_usuarios').select('nome_completo,tipo,ativo,acesso_geral_consulta,chefe_id,responsavel_id,eh_teste').eq('user_id', user.id).single();
     if (error || !data) {
+      if (error?.code === '42501' && error.message.startsWith('Acesso bloqueado: registro UEB')) {
+        await client.auth.signOut();
+        showLogin();
+        loginMessage.textContent = error.message;
+        return false;
+      }
       if (error?.code === 'PGRST116') {
         const { data: isPioneer } = await client.rpc('pode_consultar_como_pioneiro');
         if (isPioneer === true) {
