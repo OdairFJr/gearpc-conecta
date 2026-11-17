@@ -1089,6 +1089,87 @@
       key + '">Limpar</button></div>';
   }
 
+  async function renderResponsibleEmails(jovemId) {
+    const container = memberDetailBody.querySelector('[data-responsible-emails]');
+    if (!container || state.profile?.tipo !== 'administrador') return;
+
+    const links = state.vinculos.filter((link) => Number(link.jovem_id) === Number(jovemId));
+    const ids = [...new Set(links.map((link) => link.responsavel_id))];
+    if (!ids.length) {
+      container.textContent = 'Nenhum responsável vinculado. Use Editar jovem para cadastrar um responsável.';
+      return;
+    }
+
+    try {
+      const { data, error } = await client.from('responsaveis')
+        .select('id,nome_completo,email').in('id', ids).order('nome_completo');
+      if (error) throw error;
+      if (!container.isConnected || state.profile?.tipo !== 'administrador') return;
+      if (!data?.length) {
+        container.textContent = 'Os cadastros vinculados não estão disponíveis.';
+        return;
+      }
+
+      container.replaceChildren();
+      for (const person of data) {
+        const form = document.createElement('form');
+        form.className = 'member-form';
+        form.innerHTML = `
+          <label>E-mail de ${escapeHtml(person.nome_completo)}
+            <input type="email" maxlength="254" autocomplete="off" placeholder="Sem e-mail cadastrado" />
+          </label>
+          <div class="detail-card-heading">
+            <p class="form-message" role="status"></p>
+            <button class="mini-primary" type="submit">Salvar e-mail</button>
+          </div>`;
+        const input = form.querySelector('input');
+        const button = form.querySelector('button');
+        const status = form.querySelector('[role="status"]');
+        input.value = person.email || '';
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          if (!form.isConnected || !memberDetailDialog.open || button.disabled || state.profile?.tipo !== 'administrador') return;
+          const email = input.value.trim() || null;
+          if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            status.textContent = 'Informe um e-mail válido.';
+            return;
+          }
+          const storedEmail = person.email ?? null;
+          if (email === storedEmail) {
+            status.textContent = 'Nenhuma alteração para salvar.';
+            return;
+          }
+          button.disabled = true;
+          input.readOnly = true;
+          status.textContent = 'Salvando…';
+          try {
+            const update = client.from('responsaveis').update({ email }).eq('id', person.id);
+            const match = storedEmail === null ? update.is('email', null) : update.eq('email', storedEmail);
+            const { data: saved, error } = await match.select('email').maybeSingle();
+            if (error) throw error;
+            if (!saved) {
+              status.textContent = 'O cadastro mudou ou está indisponível. Reabra a ficha e tente novamente.';
+              return;
+            }
+            person.email = saved.email;
+            input.value = saved.email || '';
+            status.textContent = saved.email ? 'E-mail salvo.' : 'E-mail removido.';
+          } catch (error) {
+            console.error('GEArPC: atualização de e-mail do responsável', error);
+            status.textContent = 'Não foi possível salvar o e-mail. Tente novamente.';
+          } finally {
+            button.disabled = false;
+            input.readOnly = false;
+          }
+        });
+        container.appendChild(form);
+      }
+    } catch (error) {
+      console.error('GEArPC: consulta de e-mails dos responsáveis', error);
+      container.textContent = 'Não foi possível carregar os e-mails. Reabra a ficha para tentar novamente.';
+    }
+  }
+
   function openMemberDetail(jovemId) {
     const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
     if (!m) return;
@@ -1148,6 +1229,8 @@
         </div>
       </section>
 
+      ${isMilestoneAdmin ? '<section class="detail-card"><h3>E-mails dos responsáveis</h3><div data-responsible-emails>Carregando e-mails…</div></section>' : ''}
+
       <section class="detail-card">
         <h3>Histórico escoteiro por ramo</h3>
         <p class="milestone-info-v97">Acolhida, promessa, ingresso e passagem são independentes em cada ramo. Abra o ramo e registre as datas aqui na ficha. Sem data de ingresso, não é possível calcular a permanência.</p>
@@ -1193,6 +1276,7 @@
     `;
 
     memberDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
+    if (isMilestoneAdmin) void renderResponsibleEmails(jovemId);
     memberDetailBody.querySelectorAll('[data-history-clear]').forEach(button => {
       button.addEventListener('click', () => {
         const scope = button.closest('[data-ramo-historico]');
