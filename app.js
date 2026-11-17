@@ -1937,10 +1937,12 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     }));
   }
 
+  let childrenInChiefDirectory = [];
+
   function renderChiefSectionSelectors() {
     let available = state.secoes.filter((s) => s.ativo !== false);
     if (state.profile?.tipo === 'responsavel') {
-      const allowedIds = new Set(state.chefeSecoes.map((row) => Number(row.secao_id)));
+      const allowedIds = new Set(childrenInChiefDirectory.map((child) => Number(child.secao_id)));
       available = available.filter((s) => allowedIds.has(Number(s.id)));
     }
     available.sort((a, b) => {
@@ -1971,7 +1973,28 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       return;
     }
 
-    chiefsList.innerHTML = `<div class="directory-list">${rows.map((c) => `<button class="directory-row ${c.ativo === false ? 'directory-row-inactive' : ''}" type="button" data-view-chief="${c.id}"><span>${escapeHtml(c.nome_completo)}</span><span class="directory-arrow">›</span></button>`).join('')}</div>`;
+    const directory = (entries) => `<div class="directory-list">${entries.map((c) => `<button class="directory-row ${c.ativo === false ? 'directory-row-inactive' : ''}" type="button" data-view-chief="${c.id}"><span>${escapeHtml(c.nome_completo)}</span><span class="directory-arrow">›</span></button>`).join('')}</div>`;
+    if (state.profile?.tipo === 'responsavel') {
+      const sections = [...chiefSecaoFilter.options]
+        .filter((option) => option.value && (!secaoId || option.value === secaoId))
+        .map((option) => state.secoes.find((section) => String(section.id) === option.value))
+        .filter(Boolean);
+      const groups = sections.map((section) => {
+        const ramo = state.ramos.find((item) => Number(item.id) === Number(section.ramo_id));
+        const children = childrenInChiefDirectory.filter((child) => Number(child.secao_id) === Number(section.id));
+        const chiefs = rows.filter((chief) => chief.secoes.some((item) => Number(item.id) === Number(section.id)));
+        return { section, ramo, children, chiefs };
+      }).filter((group) => group.chiefs.length);
+      chiefsCount.textContent = String(new Set(groups.flatMap((group) => group.chiefs.map((chief) => chief.id))).size);
+      chiefsList.innerHTML = groups.map(({ section, ramo, children, chiefs }) => `
+        <section style="margin-bottom:1rem">
+          <h3 style="margin:0 0 .25rem">${escapeHtml([ramo?.nome, section.nome].filter(Boolean).join(' · '))}</h3>
+          <p style="margin:0 0 .5rem">${children.map((child) => escapeHtml(child.nome_completo)).join(' · ')}</p>
+          ${directory(chiefs)}
+        </section>`).join('') || '<p class="empty-members">Nenhum chefe encontrado nas seções dos seus filhos.</p>';
+    } else {
+      chiefsList.innerHTML = directory(rows);
+    }
     chiefsList.querySelectorAll('[data-view-chief]').forEach((button) => {
       button.addEventListener('click', () => openChiefDetail(Number(button.dataset.viewChief)));
     });
@@ -1979,7 +2002,9 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
 
   async function loadChiefsData() {
     chiefsMessage.textContent = 'Carregando chefia...';
-    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes] = await Promise.all([
+    const parentId = state.profile?.tipo === 'responsavel' ? state.profile.responsavel_id : null;
+    childrenInChiefDirectory = [];
+    const [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes, childrenRes] = await Promise.all([
       client.from('ramos').select('id,nome,ordem,ativo').order('ordem'),
       client.from('secoes').select('id,nome,ramo_id,ativo').order('nome'),
       client.from('chefes').select('id,nome_completo,registro_paxtu,data_nascimento,validade_registro,telefone,ativo,data_promessa_lobinho,data_promessa_escoteira,data_promessa_adulta').order('nome_completo'),
@@ -1987,9 +2012,13 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
       client.from('chefe_secoes').select('chefe_id,secao_id'),
       client.from('equipes').select('id,secao_id,nome,tipo,ativo').eq('ativo', true).order('nome'),
       client.from('equipe_chefes').select('equipe_id,chefe_id,papel'),
-      client.from('fichas_medicas_chefes').select('id,chefe_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,atualizado_em,dados_completos')
+      client.from('fichas_medicas_chefes').select('id,chefe_id,tipo_sanguineo,alergias,medicamentos_uso_continuo,restricoes_alimentares,condicoes_relevantes,necessidades_especiais,plano_saude,numero_carteirinha,contato_emergencia_nome,contato_emergencia_telefone,observacoes,atualizado_em,dados_completos'),
+      parentId
+        ? client.from('jovens').select('id,nome_completo,secao_id,jovem_responsaveis!inner(responsavel_id)')
+          .eq('jovem_responsaveis.responsavel_id', parentId).eq('ativo', true).order('nome_completo')
+        : Promise.resolve({ data: [] })
     ]);
-    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes].find((r) => r.error)?.error;
+    const firstError = [ramosRes, secoesRes, chefesRes, funcoesRes, secoesChefesRes, equipesRes, equipeChefesRes, fichasChefesRes, childrenRes].find((r) => r.error)?.error;
     if (firstError) {
       chiefsMessage.textContent = `Não foi possível carregar a chefia: ${firstError.message}`;
       return;
@@ -2002,6 +2031,7 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
     state.equipes = equipesRes.data || [];
     state.equipeChefes = equipeChefesRes.data || [];
     state.fichasMedicasChefes = fichasChefesRes.data || [];
+    childrenInChiefDirectory = childrenRes.data || [];
     renderChiefSectionSelectors();
     renderChiefs();
     chiefsMessage.textContent = '';
