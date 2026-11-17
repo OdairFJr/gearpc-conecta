@@ -288,7 +288,7 @@
     try{
       const [items,sims]=await Promise.all([
         client.rpc('listar_autorizacoes_familia_v117'),
-        client.rpc('listar_simulacoes_autorizacao_v121',{p_modo:'familia'})
+        canSimulate() ? client.rpc('listar_simulacoes_autorizacao_v121',{p_modo:'familia'}) : Promise.resolve({data:[]})
       ]);
       if(items.error)throw items.error;
       if(sims.error)throw sims.error;
