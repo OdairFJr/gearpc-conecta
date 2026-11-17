@@ -15,8 +15,12 @@
   load.type = send.type = 'button';
   const status = make('p', '');
   status.setAttribute('role', 'status');
+  const result = make('div', '');
+  result.setAttribute('role', 'status');
+  result.hidden = true;
+  result.style.cssText = 'margin:12px 0;padding:12px;border:1px solid #c9d9e6;border-radius:8px;background:#f5f9fc;overflow-wrap:anywhere';
   const list = make('div', '');
-  panel.append(title, instructions, load, send, status, list);
+  panel.append(title, instructions, load, send, status, result, list);
   view.querySelector('header')?.after(panel);
   const ready = 'Pronto para convidar';
   const pending = 'Convite pendente';
@@ -109,8 +113,12 @@
       }
     } finally {
       busy = false;
-      status.textContent = sent + ' convite(s) enviado(s). ' + failures.join(' • ');
+      status.textContent = '';
+      result.replaceChildren(make('strong', sent + ' convite(s) enviado(s).'));
+      for (const failure of failures) result.append(make('p', failure));
+      result.hidden = false;
       await refresh();
+      result.scrollIntoView({ block: 'nearest' });
     }
   });
 })();
