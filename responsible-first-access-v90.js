@@ -17,7 +17,7 @@
 
   function enabledForCurrentProfile() {
     const p = profile();
-    return Boolean(p?.tipo === 'responsavel' && p?.eh_teste === true && p?.responsavel_id);
+    return Boolean(p?.tipo === 'responsavel' && (p?.eh_teste === true || p?.ensaio_responsavel === true) && p?.responsavel_id);
   }
 
   function esc(value) {
