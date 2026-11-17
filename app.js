@@ -419,8 +419,7 @@
     welcomeName.textContent = `Olá, ${data.nome_completo}`;
     profileType.textContent = prettyProfile(data);
     adminCard.classList.toggle('hidden', data.tipo !== 'administrador');
-    const testResponsible = data.tipo === 'responsavel' && data.eh_teste === true;
-    membersButton.classList.toggle('hidden', data.tipo === 'responsavel' && !testResponsible);
+    membersButton.classList.toggle('hidden', data.tipo === 'responsavel' && !data.responsavel_id);
     chiefsButton.classList.remove('hidden');
     attendanceButton.classList.toggle('hidden', data.tipo === 'responsavel');
     $('programmingButton')?.classList.toggle('hidden', data.tipo === 'responsavel');
