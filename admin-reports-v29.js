@@ -10,6 +10,7 @@
 
   const BLOCKS = [
     ['jovens', 'Jovens e responsáveis'],
+    ['contatos', 'Contatos dos responsáveis por jovem'],
     ['adultos', 'Adultos, funções e seções'],
     ['presencas', 'Presenças'],
     ['programacoes', 'Programações e conferências'],
@@ -18,6 +19,13 @@
     ['biblioteca', 'Banco de atividades e ideias'],
     ['avisos', 'Avisos e notificações'],
     ['historico', 'Histórico de ações no app']
+  ];
+
+  const CONTACT_FIELDS = [
+    ['section', 'Seção'],
+    ['guardian', 'Responsável'],
+    ['email', 'E-mail'],
+    ['phone', 'Telefone']
   ];
 
   const PDF_LIB = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -77,6 +85,7 @@
     const style = document.createElement('style');
     style.id = 'gearpcReportsV29Styles';
     style.textContent = `
+      .report-contact-table{border-collapse:collapse;width:100%;font-size:.85rem}.report-contact-table th,.report-contact-table td{padding:8px;text-align:left;border-bottom:1px solid #d9e3ec;overflow-wrap:anywhere}.report-contact-table th{color:#0a376c}.report-period-grid select{width:100%;padding:10px;border:1px solid #c7d3de;border-radius:10px;background:#fff}
       .reports-view{min-height:100vh}.reports-hero{margin-bottom:14px}.reports-card{background:#fff;border:1px solid #d9e3ec;border-radius:18px;padding:16px;box-shadow:0 5px 18px #0a376c12;margin-bottom:14px}.reports-card h3{margin:0 0 5px;color:#0a376c}.reports-card p{margin:0;color:#63778a;line-height:1.45}.report-period-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.report-period-grid label,.report-blocks label{display:grid;gap:5px;font-size:.78rem;font-weight:800;color:#435a70}.report-period-grid input{width:100%;box-sizing:border-box;border:1px solid #c7d3de;border-radius:10px;padding:10px;background:#fff}.report-presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}.report-presets button,.report-small-action{border:1px solid #bccbd7;background:#f8fbfd;color:#0a376c;border-radius:10px;padding:8px 11px;font-weight:800;cursor:pointer}.report-blocks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.report-block-option{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;background:#f7f9fb;border:1px solid #e0e7ed;border-radius:11px;padding:10px;font-weight:700!important}.report-block-option input{margin-top:2px}.report-block-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.report-medical{margin-top:13px;border:1px solid #e1c26c;background:#fff8dc;border-radius:12px;padding:11px}.report-medical label{display:flex;gap:8px;align-items:flex-start;color:#6c550d;font-weight:800;font-size:.8rem}.report-medical small{display:block;color:#75662f;margin-top:5px;line-height:1.4}.report-generate{width:100%;border:0;border-radius:12px;padding:13px;background:#0a376c;color:#fff;font-weight:900;font-size:.95rem;cursor:pointer;margin-top:14px}.report-generate:disabled{opacity:.6;cursor:wait}.report-message{margin:10px 0 0;min-height:18px;color:#53687c;font-size:.8rem}.report-note{font-size:.76rem;color:#687d90;margin-top:8px!important}.report-summary-preview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}.report-summary-preview div{background:#f4f7fa;border-radius:10px;padding:9px;text-align:center}.report-summary-preview strong{display:block;color:#0a376c;font-size:1rem}.report-summary-preview span{font-size:.68rem;color:#718494}.hidden{display:none!important}@media(max-width:650px){.report-period-grid,.report-blocks{grid-template-columns:1fr}.report-summary-preview{grid-template-columns:repeat(2,minmax(0,1fr))}}
     `;
     document.head.appendChild(style);
@@ -109,13 +118,26 @@
       </header>
       <section class="members-hero reports-hero"><div><div class="eyebrow dark">ADMINISTRAÇÃO</div><h2>Central de Relatórios</h2><p>Selecione o período e os módulos que devem compor o PDF.</p></div></section>
       <section class="reports-card">
+        <h3>Contatos dos responsáveis</h3>
+        <div class="report-period-grid">
+          <label>Nome do jovem<input id="reportYouthName" type="search" placeholder="Digite parte do nome" /></label>
+          <label>Cadastros<select id="reportContactFilter"><option value="all">Todos os jovens ativos</option><option value="missing">Somente com e-mail pendente</option></select></label>
+        </div>
+        <div class="report-blocks">
+          ${CONTACT_FIELDS.map(([key, label]) => `<label class="report-block-option"><input type="checkbox" data-contact-field="${key}" ${key === 'phone' ? '' : 'checked'} />${label}</label>`).join('')}
+        </div>
+        <div class="report-block-actions"><button id="reportFindContacts" class="report-small-action" type="button">Consultar na tela</button></div>
+        <p id="reportContactStatus" class="report-message" role="status"></p>
+        <div id="reportContactResults" style="overflow-x:auto"></div>
+      </section>
+      <section class="reports-card">
         <h3>Período do relatório</h3><p>Use um período rápido ou informe as datas manualmente.</p>
         <div class="report-period-grid"><label>Data inicial<input id="reportStart" type="date" /></label><label>Data final<input id="reportEnd" type="date" /></label></div>
         <div class="report-presets"><button type="button" data-report-preset="month">Mês atual</button><button type="button" data-report-preset="semester">Semestre atual</button><button type="button" data-report-preset="year">Ano atual</button></div>
       </section>
       <section class="reports-card">
         <h3>Conteúdo</h3><p>Cadastros de jovens e adultos representam a situação atual. Os demais módulos usam o período selecionado.</p>
-        <div class="report-blocks">${BLOCKS.map(([key,label]) => `<label class="report-block-option"><input type="checkbox" data-report-block="${key}" checked /><span>${esc(label)}</span></label>`).join('')}</div>
+        <div class="report-blocks">${BLOCKS.map(([key,label]) => `<label class="report-block-option"><input type="checkbox" data-report-block="${key}" ${key === 'contatos' ? '' : 'checked'} /><span>${esc(label)}</span></label>`).join('')}</div>
         <div class="report-block-actions"><button id="reportSelectAll" class="report-small-action" type="button">Selecionar todos</button><button id="reportClearAll" class="report-small-action" type="button">Limpar seleção</button></div>
         <div class="report-medical"><label><input id="reportMedical" type="checkbox" /><span>Incluir fichas médicas de jovens e adultos</span></label><small>Esta opção inclui dados de saúde e contatos de emergência. Use o PDF apenas para finalidade administrativa autorizada.</small></div>
         <button id="reportGenerate" class="report-generate" type="button">Gerar e baixar PDF</button>
@@ -186,6 +208,81 @@
       rows.push(...await fetchAll(table, fields, (q) => q.in(column, chunk)));
     }
     return rows;
+  }
+
+  function contactOptions() {
+    const selected = [...document.querySelectorAll('[data-contact-field]:checked')];
+    return {
+      name: $('reportYouthName').value,
+      missingOnly: $('reportContactFilter').value === 'missing',
+      fields: CONTACT_FIELDS.filter(([key]) => selected.some((input) => input.dataset.contactField === key))
+    };
+  }
+
+  function normalizeName(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+  }
+
+  async function loadContacts(options) {
+    if (state.profile?.tipo !== 'administrador') throw new Error('Acesso restrito à administração.');
+    const [youth, guardians, links, sections] = await Promise.all([
+      fetchAll('jovens', 'id,nome_completo,secao_id', (query) => query.eq('ativo', true).order('id')),
+      fetchAll('responsaveis', 'id,nome_completo,email,telefone', (query) => query.order('id')),
+      fetchAll('jovem_responsaveis', 'jovem_id,responsavel_id', (query) => query.order('jovem_id').order('responsavel_id')),
+      fetchAll('secoes', 'id,nome', (query) => query.order('id'))
+    ]);
+    if (state.profile?.tipo !== 'administrador') throw new Error('Acesso restrito à administração.');
+    const guardianById = mapBy(guardians);
+    const sectionById = mapBy(sections);
+    const linksByYouth = groupBy(links, 'jovem_id');
+    const name = normalizeName(options.name);
+    const rows = youth.filter((young) => normalizeName(young.nome_completo).includes(name))
+      .sort((a, b) => a.nome_completo.localeCompare(b.nome_completo, 'pt-BR'))
+      .flatMap((young) => {
+        const linked = linksByYouth.get(String(young.id)) || [];
+        const contacts = linked.length ? linked.map((link) => guardianById.get(String(link.responsavel_id))) : [null];
+        return contacts.map((person) => {
+          const email = String(person?.email || '').trim();
+          return {
+            youth: young.nome_completo,
+            section: sectionById.get(String(young.secao_id))?.nome || '—',
+            guardian: person?.nome_completo || (linked.length ? 'Cadastro indisponível' : 'Sem responsável vinculado'),
+            email: email || 'Sem e-mail cadastrado',
+            phone: person?.telefone || '—',
+            missing: !email
+          };
+        });
+      }).filter((row) => !options.missingOnly || row.missing);
+    return {
+      head: ['Jovem', ...options.fields.map(([, label]) => label), 'Situação do e-mail'],
+      rows: rows.map((row) => [row.youth, ...options.fields.map(([key]) => row[key]), row.missing ? 'Pendente' : 'Cadastrado'])
+    };
+  }
+
+  async function previewContacts() {
+    if (state.profile?.tipo !== 'administrador') return;
+    const profile = state.profile;
+    const status = $('reportContactStatus');
+    const results = $('reportContactResults');
+    const button = $('reportFindContacts');
+    const options = contactOptions();
+    results.replaceChildren();
+    button.disabled = true;
+    status.textContent = 'Consultando cadastros…';
+    try {
+      const { head, rows } = await loadContacts(options);
+      if (state.profile !== profile) return;
+      status.textContent = rows.length ? 'Consulta concluída.' : 'Nenhum cadastro encontrado.';
+      if (rows.length) {
+        results.innerHTML = `<table class="report-contact-table"><thead><tr>${head.map((label) => `<th scope="col">${esc(label)}</th>`).join('')}</tr></thead>
+          <tbody>${rows.map((row) => `<tr>${row.map((value) => `<td>${esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      }
+    } catch (error) {
+      if (state.profile === profile) status.textContent = 'Não foi possível consultar os contatos.';
+      console.error('GEArPC contatos:', error);
+    } finally {
+      button.disabled = false;
+    }
   }
 
   function periodTs(start, end) {
@@ -340,6 +437,11 @@
       table(['Jovem','Pode iniciar caminho','Início do caminho','Passagem de ramo','Limite da passagem'],caminho.map((j)=>[j.nome_completo,fmtDate(j.data_pode_iniciar_caminho),fmtDate(j.data_inicio_caminho),fmtDate(j.data_passagem_ramo),fmtDate(j.data_limite_passagem_ramo)]));
     }
 
+    if (blocks.includes('contatos')) {
+      sectionTitle('Contatos dos responsáveis', 'Consulta aos cadastros atuais de jovens ativos.');
+      table(data.contacts.head, data.contacts.rows.length ? data.contacts.rows : [data.contacts.head.map((_, i) => i === 0 ? 'Nenhum cadastro encontrado' : '')]);
+    }
+
     if (blocks.includes('adultos')) {
       sectionTitle('Adultos, funções e seções','Situação cadastral atual da equipe adulta.');
       table(['Adulto','Funções','Seções','Registro','Validade','Telefone','Situação'],(data.chefes||[]).map((c)=>[
@@ -410,10 +512,14 @@
     if (!start || !end) return setMessage('Informe a data inicial e a data final.');
     if (start > end) return setMessage('A data inicial não pode ser posterior à data final.');
     if (!blocks.length && !includeMedical) return setMessage('Selecione pelo menos um conteúdo para o relatório.');
+    const profile = state.profile;
+    const contacts = blocks.includes('contatos') ? contactOptions() : null;
     const button = $('reportGenerate');
     button.disabled = true; button.textContent = 'Gerando relatório...'; setMessage('Consultando os dados do GEArPC Conecta...');
     try {
       const data = await loadData(start,end,blocks,includeMedical);
+      if (contacts) data.contacts = await loadContacts(contacts);
+      if (state.profile !== profile) return;
       setMessage('Montando o PDF...');
       await buildPdf(start,end,blocks,includeMedical,data);
       setMessage('Relatório gerado com sucesso.', true);
@@ -432,6 +538,15 @@
     document.querySelectorAll('[data-report-preset]').forEach((b)=>b.addEventListener('click',()=>setPreset(b.dataset.reportPreset)));
     $('reportSelectAll')?.addEventListener('click',()=>document.querySelectorAll('[data-report-block]').forEach((c)=>c.checked=true));
     $('reportClearAll')?.addEventListener('click',()=>document.querySelectorAll('[data-report-block]').forEach((c)=>c.checked=false));
+    $('reportFindContacts')?.addEventListener('click', previewContacts);
+    $('reportYouthName')?.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') $('reportFindContacts')?.click();
+    });
+    client.auth.onAuthStateChange((_event, session) => {
+      if (session && state.profile?.tipo === 'administrador') return;
+      $('reportContactResults')?.replaceChildren();
+      if ($('reportContactStatus')) $('reportContactStatus').textContent = '';
+    });
     $('reportGenerate')?.addEventListener('click', generateReport);
   }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v130-chefia-por-ramo';
+const CACHE_NAME = 'gearpc-conecta-offline-v131-relatorios-contatos';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -37,7 +37,7 @@ const APP_SHELL = [
   './programming-deadline-v28-1.js?v=28.2',
   './programming-release-v28-2.js',
   './programming-language-v31-1.js',
-  './admin-reports-v29.js?v=29.0',
+  './admin-reports-v29.js?v=29.3',
   './admin-reports-access-v29-1.js?v=29.1',
   './report-promessas-v104.js?v=104.0',
   './admin-permissions-v106.js?v=106.0',
