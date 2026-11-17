@@ -773,6 +773,28 @@
     await loadMembersData();
   }
 
+  function isAdultPioneer(branchId, birth) {
+    if (Number(branchId) !== 5 || !/^\d{4}-\d{2}-\d{2}$/.test(birth || '')) return false;
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts().filter((part) => part.type !== 'literal');
+    const date = Object.fromEntries(today.map(({ type, value }) => [type, value]));
+    return birth <= `${Number(date.year) - 18}-${date.month}-${date.day}`;
+  }
+
+  function linkedGuardian(jovemId) {
+    const links = state.vinculos.filter((link) =>
+      Number(link.jovem_id) === Number(jovemId) && link.parentesco !== 'proprio_pioneiro');
+    return links.find((link) => link.responsavel_principal) || links[0];
+  }
+
+  function syncGuardianRequirements() {
+    const section = state.secoes.find((item) => Number(item.id) === Number(memberSecao.value));
+    const optional = isAdultPioneer(section?.ramo_id, memberBirth.value);
+    responsibleName.required = !optional;
+    responsiblePhone.required = !optional;
+  }
+
   function openMemberDialog(jovemId = null) {
     if (state.profile?.tipo !== 'administrador') return;
     memberForm.reset();
@@ -793,15 +815,18 @@
       memberRegistrationValidity.value = m.validade_registro || '';
       memberSecao.value = String(m.secao?.id || m.secao_id || '');
       renderMemberTeamOptions(m.equipe_id || '');
-      responsibleName.value = m.responsavel?.nome_completo || '';
-      responsibleRegistration.value = m.responsavel?.registro_paxtu || '';
-      responsiblePhone.value = m.responsavel?.telefone || '';
+      const link = linkedGuardian(m.id);
+      const guardian = state.responsaveis.find((person) => Number(person.id) === Number(link?.responsavel_id));
+      responsibleName.value = guardian?.nome_completo || '';
+      responsibleRegistration.value = guardian?.registro_paxtu || '';
+      responsiblePhone.value = guardian?.telefone || '';
       memberActive.checked = Boolean(m.ativo);
       removeMemberButton.classList.remove('hidden');
       removeMemberButton.textContent = m.ativo ? 'Remover jovem' : 'Restaurar jovem';
       removeMemberButton.classList.toggle('restore-button', !m.ativo);
       removeMemberButton.classList.toggle('danger-button', Boolean(m.ativo));
     }
+    syncGuardianRequirements();
     memberDialog.showModal();
   }
 
@@ -815,7 +840,9 @@
     const phoneDigits = normalizePhone(cleanPhone);
     const reg = (registration || '').trim();
 
-    const existing = state.responsaveis.find((r) =>
+    const ownAccounts = new Set(state.vinculos.filter((link) => link.parentesco === 'proprio_pioneiro')
+      .map((link) => Number(link.responsavel_id)));
+    const existing = state.responsaveis.filter((r) => !ownAccounts.has(Number(r.id))).find((r) =>
       (reg && normalizeText(r.registro_paxtu) === normalizeText(reg)) ||
       (normalizePhone(r.telefone) === phoneDigits && normalizeText(r.nome_completo) === normalizeText(cleanName))
     );
@@ -852,7 +879,9 @@
   }
 
   async function createMember(payload) {
-    const responsible = await insertResponsible(payload.responsibleName, payload.responsiblePhone, payload.responsibleRegistration);
+    const responsible = payload.responsibleName
+      ? await insertResponsible(payload.responsibleName, payload.responsiblePhone, payload.responsibleRegistration)
+      : null;
     const { data: young, error: youngError } = await client.from('jovens').insert({
       nome_completo: payload.name,
       registro_paxtu: payload.memberRegistration || null,
@@ -864,9 +893,10 @@
       ativo: payload.active
     }).select('id').single();
     if (youngError) {
-      if (responsible.created) await client.from('responsaveis').delete().eq('id', responsible.id);
+      if (responsible?.created) await client.from('responsaveis').delete().eq('id', responsible.id);
       throw youngError;
     }
+    if (!responsible) return;
     const { error: linkError } = await client.from('jovem_responsaveis').insert({
       jovem_id: young.id,
       responsavel_id: responsible.id,
@@ -895,7 +925,8 @@
     }).eq('id', jovemId);
     if (youngError) throw youngError;
 
-    const link = principalLink(jovemId);
+    if (!payload.responsibleName) return;
+    const link = linkedGuardian(jovemId);
     if (!link) {
       const responsible = await insertResponsible(payload.responsibleName, payload.responsiblePhone, payload.responsibleRegistration);
       const { error } = await client.from('jovem_responsaveis').insert({ jovem_id: jovemId, responsavel_id: responsible.id, parentesco: 'responsável', responsavel_principal: true });
@@ -970,7 +1001,10 @@
       responsiblePhone: responsiblePhone.value.trim(),
       active: memberActive.checked
     };
-    if (!payload.name || !payload.birth || !payload.secaoId || !payload.ramoId || !payload.responsibleName || !normalizePhone(payload.responsiblePhone)) {
+    const optionalGuardian = isAdultPioneer(payload.ramoId, payload.birth);
+    const hasGuardian = Boolean(payload.responsibleName || payload.responsiblePhone || payload.responsibleRegistration);
+    if (!payload.name || !payload.birth || !payload.secaoId || !payload.ramoId ||
+        ((!optionalGuardian || hasGuardian) && (!payload.responsibleName || !normalizePhone(payload.responsiblePhone)))) {
       memberFormMessage.textContent = 'Preencha todos os campos obrigatórios.';
       return;
     }
@@ -1093,7 +1127,8 @@
     const container = memberDetailBody.querySelector('[data-responsible-emails]');
     if (!container || state.profile?.tipo !== 'administrador') return;
 
-    const links = state.vinculos.filter((link) => Number(link.jovem_id) === Number(jovemId));
+    const links = state.vinculos.filter((link) =>
+      Number(link.jovem_id) === Number(jovemId) && link.parentesco !== 'proprio_pioneiro');
     const ids = [...new Set(links.map((link) => link.responsavel_id))];
     if (!ids.length) {
       container.textContent = 'Nenhum responsável vinculado. Use Editar jovem para cadastrar um responsável.';
@@ -1170,6 +1205,48 @@
     }
   }
 
+  async function bindPioneerEmail(jovemId) {
+    const form = memberDetailBody.querySelector('[data-pioneer-email]');
+    if (!form || state.profile?.tipo !== 'administrador') return;
+    const input = form.querySelector('input');
+    const button = form.querySelector('button');
+    const status = form.querySelector('[role="status"]');
+    const link = state.vinculos.find((item) =>
+      Number(item.jovem_id) === Number(jovemId) && item.parentesco === 'proprio_pioneiro');
+
+    try {
+      if (link) {
+        const { data, error } = await client.from('responsaveis').select('email')
+          .eq('id', link.responsavel_id).single();
+        if (error) throw error;
+        input.value = data.email || '';
+      }
+      input.disabled = button.disabled = false;
+    } catch {
+      status.textContent = 'Não foi possível carregar o e-mail. Reabra a ficha para tentar novamente.';
+      return;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.isConnected || !memberDetailDialog.open || button.disabled || state.profile?.tipo !== 'administrador') return;
+      button.disabled = input.readOnly = true;
+      status.textContent = 'Salvando…';
+      try {
+        const email = input.value.trim().toLowerCase();
+        const { error } = await client.rpc('salvar_email_proprio_pioneiro', { p_jovem_id: jovemId, p_email: email });
+        if (error) throw error;
+        input.value = email;
+        status.textContent = 'E-mail próprio salvo.';
+        await loadMembersData();
+      } catch (error) {
+        status.textContent = error.message || 'Não foi possível salvar o e-mail.';
+      } finally {
+        button.disabled = input.readOnly = false;
+      }
+    });
+  }
+
   function openMemberDetail(jovemId) {
     const m = memberRows().find((item) => Number(item.id) === Number(jovemId));
     if (!m) return;
@@ -1184,6 +1261,7 @@
     const canManage = canManageJourney(m);
     const isMilestoneAdmin = state.profile?.tipo === 'administrador';
     const ramoId = Number(m.ramo_id);
+    const hasOwnEmailField = isMilestoneAdmin && isAdultPioneer(ramoId, m.data_nascimento);
     const phone = m.responsavel?.telefone || '';
     const phoneHref = normalizePhone(phone);
 
@@ -1228,6 +1306,17 @@
           <div class="detail-value"><span>Telefone</span><strong>${phone ? `<a href="tel:${phoneHref}">${escapeHtml(phone)}</a>` : '—'}</strong></div>
         </div>
       </section>
+
+      ${hasOwnEmailField ? `<section class="detail-card">
+        <h3>Acesso próprio do pioneiro</h3>
+        <form class="member-form" data-pioneer-email>
+          <label>E-mail próprio<input type="email" maxlength="254" autocomplete="off" required disabled /></label>
+          <div class="detail-card-heading">
+            <p class="form-message" role="status"></p>
+            <button class="mini-primary" type="submit" disabled>Salvar e-mail</button>
+          </div>
+        </form>
+      </section>` : ''}
 
       ${isMilestoneAdmin ? '<section class="detail-card"><h3>E-mails dos responsáveis</h3><div data-responsible-emails>Carregando e-mails…</div></section>' : ''}
 
@@ -1277,6 +1366,7 @@
 
     memberDetailAdminActions.classList.toggle('hidden', state.profile?.tipo !== 'administrador');
     if (isMilestoneAdmin) void renderResponsibleEmails(jovemId);
+    if (hasOwnEmailField) void bindPioneerEmail(jovemId);
     memberDetailBody.querySelectorAll('[data-history-clear]').forEach(button => {
       button.addEventListener('click', () => {
         const scope = button.closest('[data-ramo-historico]');
@@ -3092,7 +3182,11 @@ Esta ação removerá os dados médicos cadastrados.`)) return;
   accessSearch.addEventListener('input', renderAccessRows);
   newMemberButton.addEventListener('click', () => openMemberDialog());
   teamManagerButton.addEventListener('click', openTeamManager);
-  memberSecao.addEventListener('change', () => renderMemberTeamOptions(''));
+  memberSecao.addEventListener('change', () => {
+    renderMemberTeamOptions('');
+    syncGuardianRequirements();
+  });
+  memberBirth.addEventListener('input', syncGuardianRequirements);
   closeMemberDialog.addEventListener('click', closeMemberForm);
   cancelMemberButton.addEventListener('click', closeMemberForm);
   removeMemberButton.addEventListener('click', toggleMemberRemoved);
