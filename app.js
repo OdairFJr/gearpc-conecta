@@ -337,7 +337,7 @@
   function setupChiefTestChildrenButton() {
     const profile = state.profile;
     const enabled = Boolean(
-      profile?.tipo === 'chefia' &&
+      ['chefia','administrador'].includes(profile?.tipo) &&
       profile?.chefe_id && profile?.responsavel_id
     );
     const existing = $('chiefTestChildrenButtonV96');
@@ -677,7 +677,7 @@
     if (state.onlyOwnChildren) {
       const p = state.profile;
       // A visão familiar filtra exclusivamente os jovens vinculados ao responsável.
-      if (p?.tipo === 'chefia' && p?.responsavel_id) {
+      if (['chefia','administrador'].includes(p?.tipo) && p?.responsavel_id) {
         const ids = new Set(state.vinculos
           .filter((link) => Number(link.responsavel_id) === Number(p.responsavel_id))
           .map((link) => Number(link.jovem_id)));
@@ -764,7 +764,7 @@
   async function openMembersView(onlyOwnChildren = false) {
     const p = state.profile;
     state.onlyOwnChildren = onlyOwnChildren === true &&
-      p?.tipo === 'chefia' && Boolean(p?.responsavel_id);
+      ['chefia','administrador'].includes(p?.tipo) && Boolean(p?.responsavel_id);
     if (state.onlyOwnChildren) {
       memberSearch.value = '';
       memberSecaoFilter.value = '';

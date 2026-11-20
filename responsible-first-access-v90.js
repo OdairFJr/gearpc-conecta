@@ -17,7 +17,7 @@
 
   function enabledForCurrentProfile() {
     const p = profile();
-    return Boolean(['responsavel','chefia'].includes(p?.tipo) && p?.responsavel_id);
+    return Boolean(['responsavel','chefia','administrador'].includes(p?.tipo) && p?.responsavel_id);
   }
 
   function esc(value) {

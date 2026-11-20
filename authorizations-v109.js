@@ -15,7 +15,7 @@
   const isAdmin=()=>state.profile?.tipo==='administrador';
   const canChief=()=>isAdmin()||state.profile?.tipo==='chefia';
   const asParent=()=>state.profile?.tipo==='responsavel'||
-    (state.profile?.tipo==='chefia' && state.profile?.responsavel_id);
+    (['chefia','administrador'].includes(state.profile?.tipo) && state.profile?.responsavel_id);
   const showFamily=()=>asParent() && Boolean(state.profile?.ativo && state.profile?.responsavel_id);
   const canSimulate=()=>state.profile?.eh_teste===true;
   const validAuthorization=r=>r.status&&Number(r.versao_assinada)===Number(r.versao);
