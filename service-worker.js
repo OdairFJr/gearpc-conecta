@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v134-resultado-convites';
+const CACHE_NAME = 'gearpc-conecta-offline-v135-reagendamento';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -20,7 +20,8 @@ const APP_SHELL = [
   './admin-responsible-batch.js?v=3',
   './adult-activities-navigation-v1.js?v=1.4',
   './programacao.js?v=102.0',
-  './programacao-externa-v107.js?v=116.1',
+  './programacao-externa-v107.js?v=135.0',
+  './reschedule-v135.js?v=135.0',
   './authorization-pdf-v123.js?v=123.0',
   './authorizations-v109.js?v=123.2',
   './programming-import-v33.js?v=48.0',
@@ -207,7 +208,7 @@ async function withRuntimeModules(response) {
     html = html.replace('</body>', '  <script src="admin-permissions-v106.js?v=106.0"></script>\n</body>');
   }
   if (!html.includes('programacao-externa-v107.js')) {
-    html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=116.1"></script>\n</body>');
+    html = html.replace('</body>', '  <script src="programacao-externa-v107.js?v=135.0"></script>\n</body>');
   }
   if (!html.includes('authorization-pdf-v123.js')) {
     html = html.replace('</body>', '  <script src="authorization-pdf-v123.js?v=123.0"></script>\n</body>');

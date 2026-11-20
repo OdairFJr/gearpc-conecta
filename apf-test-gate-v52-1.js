@@ -119,7 +119,7 @@
     if (document.getElementById('safetyAutoSubmitV71Script')) return;
     const script = document.createElement('script');
     script.id = 'safetyAutoSubmitV71Script';
-    script.src = 'safety-auto-submit-v71.js?v=71.0';
+    script.src = 'safety-auto-submit-v71.js?v=135.0';
     script.async = false;
     document.body.appendChild(script);
   }

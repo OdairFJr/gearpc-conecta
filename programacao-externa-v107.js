@@ -170,6 +170,7 @@
      inicio:$('external_from_v107')?.value||nowLocal(),
      fim:$('external_to_v107')?.value||nowLocal(),titulo:'',descricao:'',condutor:'',materiais:''
    });renderSteps();return;}
+   if(e.target.closest('#externalRescheduleV135')){await window.GEARPC_RESCHEDULE_V135?.(editing);return;}
    if(e.target.closest('#externalDeleteV124')){await deleteSchedule();return;}
    if(e.target.closest('#externalCancelV107')){closeEditor();return;}
    if(e.target.closest('#externalSendV107'))await action('enviar');
@@ -622,11 +623,12 @@
      (!row?.plano_seguranca_visit_id?'disabled title="Vincule um plano de segurança aprovado"':'')+
      '>Publicar para responsáveis</button>':'')+
     (admin()&&row&&existing==='publicada'?'<button type="button" id="externalCopyPaxtuV110">Copiar para Paxtu100</button>':'')+
+    (row&&manager(Number(row.secao_id))&&existing!=='reprovada'?'<button type="button" id="externalRescheduleV135">Alterar datas e horários</button>':'')+
     (admin()&&row?'<button type="button" id="externalDeleteV124">Excluir atividade</button>':'')+
     '<button type="button" id="externalCancelV107">Fechar</button>'+
     '</div><p id="externalFormStatusV107" role="status" class="external-status-v107"></p>'+
     (row?.plano_seguranca_visit_id?'<section id="externalAuthorizationPreviewV115" class="external-auth-preview-v115 external-hidden-v107" aria-live="polite"></section>':'')+
-    (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Para preservar autorizações e registros, ela não pode mais ser editada neste módulo.</p>':'')+
+    (existing==='publicada'?'<p>Esta programação foi publicada no cadastro de atividades para os responsáveis. Use “Alterar datas e horários” para reagendar e encaminhar para nova conferência.</p>':'')+
     '</form>';
    if(row)$('externalSectionV107').value=String(row.secao_id);
    $('externalEditorV107').classList.remove('external-hidden-v107');

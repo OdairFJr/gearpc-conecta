@@ -130,6 +130,18 @@
     setButtonState(button, 'Enviando…', true);
 
     try {
+      const linked = await rt.client.from('programacoes_externas').select('data_inicio,data_fim').eq('plano_seguranca_visit_id', visitId);
+      if (linked.error) throw linked.error;
+      const dateParts = iso => {
+        const parts = new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Sao_Paulo', year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso));
+        return parts.replace(' ', 'T');
+      };
+      for (const activity of linked.data || []) {
+        if (dateParts(activity.data_inicio) !== (visit.activityStartDate || visit.activityDate) + 'T' + (visit.activityStartTime || '') ||
+            dateParts(activity.data_fim) !== visit.activityEndDate + 'T' + (visit.activityEndTime || '')) {
+          throw new Error('Confira as datas e horários da programação e da segurança. Use “Alterar datas e horários” para atualizar as duas antes de enviar ao DME.');
+        }
+      }
       const existing = await remoteStatus(visitId);
       if (existing?.status === 'aguardando_dme') {
         setCardStatus(visitId, 'Aguardando DME', 'warn');

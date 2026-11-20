@@ -14,7 +14,7 @@
   if (document.getElementById('safetySendDmeV72Script')) return;
   const script = document.createElement('script');
   script.id = 'safetySendDmeV72Script';
-  script.src = 'safety-send-dme-v72.js?v=72.0';
+  script.src = 'safety-send-dme-v72.js?v=135.0';
   script.async = false;
   document.body.appendChild(script);
 })();
