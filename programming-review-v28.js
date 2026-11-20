@@ -477,6 +477,18 @@
           <div class="program-review-actions">${actions}${clear}</div>
         </article>`;
       }).join('');
+      sections.forEach((section, index) => {
+        const review = reviews.find(r => Number(r.secao_id) === Number(section.id));
+        if (review?.status !== 'autorizada') return;
+        const card = grid.children[index];
+        if (!card) return;
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = `${section.nome} — aprovada pelo DME`;
+        summary.style.cssText = 'cursor:pointer;font-weight:700;padding:12px';
+        card.replaceWith(details);
+        details.append(summary, card);
+      });
     } catch (error) {
       console.error('Falha na conferência semanal:', error);
       panel.innerHTML = '<div class="program-deadline-note">Não foi possível carregar a situação das programações deste sábado.</div>';

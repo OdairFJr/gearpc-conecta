@@ -387,8 +387,12 @@
       rows = rows.filter((p) => allowed.has(Number(p.secao_id)));
     }
     if (sectionId) rows = rows.filter((p) => Number(p.secao_id) === sectionId);
+    const from = $('programmingDateFrom')?.value;
+    const to = $('programmingDateTo')?.value;
+    if (from) rows = rows.filter(p => p.data_atividade >= from);
+    if (to) rows = rows.filter(p => p.data_atividade <= to);
     if (!rows.length) {
-      ui.list.innerHTML = '<div class="program-empty"><strong>Nenhuma programação encontrada.</strong><span>Crie uma nova programação para começar.</span></div>';
+      ui.list.innerHTML = '<div class="program-empty"><strong>Nenhuma programação encontrada.</strong><span>Ajuste os filtros para consultar outro período ou seção.</span></div>';
       return;
     }
     ui.list.innerHTML = rows.map((p) => {
@@ -1283,6 +1287,14 @@
     ui.newButton?.addEventListener('click', openNewProgrammingDialog);
     ui.refresh?.addEventListener('click', () => loadPrograms());
     ui.sectionFilter?.addEventListener('change', renderPrograms);
+    $('programmingDateFrom')?.addEventListener('change', renderPrograms);
+    $('programmingDateTo')?.addEventListener('change', renderPrograms);
+    $('programmingClearSearch')?.addEventListener('click', () => {
+      ui.sectionFilter.value = '';
+      $('programmingDateFrom').value = '';
+      $('programmingDateTo').value = '';
+      renderPrograms();
+    });
     ui.list?.addEventListener('click', onProgramListClick);
     ui.previewClose?.addEventListener('click', () => closeDialog(ui.previewDialog));
     ui.previewDialog?.addEventListener('click', (e) => { if (e.target === ui.previewDialog) closeDialog(ui.previewDialog); });
