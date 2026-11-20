@@ -460,6 +460,13 @@
       : 'Selecione a seção e a data da reunião para registrar a presença.';
     statusLine.textContent = 'Ambiente seguro • acesso restrito a usuários autorizados';
     enforceTestResponsibleDashboard();
+    window.dispatchEvent(new Event('gearpc:profile-ready'));
+    const intro = document.querySelector('#dashboardView .release-card');
+    if (intro && data.tipo === 'responsavel') {
+      intro.querySelector('.release-kicker').textContent = 'ACESSO DA FAMÍLIA';
+      intro.querySelector('h3').textContent = 'Acompanhe seus jovens';
+      intro.querySelector('p').textContent = 'Confira os dados dos jovens e informe a participação na próxima atividade.';
+    }
     return true;
   }
 

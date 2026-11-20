@@ -415,6 +415,8 @@
   window.GEARPC_MEDICAL_EDIT_V95={open,openAdmin};
   window.GEARPC_DASHBOARD_PREPARE_TASKS=window.GEARPC_DASHBOARD_PREPARE_TASKS||[];
   window.GEARPC_DASHBOARD_PREPARE_TASKS.push(prepare);
+  window.addEventListener('gearpc:profile-ready', () => { void prepare(); });
+  if (window.GEARPC_RUNTIME?.state?.profile) void prepare();
   document.addEventListener('click',(event)=>{
     const button=event.target.closest('[data-rfa-edit-medical],[data-rdm-edit-medical]');
     if(button&&isParent()){

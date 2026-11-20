@@ -209,5 +209,7 @@
   }
   const prepare=async()=>{const r=await waitRuntime();if(!r)return;styles();ensureButtons();if(isAdmin())await refreshAdminButton();};
   window.GEARPC_DASHBOARD_PREPARE_TASKS=window.GEARPC_DASHBOARD_PREPARE_TASKS||[];window.GEARPC_DASHBOARD_PREPARE_TASKS.push(prepare);
+  window.addEventListener('gearpc:profile-ready', () => { void prepare(); });
+  if (window.GEARPC_RUNTIME?.state?.profile) void prepare();
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&isAdmin())void refreshAdminButton();});
 })();
