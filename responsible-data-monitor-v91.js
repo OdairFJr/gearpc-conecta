@@ -11,7 +11,7 @@
   function isAdmin(){ return profile() && profile().tipo === 'administrador'; }
   function isTestResponsible(){
     const p = profile();
-    return !!(p && p.tipo === 'responsavel' && (p.eh_teste === true || p.ensaio_responsavel === true) && p.responsavel_id);
+    return !!(p && p.tipo === 'responsavel' && p.responsavel_id);
   }
   function esc(v){
     return String(v == null ? '' : v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -112,7 +112,7 @@
   async function loadAdmin(){
     const c=client();
     const a=await Promise.all([
-      c.from('perfis_usuarios').select('user_id,nome_completo,responsavel_id,ativo,eh_teste').eq('tipo','responsavel').or('eh_teste.eq.true,ensaio_responsavel.eq.true').eq('ativo',true).order('nome_completo'),
+      c.from('perfis_usuarios').select('user_id,nome_completo,responsavel_id,ativo,eh_teste').eq('tipo','responsavel').eq('ativo',true).order('nome_completo'),
       c.from('jovem_responsaveis').select('jovem_id,responsavel_id,parentesco,responsavel_principal'),
       c.from('jovens').select('id,nome_completo,ativo,eh_teste').eq('ativo',true),
       c.from('responsavel_confirmacoes_jovens').select('responsavel_id,jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em,ficha_medica_confirmada_em'),
@@ -149,7 +149,7 @@
         cls=reviewed?'ok':c?.status==='correcao_solicitada'?'warn':'',
         when=c&&(c.confirmado_em||c.solicitado_em||c.atualizado_em);
       return '<div class="rdm-row-v91"><div class="rdm-row-head-v91"><div><strong>'+esc(x.jovem.nome_completo)+'</strong><div class="rdm-meta-v91"><span>Responsável: '+esc(x.responsavel.nome_completo)+'</span><span>Vínculo: '+esc(x.link.parentesco||'responsável')+'</span>'+(when?'<span>Atualizado: '+esc(fmtDateTime(when))+'</span>':'')+'</div></div><span class="rdm-status-v91 '+cls+'">'+esc(status)+'</span></div>'+(c&&c.status==='correcao_solicitada'&&c.observacao?'<div class="rdm-note-v91"><strong>Correção solicitada:</strong> '+esc(c.observacao)+'</div>':'')+'</div>';
-    }).join(''):'<div class="rdm-empty-v91">Nenhum responsável de teste com jovem vinculado.</div>';
+    }).join(''):'<div class="rdm-empty-v91">Nenhum responsável com jovem vinculado.</div>';
     const labels={confirmado:'Dados confirmados',correcao_solicitada:'Correção solicitada',reconfirmado:'Dados reconfirmados'};
     $('responsibleAdminHistoryV91').innerHTML=state.history.length?state.history.map(h=>'<div class="rdm-history-item-v91"><strong>'+esc(labels[h.acao]||h.acao)+' • '+esc(h.jovem&&h.jovem.nome_completo||'Jovem')+'</strong><span>'+esc(h.responsavel&&h.responsavel.nome_completo||'Responsável')+' • '+esc(fmtDateTime(h.criado_em))+(h.observacao?' • '+esc(h.observacao):'')+'</span></div>').join(''):'<div class="rdm-empty-v91">Nenhuma movimentação registrada ainda.</div>';
   }

@@ -18,7 +18,7 @@
   const prof = () => state.rt?.state?.profile;
   const usr = () => state.rt?.state?.user;
   const utils = () => window.GEARPC_MEDICAL_UTILS_V95;
-  const isParent = () => prof()?.tipo === 'responsavel' && (prof()?.eh_teste === true || prof()?.ensaio_responsavel === true) && !!prof()?.responsavel_id;
+  const isParent = () => prof()?.tipo === 'responsavel' && !!prof()?.responsavel_id;
   const isAdmin = () => prof()?.tipo === 'administrador';
   const esc = (v) => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;')
     .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
