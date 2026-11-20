@@ -327,8 +327,8 @@
     if (!profile) return 'Usuário';
     if (profile.tipo === 'administrador') return 'Administrador';
     if (profile.acesso_geral_consulta) return 'Dirigente';
-    if (profile.tipo === 'chefia' && profile.eh_teste === true && profile.responsavel_id)
-      return 'Chefia • responsável (teste)';
+    if (profile.tipo === 'chefia' && profile.responsavel_id)
+      return 'Chefia • responsável';
     return ({ chefia: 'Chefia', responsavel: 'Responsável' })[profile.tipo] || profile.tipo || 'Usuário';
   }
 
@@ -337,7 +337,7 @@
   function setupChiefTestChildrenButton() {
     const profile = state.profile;
     const enabled = Boolean(
-      profile?.tipo === 'chefia' && profile?.eh_teste === true &&
+      profile?.tipo === 'chefia' &&
       profile?.chefe_id && profile?.responsavel_id
     );
     const existing = $('chiefTestChildrenButtonV96');
@@ -676,8 +676,8 @@
     let rows = memberRows();
     if (state.onlyOwnChildren) {
       const p = state.profile;
-      // Nunca ativar o filtro familiar no perfil administrador ou na chefia real.
-      if (p?.tipo === 'chefia' && p?.eh_teste === true && p?.responsavel_id) {
+      // A visão familiar filtra exclusivamente os jovens vinculados ao responsável.
+      if (p?.tipo === 'chefia' && p?.responsavel_id) {
         const ids = new Set(state.vinculos
           .filter((link) => Number(link.responsavel_id) === Number(p.responsavel_id))
           .map((link) => Number(link.jovem_id)));
@@ -764,7 +764,7 @@
   async function openMembersView(onlyOwnChildren = false) {
     const p = state.profile;
     state.onlyOwnChildren = onlyOwnChildren === true &&
-      p?.tipo === 'chefia' && p?.eh_teste === true && Boolean(p?.responsavel_id);
+      p?.tipo === 'chefia' && Boolean(p?.responsavel_id);
     if (state.onlyOwnChildren) {
       memberSearch.value = '';
       memberSecaoFilter.value = '';

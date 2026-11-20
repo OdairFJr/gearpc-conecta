@@ -11,7 +11,7 @@
   function isAdmin(){ return profile() && profile().tipo === 'administrador'; }
   function isTestResponsible(){
     const p = profile();
-    return !!(p && p.tipo === 'responsavel' && p.responsavel_id);
+    return !!(p && ['responsavel','chefia'].includes(p.tipo) && p.responsavel_id);
   }
   function esc(v){
     return String(v == null ? '' : v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
@@ -112,7 +112,7 @@
   async function loadAdmin(){
     const c=client();
     const a=await Promise.all([
-      c.from('perfis_usuarios').select('user_id,nome_completo,responsavel_id,ativo,eh_teste').eq('tipo','responsavel').eq('ativo',true).order('nome_completo'),
+      c.from('perfis_usuarios').select('user_id,nome_completo,responsavel_id,ativo,eh_teste').in('tipo',['responsavel','chefia']).not('responsavel_id','is',null).eq('ativo',true).order('nome_completo'),
       c.from('jovem_responsaveis').select('jovem_id,responsavel_id,parentesco,responsavel_principal'),
       c.from('jovens').select('id,nome_completo,ativo,eh_teste').eq('ativo',true),
       c.from('responsavel_confirmacoes_jovens').select('responsavel_id,jovem_id,status,observacao,confirmado_em,solicitado_em,atualizado_em,ficha_medica_confirmada_em'),
