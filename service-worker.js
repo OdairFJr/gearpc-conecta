@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gearpc-conecta-offline-v140-familias-administradores';
+const CACHE_NAME = 'gearpc-conecta-offline-v141-pre-cadastro';
 const PROFILE_CACHE = 'gearpc-conecta-profile-v30';
 const SUPABASE_LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
 const SUPABASE_HOST = 'wewbwrdqubypuwuyvwmv.supabase.co';
@@ -12,6 +12,10 @@ const CRITICAL_OFFLINE = [
 const APP_SHELL = [
   './',
   './index.html',
+  './prereg-v141.css?v=141.0',
+  './prereg-schema-v141.js?v=141.0',
+  './prereg-form-v141.js?v=141.0',
+  './prereg-admin-v141.js?v=141.0',
   './launcher-v24.html',
   './offline.html',
   './styles.css?v=103.1',

@@ -13,6 +13,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="stylesheet" href="styles.css?v=103.1" />
+  <link rel="stylesheet" href="prereg-v141.css?v=141.0">
 </head>
 <body>
   <main class="app-shell">
@@ -1025,10 +1026,13 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./service-worker.js?v=140.0').catch(() => {});
+        navigator.serviceWorker.register('./service-worker.js?v=141.0').catch(() => {});
       });
     }
   </script>
   <script src="reschedule-v135.js?v=135.0"></script>
+  <script src="prereg-schema-v141.js?v=141.0"></script>
+  <script src="prereg-form-v141.js?v=141.0"></script>
+  <script src="prereg-admin-v141.js?v=141.0"></script>
 </body>
 </html>
